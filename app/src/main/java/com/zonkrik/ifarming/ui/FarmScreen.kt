@@ -1,5 +1,6 @@
 package com.zonkrik.ifarming.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,15 +41,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zonkrik.ifarming.game.CropType
+import com.zonkrik.ifarming.game.DecorationType
 import com.zonkrik.ifarming.game.GameData
 import com.zonkrik.ifarming.game.GameEvent
 import com.zonkrik.ifarming.game.GameState
 import com.zonkrik.ifarming.game.GameViewModel
 import com.zonkrik.ifarming.game.PlotKind
-import com.zonkrik.ifarming.ui.iso.IsoBoard
+import com.zonkrik.ifarming.ui.gdx.GdxDecorationPicker
+import com.zonkrik.ifarming.ui.gdx.GdxVillageBoard
 import com.zonkrik.ifarming.ui.iso.IsoSheet
-import com.zonkrik.ifarming.ui.iso.QuickNavBar
-import com.zonkrik.ifarming.ui.iso.rememberIsoCameraState
 import com.zonkrik.ifarming.ui.theme.FieldGreen
 import com.zonkrik.ifarming.ui.theme.RipeGold
 import com.zonkrik.ifarming.ui.theme.SaffronDark
@@ -66,10 +67,11 @@ fun FarmScreen(viewModel: GameViewModel) {
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val camera = rememberIsoCameraState()
     var seedPickerPlotId by remember { mutableStateOf<Int?>(null) }
     var agroPickerPlotId by remember { mutableStateOf<Int?>(null) }
     var activeSheet by remember { mutableStateOf<IsoSheet?>(null) }
+    var showDecorationPicker by remember { mutableStateOf(false) }
+    var pendingDecorationType by remember { mutableStateOf<DecorationType?>(null) }
 
     LaunchedEffect(event) {
         val current = event
@@ -92,22 +94,29 @@ fun FarmScreen(viewModel: GameViewModel) {
                         OutlinedTitle("Kisan Khet", 20.sp)
                         OutlinedTitle("किसान खेत", 12.sp)
                     }
-                    ResourceBadge(text = "${state.coins}", emoji = "🪙")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ResourceBadge(
+                            text = "Decorate",
+                            emoji = "🎨",
+                            modifier = Modifier.padding(end = 8.dp).clickable { showDecorationPicker = true },
+                        )
+                        ResourceBadge(text = "${state.coins}", emoji = "🪙")
+                    }
                 }
             }
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            IsoBoard(
+            // Phase 2 of the LibGDX migration: every zone renders from real GameState, with
+            // pan/pinch-zoom camera controls and a quick-nav bar. Live countdown/progress-bar
+            // rendering and the CoC-style info card are still deferred to a later pass.
+            GdxVillageBoard(
                 state = state,
-                nowMillis = nowMillis,
                 viewModel = viewModel,
-                camera = camera,
                 onEmptyTapped = {
                     seedPickerPlotId = it
                     activeSheet = null
                 },
-                onHarvestTapped = { viewModel.harvestPlot(it) },
                 onEmptyAgroTileTapped = {
                     agroPickerPlotId = it
                     activeSheet = null
@@ -117,7 +126,8 @@ fun FarmScreen(viewModel: GameViewModel) {
                     seedPickerPlotId = null
                     agroPickerPlotId = null
                 },
-                onBuyLand = { viewModel.buyLandExpansion() },
+                pendingDecorationType = pendingDecorationType,
+                onDecorationPlacementConsumed = { pendingDecorationType = null },
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -129,8 +139,6 @@ fun FarmScreen(viewModel: GameViewModel) {
                     onSellAll = { viewModel.sellAll() },
                 )
             }
-
-            QuickNavBar(camera = camera, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth())
         }
     }
 
@@ -149,6 +157,23 @@ fun FarmScreen(viewModel: GameViewModel) {
                     viewModel.plantSeed(targetPlotId, crop)
                     scope.launch { sheetState.hide() }
                     seedPickerPlotId = null
+                },
+            )
+        }
+    }
+
+    if (showDecorationPicker) {
+        val decorationSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(
+            onDismissRequest = { showDecorationPicker = false },
+            sheetState = decorationSheetState,
+        ) {
+            GdxDecorationPicker(
+                coins = state.coins,
+                onDecorationChosen = { type ->
+                    pendingDecorationType = type
+                    scope.launch { decorationSheetState.hide() }
+                    showDecorationPicker = false
                 },
             )
         }

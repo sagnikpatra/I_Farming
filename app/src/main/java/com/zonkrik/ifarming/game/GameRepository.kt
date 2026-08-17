@@ -88,6 +88,31 @@ class GameRepository(context: Context) {
         }
         root.put("inventory", inventoryObj)
 
+        val zoneLayoutObj = JSONObject()
+        state.zoneLayout.forEach { (zoneId, anchor) ->
+            val anchorObj = JSONObject()
+            anchorObj.put("tileX", anchor.tileX)
+            anchorObj.put("tileY", anchor.tileY)
+            anchorObj.put("rotationDegrees", anchor.rotationDegrees)
+            anchorObj.put("flippedX", anchor.flippedX)
+            zoneLayoutObj.put(zoneId, anchorObj)
+        }
+        root.put("zoneLayout", zoneLayoutObj)
+
+        val decorationsArray = JSONArray()
+        state.decorations.forEach { decoration ->
+            val decorationObj = JSONObject()
+            decorationObj.put("id", decoration.id)
+            decorationObj.put("type", decoration.type.name)
+            decorationObj.put("tileX", decoration.tileX)
+            decorationObj.put("tileY", decoration.tileY)
+            decorationObj.put("rotationDegrees", decoration.rotationDegrees)
+            decorationObj.put("flippedX", decoration.flippedX)
+            decorationsArray.put(decorationObj)
+        }
+        root.put("decorations", decorationsArray)
+        root.put("nextDecorationId", state.nextDecorationId)
+
         return root.toString()
     }
 
@@ -136,6 +161,33 @@ class GameRepository(context: Context) {
             )
         }
 
+        val zoneLayoutObj = root.optJSONObject("zoneLayout") ?: JSONObject()
+        val zoneLayout = zoneLayoutObj.keys().asSequence().associateWith { key ->
+            val anchorObj = zoneLayoutObj.getJSONObject(key)
+            ZoneAnchor(
+                tileX = anchorObj.optDouble("tileX", 0.0).toFloat(),
+                tileY = anchorObj.optDouble("tileY", 0.0).toFloat(),
+                rotationDegrees = anchorObj.optInt("rotationDegrees", 0),
+                flippedX = anchorObj.optBoolean("flippedX", false),
+            )
+        }
+
+        val decorationsArray = root.optJSONArray("decorations") ?: JSONArray()
+        val decorations = (0 until decorationsArray.length()).mapNotNull { index ->
+            val decorationObj = decorationsArray.getJSONObject(index)
+            val type = runCatching { DecorationType.valueOf(decorationObj.getString("type")) }.getOrNull()
+                ?: return@mapNotNull null
+            Decoration(
+                id = decorationObj.getInt("id"),
+                type = type,
+                tileX = decorationObj.optDouble("tileX", 0.0).toFloat(),
+                tileY = decorationObj.optDouble("tileY", 0.0).toFloat(),
+                rotationDegrees = decorationObj.optInt("rotationDegrees", 0),
+                flippedX = decorationObj.optBoolean("flippedX", false),
+            )
+        }
+        val nextDecorationId = root.optInt("nextDecorationId", 0)
+
         val filmExpiresAt = root.optLong("filmExpiresAt", -1L).takeIf { it >= 0 }
         val electricityExpiresAt = root.optLong("electricityExpiresAt", -1L).takeIf { it >= 0 }
 
@@ -171,6 +223,9 @@ class GameRepository(context: Context) {
             eventPoints = root.optInt("eventPoints", 0),
             eventHasPremiumPass = root.optBoolean("eventHasPremiumPass", false),
             eventClaimedTier = root.optInt("eventClaimedTier", 0),
+            zoneLayout = zoneLayout,
+            decorations = decorations,
+            nextDecorationId = nextDecorationId,
         )
     }
 

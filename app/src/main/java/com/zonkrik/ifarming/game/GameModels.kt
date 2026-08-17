@@ -154,6 +154,34 @@ data class Plot(
     val hostType: HostType? = null,
 )
 
+/** A structure zone's custom world position/orientation -- see `GameState.zoneLayout` and the village board's drag/rotate/flip features. */
+data class ZoneAnchor(
+    val tileX: Float,
+    val tileY: Float,
+    val rotationDegrees: Int = 0,
+    val flippedX: Boolean = false,
+)
+
+/** A cosmetic, purely-decorative placeable item -- no gameplay effect. See `GameState.decorations`. */
+enum class DecorationType(val displayName: String, val emoji: String, val cost: Long) {
+    POTTED_PLANT("Potted Plant", "🪴", 50),
+    SUNFLOWER("Sunflower", "🌻", 75),
+    BAMBOO("Bamboo", "🎋", 100),
+    LANTERN("Lantern", "🏮", 150),
+    FOUNTAIN("Fountain", "⛲", 400),
+    STATUE("Statue", "🗿", 600),
+}
+
+/** One placed decoration on the village board. */
+data class Decoration(
+    val id: Int,
+    val type: DecorationType,
+    val tileX: Float,
+    val tileY: Float,
+    val rotationDegrees: Int = 0,
+    val flippedX: Boolean = false,
+)
+
 /** Harvested-but-unsold stock for one crop type, split by yield quality. */
 data class CropStock(
     val normal: Int = 0,
@@ -206,4 +234,10 @@ data class GameState(
     val eventHasPremiumPass: Boolean = false,
     /** Highest reward tier (0..GameData.FESTIVAL_TIER_THRESHOLDS.size) already granted this occurrence. */
     val eventClaimedTier: Int = 0,
+    /** Custom drag-to-reposition positions for the village board's structure zones, keyed by zone id (see `village/TileSnapshot.kt`'s zone-id constants). Missing entries fall back to that zone's default anchor. */
+    val zoneLayout: Map<String, ZoneAnchor> = emptyMap(),
+    /** Purely cosmetic placed items -- see `DecorationType`/`Decoration`. */
+    val decorations: List<Decoration> = emptyList(),
+    /** Simple auto-incrementing id source for new decorations, mirrors how plot ids already work. */
+    val nextDecorationId: Int = 0,
 )

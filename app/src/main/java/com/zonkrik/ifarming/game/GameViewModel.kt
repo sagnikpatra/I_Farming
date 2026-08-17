@@ -726,6 +726,86 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         persist()
     }
 
+    /** Drag-to-reposition on the village board -- purely a layout preference, no cost/validation. */
+    fun moveZone(zoneId: String, tileX: Float, tileY: Float) {
+        val current = _state.value
+        val existing = current.zoneLayout[zoneId]
+        val anchor = existing?.copy(tileX = tileX, tileY = tileY) ?: ZoneAnchor(tileX, tileY)
+        _state.value = current.copy(zoneLayout = current.zoneLayout + (zoneId to anchor))
+        persist()
+    }
+
+    fun rotateZone(zoneId: String, defaultAnchor: Pair<Float, Float>) {
+        val current = _state.value
+        val existing = current.zoneLayout[zoneId]
+        val base = existing ?: ZoneAnchor(defaultAnchor.first, defaultAnchor.second)
+        val anchor = base.copy(rotationDegrees = (base.rotationDegrees + 90) % 360)
+        _state.value = current.copy(zoneLayout = current.zoneLayout + (zoneId to anchor))
+        persist()
+    }
+
+    fun flipZone(zoneId: String, defaultAnchor: Pair<Float, Float>) {
+        val current = _state.value
+        val existing = current.zoneLayout[zoneId]
+        val base = existing ?: ZoneAnchor(defaultAnchor.first, defaultAnchor.second)
+        val anchor = base.copy(flippedX = !base.flippedX)
+        _state.value = current.copy(zoneLayout = current.zoneLayout + (zoneId to anchor))
+        persist()
+    }
+
+    // --- Decorations: purely cosmetic placeables (see `DecorationType`/`Decoration`) ------
+
+    fun placeDecoration(type: DecorationType, tileX: Float, tileY: Float) {
+        val current = _state.value
+        if (current.coins < type.cost) {
+            _events.value = GameEvent.Info("Need ₹${type.cost} for ${type.emoji}.")
+            return
+        }
+        val decoration = Decoration(id = current.nextDecorationId, type = type, tileX = tileX, tileY = tileY)
+        _state.value = current.copy(
+            coins = current.coins - type.cost,
+            decorations = current.decorations + decoration,
+            nextDecorationId = current.nextDecorationId + 1,
+        )
+        persist()
+    }
+
+    fun removeDecoration(id: Int) {
+        val current = _state.value
+        _state.value = current.copy(decorations = current.decorations.filterNot { it.id == id })
+        persist()
+    }
+
+    fun moveDecoration(id: Int, tileX: Float, tileY: Float) {
+        val current = _state.value
+        _state.value = current.copy(
+            decorations = current.decorations.map {
+                if (it.id == id) it.copy(tileX = tileX, tileY = tileY) else it
+            },
+        )
+        persist()
+    }
+
+    fun rotateDecoration(id: Int) {
+        val current = _state.value
+        _state.value = current.copy(
+            decorations = current.decorations.map {
+                if (it.id == id) it.copy(rotationDegrees = (it.rotationDegrees + 90) % 360) else it
+            },
+        )
+        persist()
+    }
+
+    fun flipDecoration(id: Int) {
+        val current = _state.value
+        _state.value = current.copy(
+            decorations = current.decorations.map {
+                if (it.id == id) it.copy(flippedX = !it.flippedX) else it
+            },
+        )
+        persist()
+    }
+
     private fun persist() {
         repository.save(_state.value)
     }

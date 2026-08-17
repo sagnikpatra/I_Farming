@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "I Farming"
 include(":app")
+include(":core")
  

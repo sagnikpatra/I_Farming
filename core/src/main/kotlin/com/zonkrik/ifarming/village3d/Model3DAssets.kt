@@ -43,6 +43,15 @@ object Model3DAssets {
     private val structureTints = mapOf(
         ZONE_ID_FARMHOUSE to Color(1f, 0.82f, 0.62f, 1f),
         ZONE_ID_MANDI to Color(1f, 0.78f, 0.5f, 1f),
+        // Polyhouse is genuinely a plastic-sheeted greenhouse -- kept close to neutral/cool so it
+        // still reads as glasshouse cladding rather than a dwelling; a faint blue-white sheen.
+        ZONE_ID_POLYHOUSE to Color(0.92f, 0.97f, 1f, 1f),
+        // Vertical Farm is deliberately a modern, tech-forward structure (per the design doc it's
+        // the "advanced infrastructure" tier) -- a cool steel tint keeps it visually distinct from
+        // the warmer traditional-material zones instead of every building reading as terracotta.
+        ZONE_ID_VERTICAL_FARM to Color(0.85f, 0.9f, 0.95f, 1f),
+        // Aquaculture's stone bridge asset gets a cooler, wet-stone cast to sell the pond setting.
+        ZONE_ID_AQUACULTURE to Color(0.88f, 0.92f, 0.9f, 1f),
     )
 
     /** Keyed by the decoration's emoji -- `TileSnapshot.spriteKey` for a decoration tile is always its `DecorationType.emoji`. */

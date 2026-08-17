@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# === Claude Code Game Studios (Claude Code Local) ===
+.claude/settings.local.json
+CLAUDE.local.md
+production/session-logs/

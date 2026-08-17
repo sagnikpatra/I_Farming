@@ -49,6 +49,7 @@ import com.zonkrik.ifarming.game.GameViewModel
 import com.zonkrik.ifarming.game.PlotKind
 import com.zonkrik.ifarming.ui.gdx.GdxDecorationPicker
 import com.zonkrik.ifarming.ui.gdx.GdxVillageBoard
+import com.zonkrik.ifarming.ui.gdx.Preview3DScreen
 import com.zonkrik.ifarming.ui.iso.IsoSheet
 import com.zonkrik.ifarming.ui.theme.FieldGreen
 import com.zonkrik.ifarming.ui.theme.RipeGold
@@ -72,6 +73,7 @@ fun FarmScreen(viewModel: GameViewModel) {
     var activeSheet by remember { mutableStateOf<IsoSheet?>(null) }
     var showDecorationPicker by remember { mutableStateOf(false) }
     var pendingDecorationType by remember { mutableStateOf<DecorationType?>(null) }
+    var show3DPreview by remember { mutableStateOf(false) }
 
     LaunchedEffect(event) {
         val current = event
@@ -95,6 +97,11 @@ fun FarmScreen(viewModel: GameViewModel) {
                         OutlinedTitle("किसान खेत", 12.sp)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        ResourceBadge(
+                            text = "3D",
+                            emoji = "🧊",
+                            modifier = Modifier.padding(end = 8.dp).clickable { show3DPreview = true },
+                        )
                         ResourceBadge(
                             text = "Decorate",
                             emoji = "🎨",
@@ -160,6 +167,10 @@ fun FarmScreen(viewModel: GameViewModel) {
                 },
             )
         }
+    }
+
+    if (show3DPreview) {
+        Preview3DScreen(onClose = { show3DPreview = false }, modifier = Modifier.fillMaxSize())
     }
 
     if (showDecorationPicker) {

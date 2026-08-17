@@ -35,13 +35,13 @@ object Model3DAssets {
     /** Keyed by the decoration's emoji -- `TileSnapshot.spriteKey` for a decoration tile is always its `DecorationType.emoji`. */
     private val decorationAssets = mapOf(
         "🪴" to "models3d/decorations/potted_plant/planter.obj",
-        "🌻" to "models3d/decorations/sunflower/flower_yellowA.obj",
+        "🏵️" to "models3d/decorations/sunflower/flower_yellowA.obj",
         "🎋" to "models3d/decorations/bamboo/crops_bambooStageB.obj",
         // lantern.obj (fantasy-town-kit) has the same broken-black-render issue noted above --
         // graveyard-kit's lantern-candle.obj instead.
-        "🏮" to "models3d/decorations/lantern/lantern-candle.obj",
+        "🪔" to "models3d/decorations/lantern/lantern-candle.obj",
         "⛲" to "models3d/decorations/fountain/fountain-round.obj",
-        "🗿" to "models3d/decorations/statue/statue_obelisk.obj",
+        "🛕" to "models3d/decorations/statue/statue_obelisk.obj",
     )
 
     fun assetFor(tile: TileSnapshot): String? {

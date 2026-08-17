@@ -52,6 +52,7 @@ class Village3DStage {
 
     private val entities = mutableListOf<Entity3D>()
     private val groundInstances = mutableListOf<ModelInstance>()
+    private val terrainInstance = ModelInstance(TerrainModelBuilder.get())
 
     private val cameraTarget = Vector3(0f, 0f, 0f)
     private var distance = DEFAULT_DISTANCE
@@ -70,10 +71,12 @@ class Village3DStage {
     val gestureDetector = GestureDetector(20f, 0.4f, LONG_PRESS_SECONDS, 0.15f, gestureListener())
 
     init {
-        // High-contrast, game-like lighting.
-        environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.45f, 0.45f, 0.5f, 1f))
-        environment.add(DirectionalLight().set(0.9f, 0.88f, 0.8f, -0.6f, -1f, -0.4f)) // Key (warm)
-        environment.add(DirectionalLight().set(0.25f, 0.3f, 0.4f, 0.6f, -0.3f, 0.5f))  // Fill (cool)
+        // Warm, high-sun lighting -- golden/saffron key light rather than a neutral-white one,
+        // evoking Indian daylight rather than a generic overcast studio look. Ambient is warmed to
+        // match so shadow-side faces don't read as cold blue-gray.
+        environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.48f, 0.44f, 0.38f, 1f))
+        environment.add(DirectionalLight().set(1f, 0.82f, 0.55f, -0.6f, -1f, -0.4f)) // Key (golden)
+        environment.add(DirectionalLight().set(0.22f, 0.24f, 0.32f, 0.6f, -0.3f, 0.5f)) // Fill (cool, subtle)
         camera.near = 0.1f
         camera.far = 500f
         updateCameraTransform()
@@ -277,12 +280,15 @@ class Village3DStage {
 
     fun render() {
         Gdx.gl.glViewport(0, 0, Gdx.graphics.width, Gdx.graphics.height)
-        // Soft, natural grass green (original color)
-        Gdx.gl.glClearColor(0.663f, 0.851f, 0.478f, 1f)
+        // Fallback only -- TerrainModelBuilder's textured plane covers the whole pannable area, so
+        // this should never actually show, but keep it a close match to the terrain's average tone
+        // in case an edge is ever visible (e.g. right at PAN_BOUNDS).
+        Gdx.gl.glClearColor(0.55f, 0.62f, 0.32f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT or GL20.GL_DEPTH_BUFFER_BIT)
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST)
 
         modelBatch.begin(camera)
+        modelBatch.render(terrainInstance, environment)
         groundInstances.forEach { modelBatch.render(it, environment) }
         entities.forEach { modelBatch.render(it.shadowInstance, environment) }
         entities.forEach { modelBatch.render(it.instance, environment) }
@@ -296,5 +302,6 @@ class Village3DStage {
         billboardCache.clear()
         GroundModelBuilder.disposeAll()
         ShadowBlobBuilder.dispose()
+        TerrainModelBuilder.dispose()
     }
 }

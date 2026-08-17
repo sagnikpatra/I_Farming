@@ -164,12 +164,17 @@ data class ZoneAnchor(
 
 /** A cosmetic, purely-decorative placeable item -- no gameplay effect. See `GameState.decorations`. */
 enum class DecorationType(val displayName: String, val emoji: String, val cost: Long) {
-    POTTED_PLANT("Potted Plant", "🪴", 50),
-    SUNFLOWER("Sunflower", "🌻", 75),
+    /** A Tulsi Vrindavan -- holy basil in a raised, often-decorated pot, a near-ubiquitous fixture outside Indian homes. */
+    POTTED_PLANT("Tulsi Plant", "🪴", 50),
+    /** Marigolds (genda phool), not sunflowers -- the flower actually used in Indian festival garlands and doorway decoration. */
+    SUNFLOWER("Marigold", "🏵️", 75),
     BAMBOO("Bamboo", "🎋", 100),
-    LANTERN("Lantern", "🏮", 150),
-    FOUNTAIN("Fountain", "⛲", 400),
-    STATUE("Statue", "🗿", 600),
+    /** A diya, not a paper lantern -- the small oil lamp lit for Diwali and daily household worship. */
+    LANTERN("Diya Lamp", "🪔", 150),
+    /** A village well/hand-pump, not an ornamental European fountain -- shared water infrastructure, not decoration for its own sake. */
+    FOUNTAIN("Village Well", "⛲", 400),
+    /** A small temple/shrine, not a generic statue. */
+    STATUE("Temple Shrine", "🛕", 600),
     DIRT_PATH("Dirt Path", "🟫", 10),
     RANGOLI("Rangoli", "🪷", 25),
 }

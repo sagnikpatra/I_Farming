@@ -56,7 +56,7 @@ object ShadowBlobBuilder {
                 val dx = (x - center) / center
                 val dy = (y - center) / center
                 val dist = sqrt(dx * dx + dy * dy).coerceIn(0f, 1f)
-                val alpha = ((1f - dist) * (1f - dist) * 0.4f).coerceIn(0f, 0.4f)
+                val alpha = ((1f - dist) * (1f - dist) * 0.6f).coerceIn(0f, 0.6f)
                 pixmap.setColor(0f, 0f, 0f, alpha)
                 pixmap.drawPixel(x, y)
             }

@@ -5,9 +5,9 @@ import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.zonkrik.ifarming.village.GrowthInfo
 
-/** Half-extent of an entity's tap/ray-pick hit box, in world units -- generous and uniform across every entity (rather than each model's exact, sometimes tiny, mesh bounds) so tapping still feels like "the whole tile is tappable", matching the old 2D board's per-tile hit-testing. */
-private const val HIT_BOX_HALF_WIDTH = TILE_SPACING * 0.45f
-private const val HIT_BOX_HEIGHT = 2.2f
+/** Half-extent of an entity's tap/ray-pick hit box, in world units. Scaled up for the new CoC feel. */
+private const val HIT_BOX_HALF_WIDTH = TILE_SPACING * 0.6f
+private const val HIT_BOX_HEIGHT = 3.5f
 
 /**
  * One tile's 3D representation: either a hand-picked model ([Model3DAssets]) or a billboarded emoji
@@ -15,12 +15,18 @@ private const val HIT_BOX_HEIGHT = 2.2f
  * [draggable], [zoneId]/[decorationId]) for [Village3DStage] to route taps/drags -- the 3D
  * counterpart of the 2D board's `Building` Scene2D actor, minus any Scene2D dependency (hit-testing
  * here is manual ray-picking against [bounds], not free actor hit-testing).
+ *
+ * Owns [shadowInstance] directly (rather than [Village3DStage] tracking a parallel shadow list) so
+ * [refreshTransform] can never let the two drift apart -- a shadow living in its own list, keyed
+ * only by rebuild-time iteration order, previously stayed frozen at the entity's pre-drag position
+ * while the entity itself followed the finger during a long-press-drag.
  */
 class Entity3D(
     val tileId: Int,
     var tileX: Float,
     var tileY: Float,
     val instance: ModelInstance,
+    val shadowInstance: ModelInstance,
     val draggable: Boolean,
     val zoneId: String?,
     val decorationId: Int?,
@@ -30,17 +36,24 @@ class Entity3D(
 ) {
     val bounds = BoundingBox()
 
+    /** Structures/decorations get a slightly larger shadow than a crop-plot billboard -- see [Village3DStage]'s old shadow-building logic, now folded in here. */
+    private val isStructureOrDecoration = zoneId != null || decorationId != null
+
     init {
         refreshTransform()
     }
 
-    /** Re-derives [instance]'s world transform and [bounds] from [tileX]/[tileY]/[rotationDegrees]/[flippedX] -- called after any of those change (initial placement, live-drag, or a rotate/flip). */
+    /** Re-derives [instance]'s and [shadowInstance]'s world transforms and [bounds] from [tileX]/[tileY]/[rotationDegrees]/[flippedX] -- called after any of those change (initial placement, live-drag, or a rotate/flip). */
     fun refreshTransform() {
         val world = Grid3D.tileToWorld(tileX, tileY)
         instance.transform
             .setToTranslation(world)
             .rotate(Vector3.Y, rotationDegrees.toFloat())
+            .scale(1.25f, 1.25f, 1.25f) // Scale up slightly for a better CoC feel
         if (flippedX) instance.transform.scale(-1f, 1f, 1f)
+
+        shadowInstance.transform.setToTranslation(world)
+        if (isStructureOrDecoration) shadowInstance.transform.scale(1.5f, 1f, 1.5f)
 
         bounds.set(
             Vector3(world.x - HIT_BOX_HALF_WIDTH, 0f, world.z - HIT_BOX_HALF_WIDTH),

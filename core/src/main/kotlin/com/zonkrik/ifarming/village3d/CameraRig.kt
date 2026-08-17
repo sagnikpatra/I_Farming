@@ -12,7 +12,11 @@ import com.badlogic.gdx.math.Vector3
  * gives the ~35.264 degree elevation angle isometric games are named for.
  */
 object CameraRig {
-    val offsetDir: Vector3 = Vector3(1f, 1f, 1f).nor()
+    /** 
+     * The board's fixed camera angle. Clash of Clans uses a steep angle (roughly 60 degrees) 
+     * to showcase building depth. Vector3(1, 2.4, 1) gives roughly 60 degrees elevation.
+     */
+    val offsetDir: Vector3 = Vector3(1f, 2.4f, 1f).nor()
     val worldUp: Vector3 = Vector3(0f, 1f, 0f)
 
     /** Unit vector pointing from the board toward the camera -- what a billboard's face should point along. */

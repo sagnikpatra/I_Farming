@@ -24,6 +24,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.graphics.Camera
+import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.PerspectiveCamera
 import com.zonkrik.ifarming.game.DecorationType
 import com.zonkrik.ifarming.game.GameData
@@ -55,25 +57,38 @@ import com.zonkrik.ifarming.village3d.Grid3D
 import kotlin.math.roundToInt
 
 /** Reused across calls (rather than allocated per-frame) purely to run `project()` against -- see [screenPositionOf]. */
-private val projectionCamera = PerspectiveCamera()
+private val projectionPerspectiveCamera = PerspectiveCamera()
+private val projectionOrthoCamera = OrthographicCamera()
 
 /** World (tileX,tileY) -> on-screen px, using the live [Camera3DSnapshot] -- see `GdxInfoCard`. */
 private fun screenPositionOf(snapshot: Camera3DSnapshot, tileX: Float, tileY: Float): Offset {
-    projectionCamera.viewportWidth = snapshot.viewportWidth.toFloat()
-    projectionCamera.viewportHeight = snapshot.viewportHeight.toFloat()
-    projectionCamera.fieldOfView = snapshot.fieldOfViewY
-    projectionCamera.near = snapshot.near
-    projectionCamera.far = snapshot.far
-    projectionCamera.position.set(snapshot.position)
-    projectionCamera.direction.set(snapshot.direction)
-    projectionCamera.up.set(snapshot.up)
-    projectionCamera.update()
+    val camera: Camera = if (snapshot.isOrthographic) {
+        projectionOrthoCamera.apply {
+            zoom = snapshot.zoom
+        }
+    } else {
+        projectionPerspectiveCamera.apply {
+            fieldOfView = snapshot.fieldOfViewY
+        }
+    }
+
+    camera.viewportWidth = snapshot.viewportWidth
+    camera.viewportHeight = snapshot.viewportHeight
+    camera.near = snapshot.near
+    camera.far = snapshot.far
+    camera.position.set(snapshot.position)
+    camera.direction.set(snapshot.direction)
+    camera.up.set(snapshot.up)
+    camera.update()
 
     val world = Grid3D.tileToWorld(tileX, tileY)
     world.y = 0.9f // roughly a structure's/decoration's midheight, so the card anchors above it, not at ground level
-    val projected = projectionCamera.project(world)
+
+    // Project using the pixel viewport dimensions from the snapshot
+    val projected = camera.project(world, 0f, 0f, snapshot.pixelWidth.toFloat(), snapshot.pixelHeight.toFloat())
+    
     // GL is Y-up (origin bottom-left), Compose is Y-down (origin top-left).
-    return Offset(projected.x, snapshot.viewportHeight - projected.y)
+    return Offset(projected.x, snapshot.pixelHeight - projected.y)
 }
 
 /**

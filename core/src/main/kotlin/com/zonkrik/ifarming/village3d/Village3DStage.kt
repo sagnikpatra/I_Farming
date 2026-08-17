@@ -2,7 +2,7 @@ package com.zonkrik.ifarming.village3d
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.PerspectiveCamera
+import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.graphics.g3d.Environment
 import com.badlogic.gdx.graphics.g3d.ModelBatch
@@ -16,9 +16,9 @@ import com.badlogic.gdx.math.Vector3
 import com.zonkrik.ifarming.village.TileSnapshot
 import kotlin.math.roundToInt
 
-private const val MIN_DISTANCE = 5f
-private const val MAX_DISTANCE = 26f
-private const val DEFAULT_DISTANCE = 12f
+private const val MIN_DISTANCE = 3f
+private const val MAX_DISTANCE = 18f
+private const val DEFAULT_DISTANCE = 7f
 private const val LONG_PRESS_SECONDS = 0.45f
 private const val BILLBOARD_SIZE = 1f
 
@@ -27,19 +27,12 @@ private const val PAN_BOUNDS = 40f
 
 /**
  * The 3D counterpart of the old 2D board's `VillageStage`: owns the camera, lighting, and every
- * tile's [Entity3D], and drives all touch interaction. Scene2D's `Stage` gave the 2D board free
- * actor hit-testing and gesture routing for nothing; a real 3D scene has no such thing, so this
- * reimplements it by hand:
- *  - **Tap-to-select** / **long-press-then-drag**: raw [GestureDetector] (not Scene2D's
- *    `ActorGestureListener`, which needs a `Stage`) driving manual ray-picking
- *    ([Intersector.intersectRayBounds]) against each [Entity3D]'s [Entity3D.bounds].
- *  - **Drag position**: [Intersector.intersectRayPlane] against the ground plane (y=0) instead of
- *    the 2D board's `IsoMath.screenToGrid`.
- *  - **Pan/zoom**: moves a `cameraTarget` point across the ground plane / dollies the camera's
- *    distance from it, along [CameraRig]'s fixed basis -- the camera itself never rotates.
+ * tile's [Entity3D], and drives all touch interaction.
+ *
+ * Modified to use [OrthographicCamera] for a clean, "Clash of Clans" style isometric look.
  */
 class Village3DStage {
-    val camera = PerspectiveCamera(52f, Gdx.graphics.width.toFloat(), Gdx.graphics.height.toFloat())
+    val camera = OrthographicCamera(24f, 24f * (Gdx.graphics.height.toFloat() / Gdx.graphics.width.toFloat()))
     private val environment = Environment()
     private val modelBatch = ModelBatch()
     private val model3DCache = Model3DCache()
@@ -47,7 +40,6 @@ class Village3DStage {
 
     private val entities = mutableListOf<Entity3D>()
     private val groundInstances = mutableListOf<ModelInstance>()
-    private val shadowInstances = mutableListOf<ModelInstance>()
 
     private val cameraTarget = Vector3(0f, 0f, 0f)
     private var distance = DEFAULT_DISTANCE
@@ -66,17 +58,12 @@ class Village3DStage {
     val gestureDetector = GestureDetector(20f, 0.4f, LONG_PRESS_SECONDS, 0.15f, gestureListener())
 
     init {
-        // A single hard key light (the original setup) reads as flat/harsh -- every side not
-        // facing the light goes uniformly dark, which is a big part of why the board looked more
-        // like a tech demo than a game. Softer ambient + a warm key light + a cooler, dimmer fill
-        // light from roughly the opposite side (mimicking bounced sky light) gives every model's
-        // shadow side some detail instead of going flat black, closer to how CoC/mobile-game
-        // renders always keep some light in every crevice.
-        environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.5f, 0.5f, 0.54f, 1f))
-        environment.add(DirectionalLight().set(0.72f, 0.68f, 0.6f, -0.5f, -1f, -0.35f))
-        environment.add(DirectionalLight().set(0.22f, 0.25f, 0.3f, 0.6f, -0.25f, 0.5f))
+        // High-contrast, game-like lighting.
+        environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.45f, 0.45f, 0.5f, 1f))
+        environment.add(DirectionalLight().set(0.9f, 0.88f, 0.8f, -0.6f, -1f, -0.4f)) // Key (warm)
+        environment.add(DirectionalLight().set(0.25f, 0.3f, 0.4f, 0.6f, -0.3f, 0.5f))  // Fill (cool)
         camera.near = 0.1f
-        camera.far = 200f
+        camera.far = 500f
         updateCameraTransform()
     }
 
@@ -109,6 +96,8 @@ class Village3DStage {
                 val point = rayGroundPoint(x, y) ?: return true
                 dragged.tileX = point.x / TILE_SPACING
                 dragged.tileY = point.z / TILE_SPACING
+                // Also moves the entity's shadow (Entity3D.refreshTransform keeps both in sync),
+                // so the shadow now visibly follows the drag instead of staying behind.
                 dragged.refreshTransform()
             } else {
                 panCamera(deltaX, deltaY)
@@ -168,10 +157,7 @@ class Village3DStage {
     }
 
     private fun panCamera(deltaX: Float, deltaY: Float) {
-        // World units per screen pixel at the current zoom distance, so a drag keeps the tile under
-        // the finger instead of feeling arbitrarily fast/slow as the player zooms in/out.
-        val halfFovRadians = Math.toRadians(camera.fieldOfView / 2.0)
-        val panScale = (2f * distance * Math.tan(halfFovRadians)).toFloat() / camera.viewportHeight
+        val panScale = (camera.viewportWidth * camera.zoom) / Gdx.graphics.width
         cameraTarget.mulAdd(CameraRig.groundRight, -deltaX * panScale)
         cameraTarget.mulAdd(CameraRig.groundForward, deltaY * panScale)
         cameraTarget.x = cameraTarget.x.coerceIn(-PAN_BOUNDS, PAN_BOUNDS)
@@ -180,19 +166,13 @@ class Village3DStage {
     }
 
     private fun updateCameraTransform() {
-        camera.position.set(cameraTarget).mulAdd(CameraRig.offsetDir, distance)
+        camera.zoom = distance / DEFAULT_DISTANCE
+        camera.position.set(cameraTarget).mulAdd(CameraRig.offsetDir, 100f)
         camera.up.set(CameraRig.worldUp)
         camera.lookAt(cameraTarget)
         camera.update()
     }
 
-    /**
-     * Replaces every tile with a fresh set built from [tiles] -- same full-rebuild-over-diffing
-     * choice the 2D board made, for the same reason (simplicity, and the tile counts here are
-     * modest). Must run on the GL thread. [onGroundTapped] fires with a (possibly non-integer)
-     * world tile position whenever a tap misses every entity -- the host app only acts on it while
-     * a decoration is armed for placement (see `GdxVillageBoard`).
-     */
     fun rebuild(
         tiles: List<TileSnapshot>,
         sprites: Map<String, TextureRegion>,
@@ -208,7 +188,6 @@ class Village3DStage {
 
         entities.clear()
         groundInstances.clear()
-        shadowInstances.clear()
 
         tiles.forEach { tile ->
             val assetPath = Model3DAssets.assetFor(tile)
@@ -223,6 +202,9 @@ class Village3DStage {
                 tileX = tile.tileX,
                 tileY = tile.tileY,
                 instance = instance,
+                // Owned by the Entity3D itself (not a parallel list here) so it can never drift
+                // out of sync with the entity's own position -- see Entity3D's doc comment.
+                shadowInstance = ModelInstance(ShadowBlobBuilder.get()),
                 draggable = tile.draggable,
                 zoneId = tile.zoneId,
                 decorationId = tile.decorationId,
@@ -231,22 +213,14 @@ class Village3DStage {
                 flippedX = tile.flippedX,
             )
 
-            val world = Grid3D.tileToWorld(tile.tileX, tile.tileY)
-
-            // Structures and decorations sit directly on the open grass (matching CoC's look --
-            // buildings are never separated from the ground by their own colored pad); only actual
-            // farm-plot ground states (tilled soil, growing, ready, water, the land-expansion
-            // ghost) get a ground quad, since those genuinely represent distinct terrain/crop state
-            // and should read as visually different from plain grass.
+            // Structures and decorations sit directly on the open grass (matching CoC's look);
+            // only actual farm-plot ground states (tilled soil, growing, ready, water, the
+            // land-expansion ghost) get a ground quad.
             val isStructureOrDecoration = tile.zoneId != null || tile.decorationId != null
             if (!isStructureOrDecoration) {
                 groundInstances += ModelInstance(GroundModelBuilder.get(tile.groundKind)).apply {
-                    transform.setToTranslation(world)
+                    transform.setToTranslation(Grid3D.tileToWorld(tile.tileX, tile.tileY))
                 }
-            }
-
-            shadowInstances += ModelInstance(ShadowBlobBuilder.get()).apply {
-                transform.setToTranslation(world)
             }
         }
     }
@@ -257,19 +231,21 @@ class Village3DStage {
         return ModelInstance(model)
     }
 
-    /** A plain copy of the camera's current state -- see [Camera3DSnapshot]. */
     fun cameraSnapshot(): Camera3DSnapshot = Camera3DSnapshot(
         position = camera.position.cpy(),
         direction = camera.direction.cpy(),
         up = camera.up.cpy(),
-        fieldOfViewY = camera.fieldOfView,
+        fieldOfViewY = 0f, 
         near = camera.near,
         far = camera.far,
-        viewportWidth = Gdx.graphics.width,
-        viewportHeight = Gdx.graphics.height,
+        viewportWidth = camera.viewportWidth,
+        viewportHeight = camera.viewportHeight,
+        pixelWidth = Gdx.graphics.width,
+        pixelHeight = Gdx.graphics.height,
+        isOrthographic = true,
+        zoom = camera.zoom,
     )
 
-    /** Instantly jumps the camera to center on world tile ([tileX], [tileY]) at default zoom -- used by quick-nav. */
     fun centerCameraOn(tileX: Float, tileY: Float) {
         Grid3D.tileToWorld(tileX, tileY, cameraTarget)
         distance = DEFAULT_DISTANCE
@@ -277,20 +253,22 @@ class Village3DStage {
     }
 
     fun resize(width: Int, height: Int) {
-        camera.viewportWidth = width.toFloat()
-        camera.viewportHeight = height.toFloat()
+        val aspect = height.toFloat() / width.toFloat()
+        camera.viewportWidth = 24f
+        camera.viewportHeight = 24f * aspect
         camera.update()
     }
 
     fun render() {
         Gdx.gl.glViewport(0, 0, Gdx.graphics.width, Gdx.graphics.height)
-        Gdx.gl.glClearColor(0.663f, 0.851f, 0.478f, 1f)
+        // Vibrant grass green background
+        Gdx.gl.glClearColor(0.44f, 0.74f, 0.35f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT or GL20.GL_DEPTH_BUFFER_BIT)
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST)
 
         modelBatch.begin(camera)
         groundInstances.forEach { modelBatch.render(it, environment) }
-        shadowInstances.forEach { modelBatch.render(it, environment) }
+        entities.forEach { modelBatch.render(it.shadowInstance, environment) }
         entities.forEach { modelBatch.render(it.instance, environment) }
         modelBatch.end()
     }

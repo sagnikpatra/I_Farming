@@ -21,3 +21,8 @@ val DangerRed = Color(0xFFC62828)
 val WoodBrownLight = Color(0xFF8A5A34)
 val GrassGreenTop = Color(0xFFA9D97A)
 val GrassGreenBottom = Color(0xFF6FA23A)
+
+// Aquaculture pond water -- distinct from the soil ground tiles, per the "living world" art
+// direction (ambient ripples on the Makhana ponds).
+val WaterBlue = Color(0xFF4FA8D8)
+val WaterBlueDark = Color(0xFF1D5C82)

@@ -38,6 +38,8 @@ fun NicheFarmingTab(
     verticalFarmPlots: List<Plot>,
     onEmptyTapped: (Int) -> Unit,
     onHarvestTapped: (Int) -> Unit,
+    /** False when opened from the isometric map as a management panel -- the plots are already tappable on the board. */
+    showPlots: Boolean = true,
 ) {
     Column(
         modifier = Modifier
@@ -55,7 +57,7 @@ fun NicheFarmingTab(
                 costLabel = "Excavate for ₹${GameData.AQUACULTURE_UNLOCK_COST}",
                 onBuild = { viewModel.buyAquaculture() },
             )
-        } else {
+        } else if (showPlots) {
             CompactPlotGrid(
                 plots = aquaculturePlots,
                 nowMillis = nowMillis,
@@ -80,13 +82,15 @@ fun NicheFarmingTab(
             )
         } else {
             ElectricityBar(state = state, nowMillis = nowMillis, viewModel = viewModel)
-            CompactPlotGrid(
-                plots = verticalFarmPlots,
-                nowMillis = nowMillis,
-                columns = 2,
-                onEmptyTapped = onEmptyTapped,
-                onHarvestTapped = onHarvestTapped,
-            )
+            if (showPlots) {
+                CompactPlotGrid(
+                    plots = verticalFarmPlots,
+                    nowMillis = nowMillis,
+                    columns = 2,
+                    onEmptyTapped = onEmptyTapped,
+                    onHarvestTapped = onHarvestTapped,
+                )
+            }
         }
     }
 }

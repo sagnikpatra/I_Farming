@@ -46,6 +46,8 @@ fun AgroforestryTab(
     viewModel: GameViewModel,
     agroPlots: List<Plot>,
     onEmptyTileTapped: (Int) -> Unit,
+    /** False when opened from the isometric map as a management panel -- the plots are already tappable on the board. */
+    showPlots: Boolean = true,
 ) {
     if (!state.hasAgroforestry) {
         AgroBuildCard(coins = state.coins, onBuild = { viewModel.buyAgroforestry() })
@@ -83,21 +85,23 @@ fun AgroforestryTab(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
         )
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(GameData.AGROFORESTRY_GRID_SIZE),
-            contentPadding = PaddingValues(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            items(agroPlots, key = { it.id }) { plot ->
-                AgroPlotCard(
-                    plot = plot,
-                    nowMillis = nowMillis,
-                    onEmptyTapped = { onEmptyTileTapped(plot.id) },
-                    onHostTapped = { viewModel.removeHost(plot.id) },
-                    onHarvestTapped = { viewModel.harvestPlot(plot.id) },
-                )
+        if (showPlots) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(GameData.AGROFORESTRY_GRID_SIZE),
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(agroPlots, key = { it.id }) { plot ->
+                    AgroPlotCard(
+                        plot = plot,
+                        nowMillis = nowMillis,
+                        onEmptyTapped = { onEmptyTileTapped(plot.id) },
+                        onHostTapped = { viewModel.removeHost(plot.id) },
+                        onHarvestTapped = { viewModel.harvestPlot(plot.id) },
+                    )
+                }
             }
         }
     }

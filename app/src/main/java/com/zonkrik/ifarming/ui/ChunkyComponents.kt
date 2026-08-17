@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -44,10 +45,10 @@ fun ChunkyTile(
     borderColor: Color = SoilBrownDark,
     cornerRadius: Dp = 14.dp,
     elevation: Dp = 5.dp,
+    shape: Shape = RoundedCornerShape(cornerRadius),
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = modifier
             .shadow(elevation, shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)

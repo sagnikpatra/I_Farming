@@ -20,15 +20,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,23 +45,17 @@ import com.zonkrik.ifarming.game.GameEvent
 import com.zonkrik.ifarming.game.GameState
 import com.zonkrik.ifarming.game.GameViewModel
 import com.zonkrik.ifarming.game.PlotKind
+import com.zonkrik.ifarming.ui.iso.IsoBoard
+import com.zonkrik.ifarming.ui.iso.IsoSheet
+import com.zonkrik.ifarming.ui.iso.QuickNavBar
+import com.zonkrik.ifarming.ui.iso.rememberIsoCameraState
 import com.zonkrik.ifarming.ui.theme.FieldGreen
-import com.zonkrik.ifarming.ui.theme.FieldGreenDark
-import com.zonkrik.ifarming.ui.theme.GoldLight
 import com.zonkrik.ifarming.ui.theme.RipeGold
 import com.zonkrik.ifarming.ui.theme.SaffronDark
 import com.zonkrik.ifarming.ui.theme.SoilBrown
 import com.zonkrik.ifarming.ui.theme.SoilBrownDark
 import com.zonkrik.ifarming.ui.theme.WoodBrownLight
 import kotlinx.coroutines.launch
-
-private const val TAB_OPEN_FIELD = 0
-private const val TAB_POLYHOUSE = 1
-private const val TAB_AGROFORESTRY = 2
-private const val TAB_NICHE_FARMING = 3
-private const val TAB_FARMHOUSE = 4
-private const val TAB_MANDI = 5
-private const val TAB_EVENTS = 6
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,9 +66,10 @@ fun FarmScreen(viewModel: GameViewModel) {
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val camera = rememberIsoCameraState()
     var seedPickerPlotId by remember { mutableStateOf<Int?>(null) }
     var agroPickerPlotId by remember { mutableStateOf<Int?>(null) }
-    var selectedTab by remember { mutableIntStateOf(TAB_OPEN_FIELD) }
+    var activeSheet by remember { mutableStateOf<IsoSheet?>(null) }
 
     LaunchedEffect(event) {
         val current = event
@@ -86,12 +78,6 @@ fun FarmScreen(viewModel: GameViewModel) {
             viewModel.consumeEvent()
         }
     }
-
-    val openFieldPlots = state.plots.filter { it.kind == PlotKind.OPEN_FIELD }
-    val polyhousePlots = state.plots.filter { it.kind == PlotKind.POLYHOUSE }
-    val agroPlots = state.plots.filter { it.kind == PlotKind.AGROFORESTRY }
-    val aquaculturePlots = state.plots.filter { it.kind == PlotKind.AQUACULTURE }
-    val verticalFarmPlots = state.plots.filter { it.kind == PlotKind.VERTICAL_FARM }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -110,131 +96,41 @@ fun FarmScreen(viewModel: GameViewModel) {
                 }
             }
         },
-        floatingActionButton = {
-            if (selectedTab == TAB_OPEN_FIELD && openFieldPlots.size < GameData.MAX_PLOTS) {
-                val nextCost = GameData.landExpansionCost(openFieldPlots.size)
-                ChunkyButton(
-                    color = SaffronDark,
-                    cornerRadius = 50.dp,
-                    onClick = { viewModel.buyLandExpansion() },
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("🌍", fontSize = 16.sp)
-                        Text(
-                            "  + Land ₹$nextCost",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            style = TextStyle(shadow = Shadow(Color.Black.copy(alpha = 0.5f), Offset(1f, 1.5f), 2f)),
-                        )
-                    }
-                }
-            }
-        },
     ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding).gameGroundBackground()) {
-            ScrollableTabRow(
-                selectedTabIndex = selectedTab,
-                edgePadding = 12.dp,
-                containerColor = SoilBrownDark,
-                contentColor = Color.White,
-            ) {
-                Tab(
-                    selected = selectedTab == TAB_OPEN_FIELD,
-                    onClick = { selectedTab = TAB_OPEN_FIELD },
-                    text = { Text("🌾 Open Field") },
-                    selectedContentColor = GoldLight,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f),
-                )
-                Tab(
-                    selected = selectedTab == TAB_POLYHOUSE,
-                    onClick = { selectedTab = TAB_POLYHOUSE },
-                    text = { Text("🏠 Polyhouse") },
-                    selectedContentColor = GoldLight,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f),
-                )
-                Tab(
-                    selected = selectedTab == TAB_AGROFORESTRY,
-                    onClick = { selectedTab = TAB_AGROFORESTRY },
-                    text = { Text("🌳 Agroforestry") },
-                    selectedContentColor = GoldLight,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f),
-                )
-                Tab(
-                    selected = selectedTab == TAB_NICHE_FARMING,
-                    onClick = { selectedTab = TAB_NICHE_FARMING },
-                    text = { Text("🪷 Niche") },
-                    selectedContentColor = GoldLight,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f),
-                )
-                Tab(
-                    selected = selectedTab == TAB_FARMHOUSE,
-                    onClick = { selectedTab = TAB_FARMHOUSE },
-                    text = { Text("🏠 Farmhouse") },
-                    selectedContentColor = GoldLight,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f),
-                )
-                Tab(
-                    selected = selectedTab == TAB_MANDI,
-                    onClick = { selectedTab = TAB_MANDI },
-                    text = { Text("🏛️ Mandi") },
-                    selectedContentColor = GoldLight,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f),
-                )
-                Tab(
-                    selected = selectedTab == TAB_EVENTS,
-                    onClick = { selectedTab = TAB_EVENTS },
-                    text = { Text("🎉 Events") },
-                    selectedContentColor = GoldLight,
-                    unselectedContentColor = Color.White.copy(alpha = 0.7f),
-                )
-            }
-
-            LiveOpsBanner(nowMillis = nowMillis, viewModel = viewModel, onTapped = { selectedTab = TAB_EVENTS })
-
-            InventoryBar(
-                inventory = state.inventory,
-                onSellCrop = { viewModel.sellCrop(it) },
-                onSellAll = { viewModel.sellAll() },
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            IsoBoard(
+                state = state,
+                nowMillis = nowMillis,
+                viewModel = viewModel,
+                camera = camera,
+                onEmptyTapped = {
+                    seedPickerPlotId = it
+                    activeSheet = null
+                },
+                onHarvestTapped = { viewModel.harvestPlot(it) },
+                onEmptyAgroTileTapped = {
+                    agroPickerPlotId = it
+                    activeSheet = null
+                },
+                onOpenSheet = {
+                    activeSheet = it
+                    seedPickerPlotId = null
+                    agroPickerPlotId = null
+                },
+                onBuyLand = { viewModel.buyLandExpansion() },
+                modifier = Modifier.fillMaxSize(),
             )
 
-            when (selectedTab) {
-                TAB_OPEN_FIELD -> PlotGrid(
-                    plots = openFieldPlots,
-                    nowMillis = nowMillis,
-                    onEmptyTapped = { seedPickerPlotId = it },
-                    onHarvestTapped = { viewModel.harvestPlot(it) },
+            Column(modifier = Modifier.fillMaxWidth()) {
+                LiveOpsBanner(nowMillis = nowMillis, viewModel = viewModel, onTapped = { activeSheet = IsoSheet.Events })
+                InventoryBar(
+                    inventory = state.inventory,
+                    onSellCrop = { viewModel.sellCrop(it) },
+                    onSellAll = { viewModel.sellAll() },
                 )
-                TAB_POLYHOUSE -> PolyhouseTab(
-                    state = state,
-                    nowMillis = nowMillis,
-                    viewModel = viewModel,
-                    polyhousePlots = polyhousePlots,
-                    onEmptyTapped = { seedPickerPlotId = it },
-                    onHarvestTapped = { viewModel.harvestPlot(it) },
-                )
-                TAB_AGROFORESTRY -> AgroforestryTab(
-                    state = state,
-                    nowMillis = nowMillis,
-                    viewModel = viewModel,
-                    agroPlots = agroPlots,
-                    onEmptyTileTapped = { agroPickerPlotId = it },
-                )
-                TAB_NICHE_FARMING -> NicheFarmingTab(
-                    state = state,
-                    nowMillis = nowMillis,
-                    viewModel = viewModel,
-                    aquaculturePlots = aquaculturePlots,
-                    verticalFarmPlots = verticalFarmPlots,
-                    onEmptyTapped = { seedPickerPlotId = it },
-                    onHarvestTapped = { viewModel.harvestPlot(it) },
-                )
-                TAB_FARMHOUSE -> FarmhouseTab(state = state, viewModel = viewModel)
-                TAB_MANDI -> MandiTab(state = state, nowMillis = nowMillis, viewModel = viewModel)
-                else -> EventsTab(state = state, nowMillis = nowMillis, viewModel = viewModel)
             }
+
+            QuickNavBar(camera = camera, modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth())
         }
     }
 
@@ -281,6 +177,48 @@ fun FarmScreen(viewModel: GameViewModel) {
             )
         }
     }
+
+    val targetSheet = activeSheet
+    if (targetSheet != null) {
+        val managementSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(
+            onDismissRequest = { activeSheet = null },
+            sheetState = managementSheetState,
+        ) {
+            when (targetSheet) {
+                IsoSheet.Polyhouse -> PolyhouseTab(
+                    state = state,
+                    nowMillis = nowMillis,
+                    viewModel = viewModel,
+                    polyhousePlots = state.plots.filter { it.kind == PlotKind.POLYHOUSE },
+                    onEmptyTapped = { seedPickerPlotId = it },
+                    onHarvestTapped = { viewModel.harvestPlot(it) },
+                    showPlots = false,
+                )
+                IsoSheet.Agroforestry -> AgroforestryTab(
+                    state = state,
+                    nowMillis = nowMillis,
+                    viewModel = viewModel,
+                    agroPlots = state.plots.filter { it.kind == PlotKind.AGROFORESTRY },
+                    onEmptyTileTapped = { agroPickerPlotId = it },
+                    showPlots = false,
+                )
+                IsoSheet.Niche -> NicheFarmingTab(
+                    state = state,
+                    nowMillis = nowMillis,
+                    viewModel = viewModel,
+                    aquaculturePlots = state.plots.filter { it.kind == PlotKind.AQUACULTURE },
+                    verticalFarmPlots = state.plots.filter { it.kind == PlotKind.VERTICAL_FARM },
+                    onEmptyTapped = { seedPickerPlotId = it },
+                    onHarvestTapped = { viewModel.harvestPlot(it) },
+                    showPlots = false,
+                )
+                IsoSheet.Farmhouse -> FarmhouseTab(state = state, viewModel = viewModel)
+                IsoSheet.Mandi -> MandiTab(state = state, nowMillis = nowMillis, viewModel = viewModel)
+                IsoSheet.Events -> EventsTab(state = state, nowMillis = nowMillis, viewModel = viewModel)
+            }
+        }
+    }
 }
 
 /** Bold, drop-shadowed text -- readable over the grass/wood backgrounds without a solid card behind it. */
@@ -320,7 +258,7 @@ private fun PlotGrid(
     }
 }
 
-/** Slim, tappable strip that surfaces a live Monsoon/Festival on every tab, not just the Events tab. */
+/** Slim, tappable strip that surfaces a live Monsoon/Festival on top of the isometric board. */
 @Composable
 private fun LiveOpsBanner(nowMillis: Long, viewModel: GameViewModel, onTapped: () -> Unit) {
     val monsoonActive = viewModel.isMonsoonActive(nowMillis)
@@ -356,6 +294,8 @@ private fun PolyhouseTab(
     polyhousePlots: List<com.zonkrik.ifarming.game.Plot>,
     onEmptyTapped: (Int) -> Unit,
     onHarvestTapped: (Int) -> Unit,
+    /** False when opened from the isometric map as a management panel -- the plots are already tappable on the board. */
+    showPlots: Boolean = true,
 ) {
     if (!state.hasPolyhouse) {
         PolyhouseBuildCard(state = state, onBuild = { viewModel.buyPolyhouse() })
@@ -364,12 +304,14 @@ private fun PolyhouseTab(
 
     Column(modifier = Modifier.fillMaxSize()) {
         PolyhouseUpgradesBar(state = state, nowMillis = nowMillis, viewModel = viewModel)
-        PlotGrid(
-            plots = polyhousePlots,
-            nowMillis = nowMillis,
-            onEmptyTapped = onEmptyTapped,
-            onHarvestTapped = onHarvestTapped,
-        )
+        if (showPlots) {
+            PlotGrid(
+                plots = polyhousePlots,
+                nowMillis = nowMillis,
+                onEmptyTapped = onEmptyTapped,
+                onHarvestTapped = onHarvestTapped,
+            )
+        }
     }
 }
 

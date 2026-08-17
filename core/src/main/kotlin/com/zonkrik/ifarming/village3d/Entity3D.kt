@@ -59,7 +59,6 @@ class Entity3D(
         instance.transform
             .setToTranslation(world)
             .rotate(Vector3.Y, rotationDegrees.toFloat())
-            .scale(1.25f, 1.25f, 1.25f) // Scale up slightly for a better CoC feel
         if (flippedX) instance.transform.scale(-1f, 1f, 1f)
 
         shadowInstance.transform.setToTranslation(world)

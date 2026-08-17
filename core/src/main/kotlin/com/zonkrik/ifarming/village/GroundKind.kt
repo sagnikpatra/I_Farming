@@ -17,4 +17,6 @@ enum class GroundKind(val top: Color, val bottom: Color) {
     WATER(Color.valueOf("4FA8D8"), Color.valueOf("1D5C82")),
     /** A built (unlocked) structure's footprint -- Polyhouse/Agroforestry/Aquaculture/Vertical Farm/Mandi, and Agroforestry host tiles. */
     UNLOCKED(Color.valueOf("66BB6A"), Color.valueOf("2E7D32")),
+    /** A dirt path tile. */
+    PATH(Color.valueOf("8D6E63"), Color.valueOf("5D4037")),
 }

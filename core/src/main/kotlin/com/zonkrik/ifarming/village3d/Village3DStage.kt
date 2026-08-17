@@ -13,6 +13,7 @@ import com.badlogic.gdx.input.GestureDetector
 import com.badlogic.gdx.math.Intersector
 import com.badlogic.gdx.math.Plane
 import com.badlogic.gdx.math.Vector3
+import com.zonkrik.ifarming.village.GroundKind
 import com.zonkrik.ifarming.village.TileSnapshot
 import kotlin.math.roundToInt
 
@@ -215,11 +216,15 @@ class Village3DStage {
 
             // Structures and decorations sit directly on the open grass (matching CoC's look);
             // only actual farm-plot ground states (tilled soil, growing, ready, water, the
-            // land-expansion ghost) get a ground quad.
+            // land-expansion ghost) get a ground quad. Paths are special decorations that also
+            // get a ground quad.
             val isStructureOrDecoration = tile.zoneId != null || tile.decorationId != null
-            if (!isStructureOrDecoration) {
+            val isPath = tile.groundKind == GroundKind.PATH
+            
+            if (!isStructureOrDecoration || isPath) {
                 groundInstances += ModelInstance(GroundModelBuilder.get(tile.groundKind)).apply {
                     transform.setToTranslation(Grid3D.tileToWorld(tile.tileX, tile.tileY))
+                    if (isPath) transform.translate(0f, 0.01f, 0f) // Avoid z-fighting
                 }
             }
         }
@@ -261,8 +266,8 @@ class Village3DStage {
 
     fun render() {
         Gdx.gl.glViewport(0, 0, Gdx.graphics.width, Gdx.graphics.height)
-        // Vibrant grass green background
-        Gdx.gl.glClearColor(0.44f, 0.74f, 0.35f, 1f)
+        // Soft, natural grass green (original color)
+        Gdx.gl.glClearColor(0.663f, 0.851f, 0.478f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT or GL20.GL_DEPTH_BUFFER_BIT)
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST)
 

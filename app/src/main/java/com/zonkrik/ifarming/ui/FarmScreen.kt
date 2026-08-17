@@ -61,7 +61,6 @@ import com.zonkrik.ifarming.game.GameViewModel
 import com.zonkrik.ifarming.game.PlotKind
 import com.zonkrik.ifarming.ui.gdx.GdxDecorationPicker
 import com.zonkrik.ifarming.ui.gdx.GdxVillageBoard
-import com.zonkrik.ifarming.ui.gdx.Preview3DScreen
 import com.zonkrik.ifarming.ui.iso.IsoSheet
 import com.zonkrik.ifarming.ui.theme.FieldGreen
 import com.zonkrik.ifarming.ui.theme.GoldLight
@@ -86,7 +85,6 @@ fun FarmScreen(viewModel: GameViewModel) {
     var activeSheet by remember { mutableStateOf<IsoSheet?>(null) }
     var showDecorationPicker by remember { mutableStateOf(false) }
     var pendingDecorationType by remember { mutableStateOf<DecorationType?>(null) }
-    var show3DPreview by remember { mutableStateOf(false) }
 
     LaunchedEffect(event) {
         val current = event
@@ -100,7 +98,7 @@ fun FarmScreen(viewModel: GameViewModel) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0) // No Scaffold insets
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             // The main LibGDX board
@@ -128,8 +126,8 @@ fun FarmScreen(viewModel: GameViewModel) {
             // HUD: Top-Left Title (account for status bar)
             val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
             Column(modifier = Modifier.padding(start = 16.dp, top = topPadding + 8.dp).align(Alignment.TopStart)) {
-                OutlinedTitle("Kisan Khet", 28.sp)
-                OutlinedTitle("किसान खेत", 16.sp)
+                OutlinedTitle("Kisan Khet", 24.sp)
+                OutlinedTitle("किसान खेत", 14.sp)
             }
 
             // HUD: Top-Right Resources
@@ -140,15 +138,6 @@ fun FarmScreen(viewModel: GameViewModel) {
                 HUDResourceBar(text = "${state.coins}", emoji = "🪙")
                 Spacer(modifier = Modifier.width(12.dp))
                 HUDLevelBadge(level = state.farmhouseLevel)
-            }
-
-            // HUD: Right-Side Action Buttons
-            Column(
-                modifier = Modifier.padding(end = 16.dp).align(Alignment.CenterEnd),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                RoundActionButton(emoji = "🧊", label = "3D", onClick = { show3DPreview = true })
-                RoundActionButton(emoji = "🎨", label = "Shop", onClick = { showDecorationPicker = true })
             }
 
             // HUD: Bottom-Left Inventory / Events (float above navigation bar)
@@ -163,10 +152,17 @@ fun FarmScreen(viewModel: GameViewModel) {
                     onSellAll = { viewModel.sellAll() }
                 )
             }
+
+            // HUD: Bottom-Right Shop Button
+            Box(
+                modifier = Modifier.padding(end = 16.dp, bottom = 100.dp).align(Alignment.BottomEnd)
+            ) {
+                RoundActionButton(emoji = "🎨", label = "Shop", onClick = { showDecorationPicker = true })
+            }
         }
     }
 
-    // Modal Sheets (unchanged logic)
+    // Modal Sheets
     val targetPlotId = seedPickerPlotId
     if (targetPlotId != null) {
         val targetKind = state.plots.find { it.id == targetPlotId }?.kind ?: PlotKind.OPEN_FIELD
@@ -185,10 +181,6 @@ fun FarmScreen(viewModel: GameViewModel) {
                 },
             )
         }
-    }
-
-    if (show3DPreview) {
-        Preview3DScreen(onClose = { show3DPreview = false }, modifier = Modifier.fillMaxSize())
     }
 
     if (showDecorationPicker) {
@@ -298,14 +290,14 @@ fun HUDResourceBar(text: String, emoji: String) {
 fun HUDLevelBadge(level: Int) {
     Box(
         modifier = Modifier
-            .size(60.dp)
-            .shadow(8.dp, CircleShape)
-            .border(3.dp, Color.White, CircleShape)
+            .size(48.dp)
+            .shadow(6.dp, CircleShape)
+            .border(2.dp, Color.White, CircleShape)
             .clip(CircleShape)
             .background(Brush.radialGradient(listOf(Color(0xFF42A5F5), Color(0xFF1976D2)))),
         contentAlignment = Alignment.Center
     ) {
-        OutlinedTitle("$level", 24.sp)
+        OutlinedTitle("$level", 18.sp)
     }
 }
 

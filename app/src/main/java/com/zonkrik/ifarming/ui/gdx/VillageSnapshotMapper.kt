@@ -81,12 +81,13 @@ object VillageSnapshotMapper {
 
     private fun addDecorations(tiles: MutableList<TileSnapshot>, state: GameState) {
         state.decorations.forEach { decoration ->
+            val isPath = decoration.type.name == "DIRT_PATH"
             tiles += TileSnapshot(
                 id = DECORATION_ID_OFFSET - decoration.id,
                 tileX = decoration.tileX,
                 tileY = decoration.tileY,
-                groundKind = GroundKind.UNLOCKED,
-                spriteKey = decoration.type.emoji,
+                groundKind = if (isPath) GroundKind.PATH else GroundKind.UNLOCKED,
+                spriteKey = if (isPath) "" else decoration.type.emoji,
                 draggable = true,
                 decorationId = decoration.id,
                 rotationDegrees = decoration.rotationDegrees,

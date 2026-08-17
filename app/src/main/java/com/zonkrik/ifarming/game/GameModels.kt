@@ -170,6 +170,8 @@ enum class DecorationType(val displayName: String, val emoji: String, val cost: 
     LANTERN("Lantern", "🏮", 150),
     FOUNTAIN("Fountain", "⛲", 400),
     STATUE("Statue", "🗿", 600),
+    DIRT_PATH("Dirt Path", "🟫", 10),
+    RANGOLI("Rangoli", "🪷", 25),
 }
 
 /** One placed decoration on the village board. */

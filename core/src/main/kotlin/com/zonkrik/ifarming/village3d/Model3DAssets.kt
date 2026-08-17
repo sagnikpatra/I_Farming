@@ -19,10 +19,17 @@ object Model3DAssets {
     private val structureAssets = mapOf(
         ZONE_ID_FARMHOUSE to "models3d/structures/farmhouse/building-type-a.obj",
         ZONE_ID_POLYHOUSE to "models3d/structures/polyhouse/building-type-b.obj",
-        ZONE_ID_AGROFORESTRY to "models3d/structures/agroforestry/hedge-large.obj",
-        ZONE_ID_AQUACULTURE to "models3d/structures/aquaculture/watermill.obj",
+        // hedge-large.obj and watermill.obj (both fantasy-town-kit) render as broken black
+        // silhouettes on-device for reasons not fully root-caused -- swapped for nature-kit
+        // single-group flat-colored models instead, which have been reliable throughout testing.
+        ZONE_ID_AGROFORESTRY to "models3d/structures/agroforestry/tree_default.obj",
+        ZONE_ID_AQUACULTURE to "models3d/structures/aquaculture/bridge_stone.obj",
         ZONE_ID_VERTICAL_FARM to "models3d/structures/verticalfarm/building-type-c.obj",
-        ZONE_ID_MANDI to "models3d/structures/mandi/stall.obj",
+        // stall.obj (fantasy-town-kit) has the same broken-black-render issue as hedge-large.obj
+        // and watermill.obj above -- another city-kit-suburban building stands in instead (also
+        // keeps the six structures in one consistent art style, rather than visibly mismatched
+        // kits sitting side by side).
+        ZONE_ID_MANDI to "models3d/structures/mandi/building-type-d.obj",
     )
 
     /** Keyed by the decoration's emoji -- `TileSnapshot.spriteKey` for a decoration tile is always its `DecorationType.emoji`. */
@@ -30,7 +37,9 @@ object Model3DAssets {
         "🪴" to "models3d/decorations/potted_plant/planter.obj",
         "🌻" to "models3d/decorations/sunflower/flower_yellowA.obj",
         "🎋" to "models3d/decorations/bamboo/crops_bambooStageB.obj",
-        "🏮" to "models3d/decorations/lantern/lantern.obj",
+        // lantern.obj (fantasy-town-kit) has the same broken-black-render issue noted above --
+        // graveyard-kit's lantern-candle.obj instead.
+        "🏮" to "models3d/decorations/lantern/lantern-candle.obj",
         "⛲" to "models3d/decorations/fountain/fountain-round.obj",
         "🗿" to "models3d/decorations/statue/statue_obelisk.obj",
     )

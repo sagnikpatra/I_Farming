@@ -47,6 +47,7 @@ class Village3DStage {
 
     private val entities = mutableListOf<Entity3D>()
     private val groundInstances = mutableListOf<ModelInstance>()
+    private val shadowInstances = mutableListOf<ModelInstance>()
 
     private val cameraTarget = Vector3(0f, 0f, 0f)
     private var distance = DEFAULT_DISTANCE
@@ -65,8 +66,15 @@ class Village3DStage {
     val gestureDetector = GestureDetector(20f, 0.4f, LONG_PRESS_SECONDS, 0.15f, gestureListener())
 
     init {
-        environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.6f, 0.6f, 0.62f, 1f))
-        environment.add(DirectionalLight().set(0.75f, 0.75f, 0.7f, -0.5f, -1f, -0.35f))
+        // A single hard key light (the original setup) reads as flat/harsh -- every side not
+        // facing the light goes uniformly dark, which is a big part of why the board looked more
+        // like a tech demo than a game. Softer ambient + a warm key light + a cooler, dimmer fill
+        // light from roughly the opposite side (mimicking bounced sky light) gives every model's
+        // shadow side some detail instead of going flat black, closer to how CoC/mobile-game
+        // renders always keep some light in every crevice.
+        environment.set(ColorAttribute(ColorAttribute.AmbientLight, 0.5f, 0.5f, 0.54f, 1f))
+        environment.add(DirectionalLight().set(0.72f, 0.68f, 0.6f, -0.5f, -1f, -0.35f))
+        environment.add(DirectionalLight().set(0.22f, 0.25f, 0.3f, 0.6f, -0.25f, 0.5f))
         camera.near = 0.1f
         camera.far = 200f
         updateCameraTransform()
@@ -200,6 +208,7 @@ class Village3DStage {
 
         entities.clear()
         groundInstances.clear()
+        shadowInstances.clear()
 
         tiles.forEach { tile ->
             val assetPath = Model3DAssets.assetFor(tile)
@@ -222,8 +231,22 @@ class Village3DStage {
                 flippedX = tile.flippedX,
             )
 
-            groundInstances += ModelInstance(GroundModelBuilder.get(tile.groundKind)).apply {
-                transform.setToTranslation(Grid3D.tileToWorld(tile.tileX, tile.tileY))
+            val world = Grid3D.tileToWorld(tile.tileX, tile.tileY)
+
+            // Structures and decorations sit directly on the open grass (matching CoC's look --
+            // buildings are never separated from the ground by their own colored pad); only actual
+            // farm-plot ground states (tilled soil, growing, ready, water, the land-expansion
+            // ghost) get a ground quad, since those genuinely represent distinct terrain/crop state
+            // and should read as visually different from plain grass.
+            val isStructureOrDecoration = tile.zoneId != null || tile.decorationId != null
+            if (!isStructureOrDecoration) {
+                groundInstances += ModelInstance(GroundModelBuilder.get(tile.groundKind)).apply {
+                    transform.setToTranslation(world)
+                }
+            }
+
+            shadowInstances += ModelInstance(ShadowBlobBuilder.get()).apply {
+                transform.setToTranslation(world)
             }
         }
     }
@@ -267,6 +290,7 @@ class Village3DStage {
 
         modelBatch.begin(camera)
         groundInstances.forEach { modelBatch.render(it, environment) }
+        shadowInstances.forEach { modelBatch.render(it, environment) }
         entities.forEach { modelBatch.render(it.instance, environment) }
         modelBatch.end()
     }
@@ -277,5 +301,6 @@ class Village3DStage {
         billboardCache.values.forEach { it.dispose() }
         billboardCache.clear()
         GroundModelBuilder.disposeAll()
+        ShadowBlobBuilder.dispose()
     }
 }

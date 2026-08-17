@@ -22,6 +22,7 @@ class Preview3DFragment : AndroidFragmentApplication() {
             // The model has real depth (a fountain basin) -- a depth buffer is required for faces
             // to occlude each other correctly, unlike the 2D board which never needed one.
             depth = 16
+            numSamples = 4
         }
         return initializeForView(Preview3DGame(), config)
     }

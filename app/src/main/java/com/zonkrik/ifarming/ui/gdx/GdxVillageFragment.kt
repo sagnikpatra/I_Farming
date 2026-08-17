@@ -47,6 +47,9 @@ class GdxVillageFragment : AndroidFragmentApplication() {
             // Real 3D geometry needs a depth buffer for faces to occlude each other correctly,
             // unlike the old 2D board which never needed one.
             depth = 16
+            // Without MSAA every model edge is visibly jagged -- a big part of why the board read
+            // as a rough tech demo rather than a polished game.
+            numSamples = 4
         }
         // All callbacks fire from the GestureDetector's input handling on the GL thread; hop back
         // to the main thread before touching the listeners, since they end up calling Compose

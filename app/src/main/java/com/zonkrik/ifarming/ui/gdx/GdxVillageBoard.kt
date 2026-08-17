@@ -1,7 +1,6 @@
 package com.zonkrik.ifarming.ui.gdx
 
 import android.view.View
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,6 +24,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentContainerView
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.graphics.PerspectiveCamera
 import com.zonkrik.ifarming.game.DecorationType
 import com.zonkrik.ifarming.game.GameData
 import com.zonkrik.ifarming.game.GameState
@@ -38,10 +37,8 @@ import com.zonkrik.ifarming.ui.theme.SaffronDark
 import com.zonkrik.ifarming.ui.theme.WoodBrownLight
 import com.zonkrik.ifarming.village.AGROFORESTRY_BUILDING_ID
 import com.zonkrik.ifarming.village.AQUACULTURE_BUILDING_ID
-import com.zonkrik.ifarming.village.CameraSnapshot
 import com.zonkrik.ifarming.village.DECORATION_ID_OFFSET
 import com.zonkrik.ifarming.village.FARMHOUSE_TILE_ID
-import com.zonkrik.ifarming.village.IsoMath
 import com.zonkrik.ifarming.village.LAND_GHOST_TILE_ID
 import com.zonkrik.ifarming.village.MANDI_BUILDING_ID
 import com.zonkrik.ifarming.village.POLYHOUSE_BUILDING_ID
@@ -53,25 +50,30 @@ import com.zonkrik.ifarming.village.ZONE_ID_FARMHOUSE
 import com.zonkrik.ifarming.village.ZONE_ID_MANDI
 import com.zonkrik.ifarming.village.ZONE_ID_POLYHOUSE
 import com.zonkrik.ifarming.village.ZONE_ID_VERTICAL_FARM
+import com.zonkrik.ifarming.village3d.Camera3DSnapshot
+import com.zonkrik.ifarming.village3d.Grid3D
 import kotlin.math.roundToInt
 
-private val isoMath = IsoMath()
+/** Reused across calls (rather than allocated per-frame) purely to run `project()` against -- see [screenPositionOf]. */
+private val projectionCamera = PerspectiveCamera()
 
-/** World (tileX,tileY) -> on-screen px, using the live [CameraSnapshot] -- see `GdxInfoCard`. */
-private fun screenPositionOf(snapshot: CameraSnapshot, tileX: Float, tileY: Float): Offset {
-    val (worldPxX, worldPxY) = isoMath.gridToScreen(tileX, tileY)
-    val screenX = (worldPxX - snapshot.worldX) / snapshot.zoom + snapshot.viewportWidth / 2f
-    // GL is Y-up, screen is Y-down.
-    val screenY = snapshot.viewportHeight / 2f - (worldPxY - snapshot.worldY) / snapshot.zoom
-    return Offset(screenX, screenY)
-}
+/** World (tileX,tileY) -> on-screen px, using the live [Camera3DSnapshot] -- see `GdxInfoCard`. */
+private fun screenPositionOf(snapshot: Camera3DSnapshot, tileX: Float, tileY: Float): Offset {
+    projectionCamera.viewportWidth = snapshot.viewportWidth.toFloat()
+    projectionCamera.viewportHeight = snapshot.viewportHeight.toFloat()
+    projectionCamera.fieldOfView = snapshot.fieldOfViewY
+    projectionCamera.near = snapshot.near
+    projectionCamera.far = snapshot.far
+    projectionCamera.position.set(snapshot.position)
+    projectionCamera.direction.set(snapshot.direction)
+    projectionCamera.up.set(snapshot.up)
+    projectionCamera.update()
 
-/** Inverse of [screenPositionOf] -- on-screen px -> nearest world grid tile, used for decoration placement taps. */
-private fun worldTileOf(snapshot: CameraSnapshot, screenX: Float, screenY: Float): Pair<Float, Float> {
-    val worldPxX = (screenX - snapshot.viewportWidth / 2f) * snapshot.zoom + snapshot.worldX
-    val worldPxY = (snapshot.viewportHeight / 2f - screenY) * snapshot.zoom + snapshot.worldY
-    val (rawTileX, rawTileY) = isoMath.screenToGrid(worldPxX, worldPxY)
-    return rawTileX.roundToInt().toFloat() to rawTileY.roundToInt().toFloat()
+    val world = Grid3D.tileToWorld(tileX, tileY)
+    world.y = 0.9f // roughly a structure's/decoration's midheight, so the card anchors above it, not at ground level
+    val projected = projectionCamera.project(world)
+    // GL is Y-up (origin bottom-left), Compose is Y-down (origin top-left).
+    return Offset(projected.x, snapshot.viewportHeight - projected.y)
 }
 
 /**
@@ -82,7 +84,7 @@ private fun worldTileOf(snapshot: CameraSnapshot, screenX: Float, screenY: Float
  *
  * Phase 4: tapping a building or a growing crop shows a floating CoC-style [GdxInfoCard] instead
  * of jumping straight into a sheet -- its position is tracked live against the LibGDX camera every
- * frame (via [CameraSnapshot]), so it stays anchored to the tile through pan/pinch-zoom. Empty and
+ * frame (via [Camera3DSnapshot]), so it stays anchored to the tile through pan/pinch-zoom. Empty and
  * ready-to-harvest plots stay instant one-tap actions, matching the earlier Compose board's design
  * (and real CoC, which doesn't interpose a card on "tap to collect" either).
  */
@@ -147,6 +149,14 @@ fun GdxVillageBoard(
             // Kept up to date every recomposition so a drop always saves against the current ViewModel.
             currentFragment.zoneMovedListener = { zoneId, tileX, tileY -> viewModel.moveZone(zoneId, tileX, tileY) }
             currentFragment.decorationMovedListener = { decorationId, tileX, tileY -> viewModel.moveDecoration(decorationId, tileX, tileY) }
+            // A tap that ray-misses every entity (bare ground) only does something while a
+            // decoration is armed for placement -- see the picker flow in `FarmScreen`.
+            currentFragment.groundTappedListener = { tileX, tileY ->
+                pendingDecorationType?.let { type ->
+                    viewModel.placeDecoration(type, tileX.roundToInt().toFloat(), tileY.roundToInt().toFloat())
+                    onDecorationPlacementConsumed()
+                }
+            }
 
             // Kept up to date every recomposition so a tap always resolves against the current state.
             currentFragment.tapListener = tapListener@{ id ->
@@ -256,7 +266,7 @@ fun GdxVillageBoard(
                     // GL-thread only from here: resolving/uploading textures and rebuilding the stage.
                     val sprites = EmojiTextureCache.resolveTextures(spriteKeys)
                     villageGame.applySnapshot(tiles, sprites)
-                    // `core` doesn't know which tile is "home" (see VillageStage.resize) -- center on
+                    // `core` doesn't know which tile is "home" -- center on
                     // the Farmhouse's real position exactly once, as soon as the first snapshot (and
                     // therefore its actual saved/default position) is known.
                     if (shouldCenter) villageGame.centerCameraOn(homeX, homeY)
@@ -271,25 +281,14 @@ fun GdxVillageBoard(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
-            // Placement mode: an invisible full-screen tap catcher sits on top of everything else
-            // while a decoration type is armed, so *any* tap on the board (including empty ground,
-            // which has no LibGDX actor to hit-test against) places it there. The world tile is
-            // resolved via [worldTileOf], the exact inverse of the transform the info card already
-            // uses to track a tile's on-screen position -- both share the same live [CameraSnapshot].
+            // Placement mode: while a decoration type is armed, any tap on the board (including
+            // bare ground) places it there -- ray-picked and reported directly by `Village3DStage`
+            // via `groundTappedListener`/`tapListener` above, not by a Compose-level tap catcher
+            // (a 3D scene has no 2D screen-space affine transform to invert the way the old
+            // isometric board did). This banner is just a visible "you're in placement mode" hint
+            // plus a cancel target.
             val armedDecoration = pendingDecorationType
             if (armedDecoration != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(armedDecoration) {
-                            detectTapGestures { offset ->
-                                val snapshot = currentFragment.villageGame?.cameraSnapshot ?: return@detectTapGestures
-                                val (tileX, tileY) = worldTileOf(snapshot, offset.x, offset.y)
-                                viewModel.placeDecoration(armedDecoration, tileX, tileY)
-                                onDecorationPlacementConsumed()
-                            }
-                        },
-                )
                 ChunkyTile(
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
                     topColor = WoodBrownLight,

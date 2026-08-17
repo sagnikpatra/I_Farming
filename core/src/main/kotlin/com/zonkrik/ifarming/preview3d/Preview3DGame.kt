@@ -21,7 +21,7 @@ import com.badlogic.gdx.math.collision.BoundingBox
  * device (loading a Kenney `.obj`+`.mtl` from Android assets, lighting it, rendering it) *before*
  * any investment in the much bigger interaction rewrite (ray-picking, drag/rotate against 3D
  * transforms) that real board integration would need. Deliberately isolated from the production
- * `VillageGame`/`VillageStage` (which still render the 2D board) -- this never touches that code.
+ * `village3d`'s `Village3DGame`/`Village3DStage` (the production board) -- this never touches that code.
  *
  * Ships loading `nature-kit`'s `statue_head.obj` (flat vertex-colored, single `g` group) since it
  * renders cleanly with zero caveats -- confirmed the whole pipeline correct end-to-end on-device.

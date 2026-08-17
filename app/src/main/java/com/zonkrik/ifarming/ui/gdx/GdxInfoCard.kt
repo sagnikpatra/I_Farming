@@ -49,7 +49,7 @@ data class GdxSelection(
  * A small floating "details" card anchored above the selected tile, Clash-of-Clans style -- the
  * LibGDX-board counterpart of the earlier Compose board's `IsoInfoCard`. Unlike that version, the
  * anchor's on-screen position isn't computed from a Compose-owned camera; the caller
- * ([GdxVillageBoard]) tracks the live LibGDX camera every frame (see `CameraSnapshot`) and passes
+ * ([GdxVillageBoard]) tracks the live LibGDX camera every frame (see `Camera3DSnapshot`) and passes
  * the already-resolved [screenPosition] in, so this composable itself only has to draw the card.
  */
 @Composable

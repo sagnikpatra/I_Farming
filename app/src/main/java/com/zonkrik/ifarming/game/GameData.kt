@@ -5,7 +5,10 @@ import kotlin.math.roundToLong
 
 /** Tunable constants for the farm economy. */
 object GameData {
-    const val STARTING_PLOTS = 6
+    /** A poor farmer doesn't start with a sprawling holding -- just enough to get going, matching
+     * the design doc's marginal-pricing land economy (see [landExpansionCost]): everything past
+     * this has to be earned and paid for, at an increasing price as the farm's "valuation" grows. */
+    const val STARTING_PLOTS = 3
     const val MAX_PLOTS = 16
 
     private const val BASE_LAND_COST = 150L

@@ -1,5 +1,6 @@
 package com.zonkrik.ifarming.village3d
 
+import com.badlogic.gdx.graphics.Color
 import com.zonkrik.ifarming.village.TileSnapshot
 import com.zonkrik.ifarming.village.ZONE_ID_AGROFORESTRY
 import com.zonkrik.ifarming.village.ZONE_ID_AQUACULTURE
@@ -32,6 +33,18 @@ object Model3DAssets {
         ZONE_ID_MANDI to "models3d/structures/mandi/building-type-d.obj",
     )
 
+    /**
+     * Multiplied into a structure's baked material colors on first load (see [Model3DCache.get])
+     * -- pushes the generic city-kit-suburban palette toward whitewashed-plaster-and-terracotta
+     * (Farmhouse, on its way to a Haveli look) or a warm marketplace ochre (Mandi) instead of
+     * leaving every building in its stock Western-suburb colors. Zones not listed here render
+     * with their asset's original, unmodified colors.
+     */
+    private val structureTints = mapOf(
+        ZONE_ID_FARMHOUSE to Color(1f, 0.82f, 0.62f, 1f),
+        ZONE_ID_MANDI to Color(1f, 0.78f, 0.5f, 1f),
+    )
+
     /** Keyed by the decoration's emoji -- `TileSnapshot.spriteKey` for a decoration tile is always its `DecorationType.emoji`. */
     private val decorationAssets = mapOf(
         "🪴" to "models3d/decorations/potted_plant/planter.obj",
@@ -47,5 +60,11 @@ object Model3DAssets {
     fun assetFor(tile: TileSnapshot): String? {
         if (tile.decorationId != null) return decorationAssets[tile.spriteKey]
         return tile.zoneId?.let { structureAssets[it] }
+    }
+
+    /** See [structureTints]. Null for decorations and any zone without a deliberate tint. */
+    fun tintFor(tile: TileSnapshot): Color? {
+        if (tile.decorationId != null) return null
+        return tile.zoneId?.let { structureTints[it] }
     }
 }

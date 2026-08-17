@@ -207,7 +207,8 @@ class Village3DStage {
         tiles.forEach { tile ->
             val assetPath = Model3DAssets.assetFor(tile)
             val instance = if (assetPath != null) {
-                runCatching { ModelInstance(model3DCache.get(assetPath)) }.getOrElse { billboardInstanceFor(tile, sprites) }
+                runCatching { ModelInstance(model3DCache.get(assetPath, Model3DAssets.tintFor(tile))) }
+                    .getOrElse { billboardInstanceFor(tile, sprites) }
             } else {
                 billboardInstanceFor(tile, sprites)
             } ?: return@forEach

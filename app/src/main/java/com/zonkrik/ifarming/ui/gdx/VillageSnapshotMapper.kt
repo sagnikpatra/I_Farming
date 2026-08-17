@@ -32,11 +32,16 @@ import com.zonkrik.ifarming.village.ZONE_ID_VERTICAL_FARM
  */
 object VillageSnapshotMapper {
     private val FARMHOUSE_DEFAULT = 0f to 0f
+    // 4 columns wide, up to GameData.MAX_PLOTS/4 rows tall -- occupies world tiles
+    // X:[6,9], Y:[-6,-3] at full expansion. VERTICAL_FARM_DEFAULT used to sit at (8,-6), squarely
+    // inside that rectangle (the open field's 3rd starting plot and the Vertical Farm building
+    // landed on the exact same world tile, confirmed via ray-pick hit-testing a single tap hitting
+    // both) -- moved well clear of it below.
     private val OPEN_FIELD_ANCHOR = 6f to -6f
     private val POLYHOUSE_DEFAULT = -8f to -6f
     private val AGROFORESTRY_DEFAULT = -8f to 6f
     private val AQUACULTURE_DEFAULT = 8f to 6f
-    private val VERTICAL_FARM_DEFAULT = 8f to -6f
+    private val VERTICAL_FARM_DEFAULT = 8f to -12f
     private val MANDI_DEFAULT = 0f to 12f
 
     /** A resolved structure-zone position + orientation -- either the saved custom anchor or the zone's fixed default. */

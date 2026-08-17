@@ -5,9 +5,19 @@ import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.zonkrik.ifarming.village.GrowthInfo
 
-/** Half-extent of an entity's tap/ray-pick hit box, in world units. Scaled up for the new CoC feel. */
-private const val HIT_BOX_HALF_WIDTH = TILE_SPACING * 0.6f
-private const val HIT_BOX_HEIGHT = 3.5f
+/**
+ * Half-extent of an entity's tap/ray-pick hit box, in world units.
+ *
+ * Kept narrower than a full tile (half-width * 2 < TILE_SPACING) so adjacent tiles' boxes never
+ * touch laterally. The height matters more than it looks: with the board's steep camera angle,
+ * a single orthographic ray sweeps roughly (height * 0.42) world units sideways as it passes
+ * through one box's vertical extent (0.42 = the ray direction's X/Z-per-Y slope at this camera's
+ * angle) -- a too-tall box lets one tap's ray graze through *other* tiles' boxes several tile
+ * -widths away, not just its immediate neighbors. Confirmed on-device: at the old 3.5-unit height
+ * a single tap could register hits on a plot and an unrelated structure zone ~7 tiles apart.
+ */
+private const val HIT_BOX_HALF_WIDTH = TILE_SPACING * 0.48f
+private const val HIT_BOX_HEIGHT = 2.2f
 
 /**
  * One tile's 3D representation: either a hand-picked model ([Model3DAssets]) or a billboarded emoji

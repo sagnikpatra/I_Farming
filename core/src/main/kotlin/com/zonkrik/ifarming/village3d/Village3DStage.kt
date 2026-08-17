@@ -23,6 +23,14 @@ private const val DEFAULT_DISTANCE = 7f
 private const val LONG_PRESS_SECONDS = 0.45f
 private const val BILLBOARD_SIZE = 1f
 
+/**
+ * World units visible across the screen's width at zoom=1 -- i.e. how "zoomed in" the default
+ * view is. CoC-style boards keep buildings large and dominant on screen; the original 24-unit
+ * value left them as tiny specks on a mostly-empty field. Halving it roughly doubles every
+ * building's on-screen size.
+ */
+private const val DEFAULT_VIEWPORT_WIDTH = 12f
+
 /** Loose clamp on how far the camera target can pan from the village's center, in world units. */
 private const val PAN_BOUNDS = 40f
 
@@ -33,7 +41,10 @@ private const val PAN_BOUNDS = 40f
  * Modified to use [OrthographicCamera] for a clean, "Clash of Clans" style isometric look.
  */
 class Village3DStage {
-    val camera = OrthographicCamera(24f, 24f * (Gdx.graphics.height.toFloat() / Gdx.graphics.width.toFloat()))
+    val camera = OrthographicCamera(
+        DEFAULT_VIEWPORT_WIDTH,
+        DEFAULT_VIEWPORT_WIDTH * (Gdx.graphics.height.toFloat() / Gdx.graphics.width.toFloat()),
+    )
     private val environment = Environment()
     private val modelBatch = ModelBatch()
     private val model3DCache = Model3DCache()
@@ -259,8 +270,8 @@ class Village3DStage {
 
     fun resize(width: Int, height: Int) {
         val aspect = height.toFloat() / width.toFloat()
-        camera.viewportWidth = 24f
-        camera.viewportHeight = 24f * aspect
+        camera.viewportWidth = DEFAULT_VIEWPORT_WIDTH
+        camera.viewportHeight = DEFAULT_VIEWPORT_WIDTH * aspect
         camera.update()
     }
 

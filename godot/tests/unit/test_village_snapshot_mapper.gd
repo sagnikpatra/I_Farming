@@ -281,3 +281,102 @@ func test_no_footprint_overlap_with_every_zone_unlocked_and_every_plot_slot_full
 	add_child_autofree(board)
 	var overlaps := board._find_overlapping_tiles(zones)
 	assert_eq(overlaps, [] as Array[Vector2i])
+
+
+# --- 10. resolved_anchor() -- EPIC-M5 layout-overlap fix ---------------------------
+
+func test_resolved_anchor_returns_default_when_no_custom_entry() -> void:
+	assert_eq(VillageSnapshotMapper.resolved_anchor(eco.state, "farmhouse"), Vector2i(0, 0))
+	assert_eq(VillageSnapshotMapper.resolved_anchor(eco.state, "vertical_farm"), Vector2i(7, 4))
+
+
+func test_resolved_anchor_returns_custom_rounded_entry_when_present() -> void:
+	eco.state.zone_layout["farmhouse"] = ZoneAnchor.new(1.2, 6.8)
+	assert_eq(VillageSnapshotMapper.resolved_anchor(eco.state, "farmhouse"), Vector2i(1, 7))
+
+
+func test_resolved_anchor_open_field_ignores_any_custom_entry_since_its_never_draggable() -> void:
+	eco.state.zone_layout["open_field"] = ZoneAnchor.new(9.0, 9.0)
+	assert_eq(VillageSnapshotMapper.resolved_anchor(eco.state, "open_field"), Vector2i(2, 0))
+
+
+# --- 11. max_reserved_tiles() -- EPIC-M5 layout-overlap fix -------------------------
+
+func test_max_reserved_tiles_farmhouse_is_just_the_2x2_building() -> void:
+	var tiles := VillageSnapshotMapper.max_reserved_tiles("farmhouse", Vector2i(0, 0))
+	assert_eq(tiles.size(), 4)
+	for tile in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
+		assert_true(tiles.has(tile), "expected %s reserved" % tile)
+
+
+func test_max_reserved_tiles_mandi_is_just_the_1x1_building() -> void:
+	var tiles := VillageSnapshotMapper.max_reserved_tiles("mandi", Vector2i(8, 0))
+	assert_eq(tiles, [Vector2i(8, 0)])
+
+
+func test_max_reserved_tiles_open_field_covers_max_plots_rectangle() -> void:
+	var tiles := VillageSnapshotMapper.max_reserved_tiles("open_field", Vector2i(2, 0))
+	assert_eq(tiles.size(), GameData.MAX_PLOTS)
+	for tile in [Vector2i(2, 0), Vector2i(5, 0), Vector2i(2, 3), Vector2i(5, 3)]:
+		assert_true(tiles.has(tile), "expected %s reserved" % tile)
+
+
+func test_max_reserved_tiles_polyhouse_covers_building_and_max_plots() -> void:
+	var tiles := VillageSnapshotMapper.max_reserved_tiles("polyhouse", Vector2i(6, 0))
+	assert_eq(tiles.size(), 4 + GameData.POLYHOUSE_PLOT_COUNT)
+	assert_true(tiles.has(Vector2i(6, 0)))  # building
+	assert_true(tiles.has(Vector2i(7, 3)))  # last plot at max capacity
+
+
+## Regression test for the real bug this fix closes: a Farmhouse dragged to
+## tile (1,7) while Agroforestry was still locked created an un-rejectable
+## overlap once Agroforestry was later unlocked (found via on-device
+## testing, EPIC-M5). This proves the fix would have caught it -- (1,7) is
+## reserved by Agroforestry's max footprint at its default anchor even
+## though Agroforestry was never unlocked in this test.
+func test_max_reserved_tiles_agroforestry_at_default_anchor_includes_the_tile_that_caused_the_real_overlap_bug() -> void:
+	var tiles := VillageSnapshotMapper.max_reserved_tiles("agroforestry", Vector2i(0, 4))
+	assert_eq(tiles.size(), 4 + GameData.AGROFORESTRY_GRID_SIZE * GameData.AGROFORESTRY_GRID_SIZE)
+	assert_true(tiles.has(Vector2i(1, 7)), "the exact tile the real bug dragged Farmhouse onto")
+	assert_true(tiles.has(Vector2i(2, 7)))
+	assert_true(tiles.has(Vector2i(1, 8)))
+	assert_true(tiles.has(Vector2i(2, 8)))
+
+
+func test_max_reserved_tiles_aquaculture_covers_building_and_max_plots() -> void:
+	var tiles := VillageSnapshotMapper.max_reserved_tiles("aquaculture", Vector2i(4, 4))
+	assert_eq(tiles.size(), 4 + GameData.AQUACULTURE_PLOT_COUNT)
+
+
+func test_max_reserved_tiles_vertical_farm_covers_building_and_max_plots() -> void:
+	var tiles := VillageSnapshotMapper.max_reserved_tiles("vertical_farm", Vector2i(7, 4))
+	assert_eq(tiles.size(), 4 + GameData.VERTICAL_FARM_PLOT_COUNT)
+
+
+# --- 12. VillageBoard._zone_fits() drag validation -- EPIC-M5 layout-overlap fix ----
+
+func _make_zone_fixture(id: String, col: int, row: int, width: int, depth: int) -> ZoneFixture:
+	return ZoneFixture.new(id, id, "", col, row, width, depth, Color.WHITE, [], true, true)
+
+
+## The direct regression test: dragging the Farmhouse onto a tile only
+## Agroforestry's (still-locked) future plot grid needs must be rejected,
+## not silently allowed the way the real bug allowed it.
+func test_zone_fits_rejects_a_drag_onto_a_locked_zones_future_plot_grid() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	var farmhouse := _make_zone_fixture("farmhouse", 0, 0, 2, 2)
+	# eco.state.has_agroforestry is still false here -- deliberately: the
+	# real bug happened specifically because the target zone was locked at
+	# drag-time.
+	assert_false(board._zone_fits(farmhouse, 1, 7))
+
+
+func test_zone_fits_allows_a_drag_to_open_ground_far_from_any_zone() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	var farmhouse := _make_zone_fixture("farmhouse", 0, 0, 2, 2)
+	# Col 9 and rows 9-11 are documented margin (village_snapshot_mapper.gd's
+	# header: "max column used is 8, max row used is 8") -- genuinely clear
+	# of every zone's max-reserved footprint, in-bounds for a 2x2 zone.
+	assert_true(board._zone_fits(farmhouse, 8, 10))

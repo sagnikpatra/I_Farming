@@ -202,6 +202,32 @@ static func _ensure_crop_defs() -> void:
 		"Saffron", "🌸", 800, 90 * 60, 3_500, 0, PlotKind.Kind.VERTICAL_FARM
 	)
 
+
+## Crop ordinals whose `required_plot_kind` matches `kind`, in CropType.Kind's
+## declared ordinal order (mirrors the Kotlin original's
+## `CropType.entries.filter { it.requiredPlotKind == plotKind }` -- see
+## FarmScreen.kt's SeedPicker composable). Deliberately excludes Sandalwood
+## even though its own `required_plot_kind` is AGROFORESTRY: Sandalwood has
+## its own dedicated planting entry point (GameEconomy.plant_sandalwood(),
+## host-adjacency-gated) and GameEconomy.plant_seed() explicitly rejects it
+## outright. A caller of this accessor (currently only seed_picker.gd, which
+## plants exclusively via plant_seed()) would otherwise list a row that
+## silently no-ops when tapped. As a consequence, an empty Agroforestry cell
+## currently has no crops here at all -- board_interactor.gd falls back to
+## select-only tap behavior for it, consistent with the dedicated
+## "agro-host picker" being separately scoped future work, not a hardcoded
+## zone-kind special case here.
+static func crops_for_plot_kind(kind: PlotKind.Kind) -> Array[int]:
+	_ensure_crop_defs()
+	var matching: Array[int] = []
+	for key in CropType.Kind.keys():
+		var crop: int = CropType.Kind[key]
+		if crop == CropType.Kind.SANDALWOOD:
+			continue
+		if _crop_defs[crop].required_plot_kind == kind:
+			matching.append(crop)
+	return matching
+
 # --- Host plant catalogue -----------------------------------------------------
 
 static var _host_defs: Dictionary = {}

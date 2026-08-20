@@ -103,6 +103,88 @@ static func _resolve_anchor(state: GameState, zone_id: String, default_anchor: V
 	return Vector2i(roundi(existing.tile_x), roundi(existing.tile_y))
 
 
+## Public counterpart of _resolve_anchor() -- zone_id -> default anchor
+## lookup baked in, so callers outside this file (village_board.gd's drag
+## validation, EPIC-M5's layout-overlap fix) don't need to know each zone's
+## default anchor constant themselves. Falls back to Vector2i.ZERO for an
+## unrecognized id rather than erroring -- defensive, should never actually
+## happen given the 7 ids are a closed set.
+static func resolved_anchor(state: GameState, zone_id: String) -> Vector2i:
+	match zone_id:
+		ZONE_ID_FARMHOUSE:
+			return _resolve_anchor(state, ZONE_ID_FARMHOUSE, FARMHOUSE_ANCHOR)
+		ZONE_ID_OPEN_FIELD:
+			return OPEN_FIELD_ANCHOR  # Never draggable -- no zone_layout entry, see class doc.
+		ZONE_ID_POLYHOUSE:
+			return _resolve_anchor(state, ZONE_ID_POLYHOUSE, POLYHOUSE_ANCHOR)
+		ZONE_ID_MANDI:
+			return _resolve_anchor(state, ZONE_ID_MANDI, MANDI_ANCHOR)
+		ZONE_ID_AGROFORESTRY:
+			return _resolve_anchor(state, ZONE_ID_AGROFORESTRY, AGROFORESTRY_ANCHOR)
+		ZONE_ID_AQUACULTURE:
+			return _resolve_anchor(state, ZONE_ID_AQUACULTURE, AQUACULTURE_ANCHOR)
+		ZONE_ID_VERTICAL_FARM:
+			return _resolve_anchor(state, ZONE_ID_VERTICAL_FARM, VERTICAL_FARM_ANCHOR)
+		_:
+			return Vector2i.ZERO
+
+
+## Every tile a zone could EVER occupy at `anchor` -- building footprint
+## PLUS its full plot-grid extent at MAXIMUM capacity (GameData.MAX_PLOTS/
+## POLYHOUSE_PLOT_COUNT/AQUACULTURE_PLOT_COUNT/VERTICAL_FARM_PLOT_COUNT/
+## AGROFORESTRY_GRID_SIZE), regardless of the zone's current unlock state or
+## actual plot count. Mirrors each _build_*() function's own relative-offset
+## math above (same columns/row_offset values -- see this file's header
+## table, the source of truth both this function and the real builders must
+## stay in sync with) but at the ceiling, not the current count.
+##
+## EPIC-M5 parity pass: the real bug this fixes -- a zone dragged (via
+## try_commit_zone_move()) onto a tile only a NOT-YET-UNLOCKED zone's future
+## plot grid would need was never rejected, because the drag-time occupancy
+## check only looked at zones/plots that already existed. Unlocking that
+## other zone later then created a genuine, un-rejectable footprint overlap
+## (found via on-device testing -- see village_board.gd's _ready() comment
+## on the graceful-degradation half of this fix). This function lets
+## village_board.gd's drag validation reserve every zone's maximum possible
+## footprint up front, so a drag can never land somewhere a future unlock
+## would need, independent of purchase order.
+static func max_reserved_tiles(zone_id: String, anchor: Vector2i) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
+	match zone_id:
+		ZONE_ID_FARMHOUSE:
+			_add_rect(tiles, anchor, 2, 2)
+		ZONE_ID_OPEN_FIELD:
+			_add_sequential(tiles, anchor, 4, GameData.MAX_PLOTS, 0)
+		ZONE_ID_POLYHOUSE:
+			_add_rect(tiles, anchor, 2, 2)
+			_add_sequential(tiles, anchor, 2, GameData.POLYHOUSE_PLOT_COUNT, 2)
+		ZONE_ID_MANDI:
+			_add_rect(tiles, anchor, 1, 1)
+		ZONE_ID_AGROFORESTRY:
+			_add_rect(tiles, anchor, 2, 2)
+			_add_rect(tiles, Vector2i(anchor.x, anchor.y + 2), GameData.AGROFORESTRY_GRID_SIZE, GameData.AGROFORESTRY_GRID_SIZE)
+		ZONE_ID_AQUACULTURE:
+			_add_rect(tiles, anchor, 2, 2)
+			_add_sequential(tiles, anchor, 3, GameData.AQUACULTURE_PLOT_COUNT, 2)
+		ZONE_ID_VERTICAL_FARM:
+			_add_rect(tiles, anchor, 2, 2)
+			_add_sequential(tiles, anchor, 2, GameData.VERTICAL_FARM_PLOT_COUNT, 2)
+	return tiles
+
+
+static func _add_rect(tiles: Array[Vector2i], origin: Vector2i, width: int, depth: int) -> void:
+	for dx in range(width):
+		for dz in range(depth):
+			tiles.append(Vector2i(origin.x + dx, origin.y + dz))
+
+
+static func _add_sequential(tiles: Array[Vector2i], anchor: Vector2i, columns: int, count: int, row_offset: int) -> void:
+	for index in range(count):
+		var col := anchor.x + index % columns
+		var row := anchor.y + row_offset + index / columns
+		tiles.append(Vector2i(col, row))
+
+
 static func _lifecycle_from_plot_state(kind: PlotState.Kind) -> PlotFixture.Lifecycle:
 	match kind:
 		PlotState.Kind.GROWING:
@@ -143,6 +225,7 @@ static func _simple_zone_plots(
 		var fixture := PlotFixture.new(col, row, _plot_label(plot))
 		fixture.lifecycle = _lifecycle_from_plot_state(plot.state.kind)
 		fixture.plot_id = plot.id
+		fixture.kind = kind
 		fixture.is_water = is_water
 		plots.append(fixture)
 	return plots
@@ -175,6 +258,7 @@ static func _build_open_field(state: GameState) -> ZoneFixture:
 		var fixture := PlotFixture.new(col, row, _plot_label(plot))
 		fixture.lifecycle = _lifecycle_from_plot_state(plot.state.kind)
 		fixture.plot_id = plot.id
+		fixture.kind = PlotKind.Kind.OPEN_FIELD
 		plots.append(fixture)
 	if open_field_plots.size() < GameData.MAX_PLOTS:
 		var ghost_index := open_field_plots.size()
@@ -182,6 +266,7 @@ static func _build_open_field(state: GameState) -> ZoneFixture:
 		var row := anchor.y + ghost_index / columns
 		var ghost := PlotFixture.new(col, row, "next_expansion")
 		ghost.lifecycle = PlotFixture.Lifecycle.GHOST
+		ghost.kind = PlotKind.Kind.OPEN_FIELD
 		plots.append(ghost)
 	return ZoneFixture.new(
 		ZONE_ID_OPEN_FIELD, "Open Field", "",
@@ -234,6 +319,7 @@ static func _build_agroforestry(state: GameState) -> ZoneFixture:
 			fixture.host_occupied = has_host
 			fixture.lifecycle = _lifecycle_from_plot_state(plot.state.kind)
 			fixture.plot_id = plot.id
+			fixture.kind = PlotKind.Kind.AGROFORESTRY
 			plots.append(fixture)
 	return ZoneFixture.new(
 		ZONE_ID_AGROFORESTRY, "Agroforestry", "",

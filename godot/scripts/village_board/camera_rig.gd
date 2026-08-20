@@ -92,6 +92,16 @@ func zoom_by(factor: float) -> void:
 	_apply_camera_transform()
 
 
+## Instantly recenters the pan target on a world-space XZ point, clamped to
+## the current zoom level's pan bounds -- zoom is left untouched (unlike
+## frame_bounds(), which also resets zoom). Powers the HUD's Quick Nav Bar
+## (EPIC-M5 parity pass), the Godot counterpart of GdxQuickNavBar.kt's
+## onNavigate callback.
+func center_on(world_xz: Vector2) -> void:
+	_pan_target = clamp_pan_position(world_xz)
+	_apply_camera_transform()
+
+
 func clamp_pan_position(target: Vector2) -> Vector2:
 	return Vector2(
 		clampf(target.x, pan_min.x, pan_max.x),

@@ -28,6 +28,14 @@ var host_occupied: bool = false
 ## backing Plot. Not consumed by anything yet -- carried through for future
 ## tap-to-plant UI.
 var plot_id: int = -1
+## Which PlotKind this plot belongs to -- set by VillageSnapshotMapper from
+## the zone/plot context it was built in (the real Plot.kind for a real plot;
+## the owning zone's implied kind for a GHOST tile, e.g. OPEN_FIELD).
+## Meaningless (left at the default) for fixtures that don't carry it
+## explicitly, but every real builder function sets it. Read by
+## board_interactor.gd (via village_board.gd's PickArea meta) to decide which
+## crops GameData.crops_for_plot_kind() should offer in the seed picker.
+var kind: PlotKind.Kind = PlotKind.Kind.OPEN_FIELD
 
 func _init(p_tile_col: int, p_tile_row: int, p_label: String = "plot") -> void:
 	tile_col = p_tile_col

@@ -125,6 +125,28 @@ func test_festival_rotation_matches_gdd() -> void:
 	assert_eq(GameData.festival_def(9).display_name, "Makar Sankranti")
 
 
+func test_crops_for_plot_kind_open_field_returns_wheat_paddy_tomato_in_declaration_order() -> void:
+	var crops := GameData.crops_for_plot_kind(PlotKind.Kind.OPEN_FIELD)
+	assert_eq(crops, [CropType.Kind.WHEAT, CropType.Kind.PADDY, CropType.Kind.TOMATO])
+
+
+func test_crops_for_plot_kind_polyhouse_returns_capsicum_and_dutch_rose() -> void:
+	var crops := GameData.crops_for_plot_kind(PlotKind.Kind.POLYHOUSE)
+	assert_eq(crops, [CropType.Kind.CAPSICUM, CropType.Kind.DUTCH_ROSE])
+
+
+func test_crops_for_plot_kind_agroforestry_excludes_sandalwood() -> void:
+	# Sandalwood's requiredPlotKind is AGROFORESTRY, but it has its own
+	# dedicated entry point (plant_sandalwood()) -- plant_seed() rejects it
+	# outright, so listing it in a seed picker would be a silently-dead row.
+	assert_eq(GameData.crops_for_plot_kind(PlotKind.Kind.AGROFORESTRY), [])
+
+
+func test_crops_for_plot_kind_aquaculture_returns_makhana_and_pond_fish() -> void:
+	var crops := GameData.crops_for_plot_kind(PlotKind.Kind.AQUACULTURE)
+	assert_eq(crops, [CropType.Kind.MAKHANA, CropType.Kind.POND_FISH])
+
+
 func test_demand_modifier_percent_in_range() -> void:
 	# -15..20 inclusive per crop-economy.md/mandi-trading.md (Kotlin's
 	# nextInt(-15, 21) is upper-exclusive, so 36 possible values).

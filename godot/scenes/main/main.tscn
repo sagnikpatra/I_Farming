@@ -1,7 +1,10 @@
-[gd_scene load_steps=2 format=3 uid="uid://c6xqk8n2p8h0a"]
+[gd_scene load_steps=3 format=3 uid="uid://c6xqk8n2p8h0a"]
 
 [ext_resource type="PackedScene" path="res://scenes/village_board/village_board.tscn" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="2"]
 
 [node name="Main" type="Node3D"]
 
 [node name="VillageBoard" parent="." instance=ExtResource("1")]
+
+[node name="HUD" parent="." instance=ExtResource("2")]

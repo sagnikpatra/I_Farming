@@ -108,8 +108,16 @@ static func build_view_data(economy: GameEconomy) -> Dictionary:
 
 func _on_upgrade_pressed() -> void:
 	_economy.buy_farmhouse_upgrade()
+	if _economy.dirty:
+		_play_audio(&"progression_farmhouse_upgrade")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
+
+
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 # ---------------------------------------------------------------------------

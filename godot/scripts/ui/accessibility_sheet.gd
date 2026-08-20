@@ -67,6 +67,7 @@ func _populate() -> void:
 	_body.add_child(_make_title_label("♿ Accessibility", 20, SOIL_BROWN_DARK))
 	_body.add_child(_build_text_scale_row())
 	_body.add_child(_build_colorblind_row())
+	_body.add_child(_build_audio_row())
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +121,72 @@ func _build_colorblind_row() -> PanelContainer:
 
 	card.add_child(box)
 	return card
+
+
+## Audio pass (design/audio/audio-core-gameplay-loop.md): a "Mute All Audio"
+## toggle button above 4 volume sliders (Master/Ambience/SFX/UI). See
+## _build_volume_slider_row()'s own doc comment for why slider drags update
+## their label directly instead of calling _populate() (unlike every other
+## button-driven row in this file).
+func _build_audio_row() -> PanelContainer:
+	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 6)
+
+	box.add_child(_make_title_label("🔊 Audio", 16))
+
+	var mute_label_text := "Unmute Audio" if _settings.audio_muted else "Mute All Audio"
+	var mute_button := _make_chunky_button(mute_label_text, SOIL_BROWN_DARK)
+	mute_button.pressed.connect(_on_toggle_audio_muted_pressed)
+	box.add_child(mute_button)
+
+	box.add_child(_build_volume_slider_row("Master Volume", _settings.master_volume, _settings.set_master_volume))
+	box.add_child(_build_volume_slider_row("Ambience Volume", _settings.ambience_volume, _settings.set_ambience_volume))
+	box.add_child(_build_volume_slider_row("Sound Effects Volume", _settings.sfx_volume, _settings.set_sfx_volume))
+	box.add_child(_build_volume_slider_row("UI Sounds Volume", _settings.ui_volume, _settings.set_ui_volume))
+
+	card.add_child(box)
+	return card
+
+
+## One label+HSlider pair. Updates the percentage label directly from the
+## slider's live `value_changed` signal instead of calling _populate() on
+## every tick (unlike this file's button-driven rows) -- HSlider fires
+## value_changed continuously while being dragged, and rebuilding this
+## card's whole widget tree mid-drag would destroy and recreate the very
+## slider the player has their finger on, breaking the drag gesture. The
+## setter itself (e.g. AccessibilitySettings.set_master_volume()) still
+## persists + emits `settings_changed` on every tick, which is what
+## actually applies the change live via village_board.gd's
+## _on_accessibility_settings_changed() -- only this card's own label text
+## is updated directly (via the captured `percent_label`/`label_text`
+## closure) rather than through a full rebuild.
+func _build_volume_slider_row(label_text: String, initial_value: float, setter: Callable) -> VBoxContainer:
+	var row := VBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var percent_label := _make_title_label("%s: %d%%" % [label_text, roundi(initial_value * 100.0)], 13)
+	row.add_child(percent_label)
+
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = initial_value
+	slider.mouse_filter = Control.MOUSE_FILTER_STOP
+	slider.custom_minimum_size = Vector2(0, 32)
+	slider.value_changed.connect(func(value: float) -> void:
+		setter.call(value)
+		percent_label.text = "%s: %d%%" % [label_text, roundi(value * 100.0)]
+	)
+	row.add_child(slider)
+	return row
+
+
+func _on_toggle_audio_muted_pressed() -> void:
+	_settings.toggle_audio_muted()
+	_populate()
 
 
 # ---------------------------------------------------------------------------

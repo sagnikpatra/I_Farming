@@ -29,6 +29,17 @@ const TEXT_SCALE_STEPS: Array[float] = [1.0, 1.15, 1.3]
 @export var text_scale: float = 1.0
 @export var colorblind_safe: bool = false
 
+## Audio pass (design/audio/audio-core-gameplay-loop.md): per-bus linear
+## volume [0.0, 1.0], pushed live to AudioServer by VillageBoard's
+## _on_accessibility_settings_changed() via
+## AudioServer.set_bus_volume_linear() -- unlike text_scale, this applies
+## live with no rebuild risk, see that method's own doc comment.
+@export var master_volume: float = 1.0
+@export var ambience_volume: float = 1.0
+@export var sfx_volume: float = 1.0
+@export var ui_volume: float = 1.0
+@export var audio_muted: bool = false
+
 ## Not named `changed` -- Resource already declares a native `changed`
 ## signal (fired by ResourceSaver/the editor's own property-change
 ## tracking); redeclaring it here is a compile error ("Member 'changed'
@@ -70,5 +81,38 @@ func cycle_text_scale() -> void:
 ## Toggles colorblind_safe. Persists and emits `settings_changed`.
 func toggle_colorblind_safe() -> void:
 	colorblind_safe = not colorblind_safe
+	save()
+	settings_changed.emit()
+
+
+# --- Audio pass: per-bus volume + mute -----------------------------------------
+
+func set_master_volume(value: float) -> void:
+	master_volume = clampf(value, 0.0, 1.0)
+	save()
+	settings_changed.emit()
+
+
+func set_ambience_volume(value: float) -> void:
+	ambience_volume = clampf(value, 0.0, 1.0)
+	save()
+	settings_changed.emit()
+
+
+func set_sfx_volume(value: float) -> void:
+	sfx_volume = clampf(value, 0.0, 1.0)
+	save()
+	settings_changed.emit()
+
+
+func set_ui_volume(value: float) -> void:
+	ui_volume = clampf(value, 0.0, 1.0)
+	save()
+	settings_changed.emit()
+
+
+## Toggles audio_muted. Persists and emits `settings_changed`.
+func toggle_audio_muted() -> void:
+	audio_muted = not audio_muted
 	save()
 	settings_changed.emit()

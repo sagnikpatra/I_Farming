@@ -90,12 +90,14 @@ func _populate() -> void:
 
 func _on_rotate_pressed() -> void:
 	_economy.rotate_decoration(_decoration_id)
+	_play_audio(&"ui_rotate_flip")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
 
 func _on_flip_pressed() -> void:
 	_economy.flip_decoration(_decoration_id)
+	_play_audio(&"ui_rotate_flip")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -104,6 +106,12 @@ func _on_remove_pressed() -> void:
 	_economy.remove_decoration(_decoration_id)
 	_village_board.persist_and_rebuild_if_dirty()
 	_bottom_sheet.close()
+
+
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 func _make_icon_button(icon: String, color: Color, on_pressed: Callable) -> Button:

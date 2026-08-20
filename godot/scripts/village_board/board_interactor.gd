@@ -367,6 +367,7 @@ func _begin_zone_drag(zone_id: String) -> void:
 	var hit = _ground_hit(_touch_last_screen_pos)
 	_drag_start_ground_hit = hit if hit != null else _drag_start_center
 	_select("zone", zone_id)  # Long-press also selects, matching tap's feedback.
+	_play_audio(&"ui_drag_pickup")
 
 
 func _update_zone_drag() -> void:
@@ -395,6 +396,8 @@ func _commit_zone_drag() -> void:
 		push_warning(
 			"BoardInteractor: zone '%s' drop target out of bounds or overlapping another zone/plot -- reverted to its last position." % _drag_zone_id
 		)
+	else:
+		_play_audio(&"ui_drag_drop_success")
 	_select("zone", _drag_zone_id)  # Re-sync highlight to the committed (or reverted) position.
 	_drag_zone_id = ""
 
@@ -411,6 +414,7 @@ func _begin_decoration_drag(decoration_id: int) -> void:
 	_drag_decoration_start_pos = _village_board.get_decoration_world_position(decoration_id)
 	var hit = _ground_hit(_touch_last_screen_pos)
 	_drag_decoration_start_ground_hit = hit if hit != null else _drag_decoration_start_pos
+	_play_audio(&"ui_drag_pickup")
 
 
 func _update_decoration_drag() -> void:
@@ -432,6 +436,7 @@ func _commit_decoration_drag() -> void:
 	var delta: Vector3 = final_hit - _drag_decoration_start_ground_hit
 	delta.y = 0.0
 	_village_board.commit_decoration_move(_drag_decoration_id, _drag_decoration_start_pos + delta)
+	_play_audio(&"ui_drag_drop_success")  # Always succeeds -- see this file's own doc comment above.
 	_drag_decoration_id = -1
 
 
@@ -592,6 +597,8 @@ func _handle_armed_decoration_tap() -> void:
 		return
 	var tile := _village_board.world_to_grid(hit)
 	economy.place_decoration(type, tile.x, tile.y)
+	if economy.dirty:
+		_play_audio(&"economy_purchase_small")
 	_village_board.persist_and_rebuild_if_dirty()
 
 
@@ -659,6 +666,8 @@ func _harvest_plot(plot_id: int) -> void:
 		return
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	economy.harvest_plot(plot_id, now)
+	if economy.dirty:
+		_play_audio(&"economy_harvest")
 	_village_board.persist_and_rebuild_if_dirty()
 
 
@@ -784,3 +793,15 @@ func _ground_hit(screen_pos: Vector2) -> Variant:
 	var from := camera.project_ray_origin(screen_pos)
 	var dir := camera.project_ray_normal(screen_pos)
 	return GROUND_PLANE.intersects_ray(from, dir)
+
+
+# ---------------------------------------------------------------------------
+# Audio pass -- see audio_manager.gd's class doc. Shared one-line helper so
+# every call site above stays a single line, matching this file's existing
+# "small private helper, reused everywhere" style.
+# ---------------------------------------------------------------------------
+
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)

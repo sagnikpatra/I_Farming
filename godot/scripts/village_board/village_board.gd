@@ -106,6 +106,10 @@ const WATER_TINT_MULTIPLIER := Color(0.55, 0.80, 0.90)
 @onready var _actor_layer: Node3D = $ActorLayer
 @onready var _camera_rig: CameraRig = $CameraRig
 @onready var _growth_tick_timer: Timer = $GrowthTickTimer
+## Owns every AudioStreamPlayer the game uses -- same "no autoload, single
+## owner, public accessor" pattern as _economy/_accessibility_settings, see
+## get_audio_manager() and audio_manager.gd's own class doc.
+@onready var _audio_manager: AudioManager = $AudioManager
 
 ## zone.id -> ZoneFixture. This is the single in-memory source of truth for a
 ## zone's current tile position; try_commit_zone_move() mutates it in place so
@@ -139,10 +143,29 @@ var _last_synced_walkable_signature: String = ""
 var _worker_stations_by_plot_kind: Dictionary = {}
 const WORKER_STATION_SCENE: PackedScene = preload("res://scenes/village_board/worker_station.tscn")
 
+## Audio pass: edge-detected Monsoon/Festival active state, so
+## AudioManager.set_monsoon_active()/set_festival_active() are only called on
+## an actual transition (see _sync_adaptive_ambience_if_needed()), never
+## every growth tick.
+var _last_monsoon_active: bool = false
+var _last_festival_active: bool = false
+## Audio pass: edge-detected colorblind-safe state -- AccessibilitySettings.
+## settings_changed now also fires on every audio-volume-slider tick (see
+## _on_accessibility_settings_changed()), so the (expensive) full StaticLayer
+## rebuild() this triggers for a colorblind-palette swap must be gated on an
+## actual change to THAT field specifically, not fired on every signal emission.
+var _last_colorblind_safe: bool = false
+## design/audio/audio-core-gameplay-loop.md's batch-resolve hazard fix: if a
+## single growth tick's combined ready-transition + worker-action count
+## exceeds this, play one batch-resolve chime instead of N individual ones.
+const BATCH_RESOLVE_THRESHOLD: int = 12
+
 
 func _ready() -> void:
 	_accessibility_settings = AccessibilitySettings.load_or_default()
+	_last_colorblind_safe = _accessibility_settings.colorblind_safe
 	_accessibility_settings.settings_changed.connect(_on_accessibility_settings_changed)
+	_apply_audio_settings_to_bus_server()
 	var loaded_state := SaveSystem.load_state()
 	_economy = GameEconomy.new(loaded_state)
 	var zones := VillageSnapshotMapper.build(_economy.state)
@@ -171,6 +194,11 @@ func _ready() -> void:
 	_sync_villagers_if_needed()
 
 	_growth_tick_timer.timeout.connect(_on_growth_tick_timeout)
+	# Reconcile ambience layers with whatever Monsoon/Festival state is
+	# already active at load time (e.g. resuming a save mid-Monsoon) -- fades
+	# the relevant layer in over AudioManager.AMBIENCE_CROSSFADE_SECONDS
+	# rather than leaving it silent until the next 3s tick.
+	_sync_adaptive_ambience_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
 
 
 ## Wipes and rebuilds the static layer (ground, boundary, zones+plinths+plots)
@@ -1105,12 +1133,55 @@ func get_accessibility_settings() -> AccessibilitySettings:
 	return _accessibility_settings
 
 
+## Same rationale as get_economy() above -- lets any script trigger audio
+## without VillageBoard giving up ownership of the AudioManager instance.
+func get_audio_manager() -> AudioManager:
+	return _audio_manager
+
+
 ## Re-renders live when the colorblind-safe palette is toggled, so the
 ## player sees the effect immediately without relaunching -- same
 ## preserve_camera=true rebuild() call persist_and_rebuild_if_dirty() uses
-## for any other in-place mutation.
+## for any other in-place mutation. Also pushes the 4 audio-volume fields +
+## mute state to AudioServer live (unlike text_scale, which is documented
+## next-launch-only -- bus volume changes carry none of that rebuild risk).
+##
+## AUDIO PASS CHANGE: this signal now also fires on every AccessibilitySheet
+## volume-slider tick (many times per drag), not just on the original two
+## discrete button presses (cycle_text_scale/toggle_colorblind_safe) -- see
+## accessibility_sheet.gd's _build_volume_slider_row(). The StaticLayer
+## rebuild() below is therefore now gated on colorblind_safe actually having
+## changed (_last_colorblind_safe), so a volume drag doesn't also trigger a
+## full board rebuild on every tick -- bus-volume application itself
+## (_apply_audio_settings_to_bus_server()) stays unconditional since it's
+## cheap (a handful of AudioServer calls, no scene mutation).
 func _on_accessibility_settings_changed() -> void:
-	rebuild(VillageSnapshotMapper.build(_economy.state), true)
+	_apply_audio_settings_to_bus_server()
+	if _accessibility_settings.colorblind_safe != _last_colorblind_safe:
+		_last_colorblind_safe = _accessibility_settings.colorblind_safe
+		rebuild(VillageSnapshotMapper.build(_economy.state), true)
+
+
+## Pushes AccessibilitySettings' 4 volume fields + mute state to AudioServer.
+## Guards every AudioServer.get_bus_index() call for -1 (bus not found) --
+## doesn't crash if default_bus_layout.tres is somehow missing/misnamed.
+func _apply_audio_settings_to_bus_server() -> void:
+	if _accessibility_settings == null:
+		return
+	_set_bus_volume_linear_safe("Master", _accessibility_settings.master_volume)
+	_set_bus_volume_linear_safe("Ambience", _accessibility_settings.ambience_volume)
+	_set_bus_volume_linear_safe("SFX", _accessibility_settings.sfx_volume)
+	_set_bus_volume_linear_safe("UI", _accessibility_settings.ui_volume)
+	var master_index := AudioServer.get_bus_index("Master")
+	if master_index != -1:
+		AudioServer.set_bus_mute(master_index, _accessibility_settings.audio_muted)
+
+
+func _set_bus_volume_linear_safe(bus_name: String, linear_value: float) -> void:
+	var index := AudioServer.get_bus_index(bus_name)
+	if index == -1:
+		return
+	AudioServer.set_bus_volume_linear(index, linear_value)
 
 
 ## Minimal read-only accessor, same rationale as get_economy() above --
@@ -1157,13 +1228,96 @@ func get_camera_rig() -> CameraRig:
 
 func _on_growth_tick_timeout() -> void:
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	_sync_adaptive_ambience_if_needed(now)
+
+	# Audio pass batch-resolve hazard fix: snapshot every plot's
+	# state.kind immediately before calling both resolve methods, diff
+	# after each, and count total GROWING -> READY_TO_HARVEST transitions +
+	# total worker harvest(+replant) actions. Kept entirely in this
+	# Presentation-layer file (diffing plot state) rather than adding new
+	# fields/signals to GameEconomy (Foundation layer must not depend on
+	# Presentation layer).
+	var before_states := _snapshot_plot_lifecycle_states()
 	_economy.resolve_growth_completions(now)
+	var after_growth_states := _snapshot_plot_lifecycle_states()
 	# EPIC-M7: must run after resolve_growth_completions() above so a plot
 	# that just finished growing this same tick is already ReadyToHarvest
 	# and eligible for its zone's worker, not delayed a full extra cycle --
 	# see resolve_worker_actions()'s own doc comment.
 	_economy.resolve_worker_actions(now)
+	var after_worker_states := _snapshot_plot_lifecycle_states()
+	_play_growth_tick_audio(before_states, after_growth_states, after_worker_states)
+
 	persist_and_rebuild_if_dirty()
+
+
+## plot.id -> PlotState.Kind, for the batch-resolve diffing above. Not
+## reused elsewhere -- deliberately re-snapshotted 3x per tick (cheap: this
+## board caps out around 120 tiles) rather than threading a shared cache
+## through resolve_growth_completions()/resolve_worker_actions(), which
+## would require touching GameEconomy for a Presentation-layer-only concern.
+func _snapshot_plot_lifecycle_states() -> Dictionary:
+	var snapshot: Dictionary = {}
+	for plot: Plot in _economy.state.plots:
+		snapshot[plot.id] = plot.state.kind
+	return snapshot
+
+
+## Counts GROWING->READY_TO_HARVEST transitions (before -> after_growth) and
+## worker-resolved plots (after_growth READY_TO_HARVEST -> after_worker NOT
+## READY_TO_HARVEST -- this naturally excludes _resolve_worker_cycle()'s
+## "storage full, skip entirely" case, since a skipped plot stays
+## READY_TO_HARVEST and is correctly not counted/chimed). If the combined
+## count exceeds BATCH_RESOLVE_THRESHOLD, plays one batch-resolve chime and
+## suppresses every individual ready-chime/harvest/plant SFX for this tick;
+## otherwise plays each event's normal SFX individually (still subject to
+## each event's own max_polyphony).
+func _play_growth_tick_audio(before: Dictionary, after_growth: Dictionary, after_worker: Dictionary) -> void:
+	if _audio_manager == null:
+		return
+
+	var ready_transition_plot_ids: Array[int] = []
+	for plot_id: int in before.keys():
+		if before[plot_id] == PlotState.Kind.GROWING and after_growth.get(plot_id) == PlotState.Kind.READY_TO_HARVEST:
+			ready_transition_plot_ids.append(plot_id)
+
+	var worker_resolved_plot_ids: Array[int] = []
+	for plot_id: int in after_growth.keys():
+		if after_growth[plot_id] == PlotState.Kind.READY_TO_HARVEST and after_worker.get(plot_id) != PlotState.Kind.READY_TO_HARVEST:
+			worker_resolved_plot_ids.append(plot_id)
+
+	var total_count := ready_transition_plot_ids.size() + worker_resolved_plot_ids.size()
+	if total_count == 0:
+		return
+	if total_count > BATCH_RESOLVE_THRESHOLD:
+		_audio_manager.play_batch_resolve_chime()
+		return
+
+	for _plot_id: int in ready_transition_plot_ids:
+		_audio_manager.play_sfx(&"progression_plot_ready_chime")
+	for plot_id: int in worker_resolved_plot_ids:
+		_audio_manager.play_sfx(&"economy_harvest")
+		if after_worker.get(plot_id) == PlotState.Kind.GROWING:
+			# Harvested AND replanted this cycle (vs. left Empty because the
+			# replant couldn't be afforded/Saffron's electricity lapsed) --
+			# see GameEconomy._resolve_worker_cycle()'s own doc comment.
+			_audio_manager.play_sfx(&"economy_plant")
+
+
+## Calls AudioManager.set_monsoon_active()/set_festival_active() only on an
+## actual transition (tracked via _last_monsoon_active/_last_festival_active),
+## never every tick -- matches this pass's brief exactly.
+func _sync_adaptive_ambience_if_needed(now: int) -> void:
+	if _audio_manager == null or _economy == null:
+		return
+	var monsoon_active := _economy.is_monsoon_active(now)
+	var festival_active := _economy.is_festival_active(now)
+	if monsoon_active != _last_monsoon_active:
+		_audio_manager.set_monsoon_active(monsoon_active)
+		_last_monsoon_active = monsoon_active
+	if festival_active != _last_festival_active:
+		_audio_manager.set_festival_active(festival_active)
+		_last_festival_active = festival_active
 
 
 ## Shared save-if-dirty + re-render pattern, gated on GameEconomy.dirty per

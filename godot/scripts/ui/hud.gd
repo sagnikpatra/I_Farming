@@ -137,6 +137,14 @@ func _ready() -> void:
 	_refresh_timer.timeout.connect(_refresh)
 	_refresh_timer.start()
 
+	# Audio pass: single hook point covering EVERY sheet everywhere (SeedPicker,
+	# DecorationPicker, AgroPlantPicker, all *_tab.gd sheets, AccessibilitySheet,
+	# GrowingInfoCard, DecorationInfoCard) -- they all funnel through this one
+	# shared BottomSheet's open()/close(), so this is "hook there once, not per
+	# call site" (see bottom_sheet.gd's `opened`/`closed` signals).
+	_bottom_sheet.opened.connect(_on_bottom_sheet_opened)
+	_bottom_sheet.closed.connect(_on_bottom_sheet_closed)
+
 	_refresh()
 
 
@@ -225,8 +233,22 @@ func _on_sell_all_pressed() -> void:
 	var economy := _village_board.get_economy()
 	if economy == null:
 		return
+	_play_ui_audio(&"ui_button_tap")
+	# "each Sell-All iteration" per design/audio/audio-core-gameplay-loop.md's
+	# event list -- one crop TYPE currently held = one iteration of
+	# GameEconomy.sell_all()'s internal per-crop loop, counted before the
+	# call clears the inventory (still respects economy_sell's own
+	# max_polyphony, so a huge inventory doesn't stack indefinitely).
+	var crop_type_count := economy.state.inventory.size()
+	var tier_before: int = economy.state.event_claimed_tier
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	economy.sell_all(now)
+	if economy.dirty:
+		for _i in range(crop_type_count):
+			_play_ui_audio(&"economy_sell")
+		var tier_after: int = economy.state.event_claimed_tier
+		for _i in range(tier_after - tier_before):
+			_play_ui_audio(&"liveops_festival_tier_reward")
 	_persist_if_dirty(economy)
 	_refresh()
 
@@ -247,6 +269,7 @@ func _on_liveops_banner_pressed() -> void:
 	var economy := _village_board.get_economy()
 	if economy == null:
 		return
+	_play_ui_audio(&"ui_button_tap")
 	var tab: EventsTab = EventsTabScene.instantiate()
 	tab.configure(economy, _village_board)
 	_bottom_sheet.open(tab)
@@ -261,6 +284,7 @@ func _on_open_field_workers_pressed() -> void:
 	var economy := _village_board.get_economy()
 	if economy == null:
 		return
+	_play_ui_audio(&"ui_button_tap")
 	var tab: OpenFieldTab = OpenFieldTabScene.instantiate()
 	tab.configure(economy, _village_board)
 	_bottom_sheet.open(tab)
@@ -276,6 +300,7 @@ func _on_accessibility_pressed() -> void:
 	var settings := _village_board.get_accessibility_settings()
 	if settings == null:
 		return
+	_play_ui_audio(&"ui_button_tap")
 	var sheet: AccessibilitySheet = AccessibilitySheetScene.instantiate()
 	sheet.configure(settings, _village_board)
 	_bottom_sheet.open(sheet)
@@ -287,9 +312,30 @@ func _on_shop_pressed() -> void:
 	var economy := _village_board.get_economy()
 	if economy == null:
 		return
+	_play_ui_audio(&"ui_button_tap")
 	var picker: DecorationPicker = DecorationPickerScene.instantiate()
 	picker.configure(economy, _village_board.get_board_interactor(), _bottom_sheet)
 	_bottom_sheet.open(picker)
+
+
+# ---------------------------------------------------------------------------
+# Audio pass -- see audio_manager.gd's class doc.
+# ---------------------------------------------------------------------------
+
+func _on_bottom_sheet_opened() -> void:
+	_play_ui_audio(&"ui_sheet_open")
+
+
+func _on_bottom_sheet_closed() -> void:
+	_play_ui_audio(&"ui_sheet_close")
+
+
+func _play_ui_audio(event_key: StringName) -> void:
+	if _village_board == null:
+		return
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 # ---------------------------------------------------------------------------
@@ -509,6 +555,7 @@ func _build_nav_chip(emoji: String, zone_id: String) -> Button:
 func _on_nav_chip_pressed(zone_id: String) -> void:
 	if _village_board == null:
 		return
+	_play_ui_audio(&"ui_button_tap")
 	var world_pos := _village_board.get_zone_center_world(zone_id)
 	_village_board.get_camera_rig().center_on(Vector2(world_pos.x, world_pos.z))
 

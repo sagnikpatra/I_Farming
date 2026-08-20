@@ -171,6 +171,10 @@ func _build_row(crop: int, affordable: bool) -> Button:
 func _on_row_pressed(crop: int) -> void:
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_economy.plant_seed(_plot_id, crop, now)
+	if _economy.dirty:
+		var audio := _village_board.get_audio_manager()
+		if audio != null:
+			audio.play_sfx(&"economy_plant")
 	_bottom_sheet.close()
 	_village_board.persist_and_rebuild_if_dirty()
 

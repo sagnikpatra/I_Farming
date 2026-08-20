@@ -115,6 +115,8 @@ static func build_view_data(economy: GameEconomy, now: int) -> Dictionary:
 
 func _on_build_pressed() -> void:
 	_economy.buy_polyhouse()
+	if _economy.dirty:
+		_play_audio(&"progression_structure_unlock")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -128,6 +130,8 @@ func _on_fan_pad_pressed() -> void:
 	if _economy.state.has_fan_pad:
 		return
 	_economy.buy_fan_pad()
+	if _economy.dirty:
+		_play_audio(&"economy_purchase_small")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -136,6 +140,8 @@ func _on_drip_pressed() -> void:
 	if _economy.state.has_drip_irrigation:
 		return
 	_economy.buy_drip_irrigation()
+	if _economy.dirty:
+		_play_audio(&"economy_purchase_small")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -146,8 +152,16 @@ func _on_drip_pressed() -> void:
 ## one-shot unlock).
 func _on_film_pressed() -> void:
 	_economy.renew_film(_now())
+	if _economy.dirty:
+		_play_audio(&"economy_purchase_small")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
+
+
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 # ---------------------------------------------------------------------------

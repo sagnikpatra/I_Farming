@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
-Feature: M8 - Post-Migration Hardening. User picked all 4 offered items (security audit, QA pass, accessibility, audio) via multiSelect -- sequencing them: security+QA done, accessibility done this slice, audio last (biggest lift, most "new content" vs "hardening").
-Task: Security audit done (1 HIGH + 2 LOW found, HIGH+one LOW fixed and verified live). QA/smoke pass done (found+closed one real test-coverage gap). Accessibility audit done (4 BLOCKING + 5 HIGH + 1 MEDIUM + 1 LOW + 1 ADVISORY + 1 DEFERRED found); all 4 BLOCKING fixed and GUT-verified (336/336, no regressions) -- on-device visual check still pending, no emulator this session. Three reports written to production/. Next: audio pass (last EPIC-M8 item).
+Feature: M8 - Post-Migration Hardening. All 4 user-selected items (security audit, QA pass, accessibility, audio) now done. EPIC-M8 complete for this session's scope.
+Task: Security audit done (1 HIGH + 2 LOW found, HIGH+one LOW fixed and verified live). QA/smoke pass done (found+closed one real test-coverage gap). Accessibility audit done (4 BLOCKING fixed, 5 HIGH/1 MEDIUM/1 LOW/1 ADVISORY/1 DEFERRED open) -- on-device visual check still pending, no emulator this session. Audio pass done via full /team-audio pipeline (5 agents: audio-director, sound-designer, accessibility-specialist, technical-artist, godot-specialist, gameplay-programmer) -- AudioManager + 40-event catalogue + bus routing + AccessibilitySheet volume controls all implemented and wired, 350/350 GUT passing (independently re-verified). Zero real audio ASSET files exist yet (deliberate ResourceLoader.exists()-gated no-op until sourced) -- separate follow-up task. Reports/docs written to production/ and design/audio/. Nothing further queued for EPIC-M8.
 <!-- /STATUS -->
 
 # Active Session State
@@ -2465,21 +2465,132 @@ claiming a check that didn't happen. Updated both the audit report's
 Remediation Log and the roadmap's Release Readiness checklist with real
 detail.
 
+## 2026-08-21 (cont'd a seventeenth time) -- Audio pass done via full /team-audio pipeline, EPIC-M8 complete
+
+User said "continue with audio" -- the last of the 4 EPIC-M8 items. Used
+this project's real `/team-audio` skill rather than freehanding it, since
+it exists specifically for this (referenced by name in the roadmap's own
+Audio checklist line). The skill requires a specific feature/area argument,
+not "the whole game" -- asked the user via `AskUserQuestion`, who picked
+"Core gameplay loop" (village board + HUD) over Main Menu or LiveOps/Events.
+
+Ran the skill's full 5-agent pipeline, presenting each step's output for a
+decision gate before the next (per the skill's own protocol), spawned via
+`Task`/`Agent`:
+
+1. **audio-director**: grounded sonic direction in the real GDDs/code (not
+   a generic farm-game guess) -- recommended ambient/nature-only soundscape
+   (no melodic music track), for two independent reasons that both pointed
+   the same way: authentic regional-instrument (bansuri/tabla/sitar)
+   sample libraries are almost entirely paid commercial products (a real
+   licensing gap this project's CC0-only stance has no easy answer for),
+   and a short mobile-budget melody loop wears out during the long idle
+   stretches this semi-idle economic loop invites. User picked all 3
+   recommended options (ambient-only identity, ambient-only launch --
+   defer music, same SFX for manual vs. worker-automated actions).
+2. **sound-designer + accessibility-specialist** (parallel): produced a
+   40-event catalogue (26 SFX/UI + 14 ambience) grounded in real code --
+   explicitly did NOT invent events for mechanics that don't exist (no
+   coin-tick sound, no worker-assign SFX since that UI doesn't exist yet).
+   Resolved the flagged batch-resolve voice-flood hazard concretely: a
+   12-event-per-tick threshold, chosen deliberately just above Sell All's
+   structural max of 9 crop types so no manual action ever misfires the
+   batch chime. Accessibility review found zero gaps (every audio-critical
+   event already has a visual/text fallback via this game's existing
+   `_push_event()` toast system) and specced the AccessibilitySheet audio
+   controls. Caught one real conflict between the two parallel outputs
+   (sound-designer's ambience detail sounds used random stereo panning,
+   which directly contradicted accessibility's conditional mono-audio
+   deferral) -- surfaced it explicitly rather than silently picking one;
+   user chose centered/non-panned, keeping the mono deferral valid.
+3. **technical-artist + godot-specialist** (parallel): technical-artist
+   designed a hand-rolled voice pool for the 3-voice-cap rule; godot-
+   specialist (required to check `docs/engine-reference/godot/` first per
+   this project's HIGH-knowledge-risk Godot 4.7.1 pin, then live-verify
+   against docs.godotengine.org/en/4.7/ since that reference directory
+   turned out to have ZERO audio coverage -- a real gap this pass
+   surfaced) found `AudioStreamPlayer.max_polyphony` already implements
+   the exact same steal-oldest rule natively, per-node, for free --
+   simpler than the hand-rolled pool. User picked the native approach.
+   Also confirmed: `default_bus_layout.tres` (editor-authored) over
+   runtime `add_bus()` (fragile -- an unrecognized bus name silently
+   falls back to Master with no error); `set_bus_volume_linear()` is the
+   correct live-slider API; Ogg loop points only support a loop-*begin*
+   offset, not a loop-end trim.
+4. **gameplay-programmer**: full implementation. This step stopped
+   mid-task and delivered a trivial "in-progress" note as its final
+   response THREE separate times before actually finishing -- each time
+   resumed via `SendMessage` with an increasingly directive push (verified
+   real progress on disk myself via `git status`/`git diff` between
+   resumes, rather than trusting a stalled agent's claims, and
+   re-prioritized remaining scope explicitly: AccessibilitySheet controls
+   first since that was untouched and user-decided, tabs/HUD wiring
+   second, full lower-value UI triggers explicitly OK to defer). Final
+   result: `AudioManager` (child of `VillageBoard`, matching the existing
+   no-autoload/single-owner convention already used for
+   `GameEconomy`/`AccessibilitySettings`), the full 40-event catalogue as
+   path STRINGS not `preload()`s (a `preload()` on a nonexistent file is a
+   hard parse error, and zero real `.ogg` files exist in this repo --
+   every play call is gated behind `ResourceLoader.exists()`, a
+   deliberate permanent-until-assets-land silent no-op), the batch-resolve
+   fix implemented via real before/after plot-state diffing in
+   `village_board.gd`'s growth-tick handler, and the 4-slider +
+   mute-all `AccessibilitySheet` audio card. Caught and fixed one real
+   bug along the way: the accessibility signal now fires on every
+   volume-slider drag tick, and the pre-existing code unconditionally
+   triggered a full 3D board rebuild on that signal -- would have
+   flicker-rebuilt the board on every frame of a slider drag; fixed by
+   gating the rebuild on the colorblind-safe field specifically changing.
+
+**Independently re-verified, not just trusted**: ran the full GUT suite
+myself after the agent's final report claimed 350/350 -- got the identical
+350/350, 1490/1490 asserts. Also read the two highest-risk files
+(`village_board.gd`'s diffing logic, `audio_manager.gd` itself) directly
+rather than taking the summary at face value -- both are well-reasoned,
+correctly handle real edge cases (a worker-skipped plot due to full
+storage doesn't get double-counted; ambience loops self-restart via their
+own `finished` signal rather than depending on an uncertain Godot 4.7
+loop-point API, sidestepping a real knowledge-risk gap entirely).
+
+Wrote `design/audio/audio-core-gameplay-loop.md` after explicit user
+approval (per the skill's file-write protocol). Updated the roadmap's
+Release Readiness checklist and M8 table row -- all 4 user-selected
+EPIC-M8 items (security, QA, accessibility, audio) are now done for this
+session's scope. `agroforestry_tab.gd`/`niche_farming_tab.gd` audio wiring
+(mechanically identical to the already-done `polyhouse_tab.gd`) and
+`ui_action_rejected` (needs a `GameEvent` design decision first) were
+explicitly left as follow-up, user-confirmed via `AskUserQuestion` rather
+than silently deferred.
+
+**EPIC-M8 is now complete for the scope the user selected.** Real audio
+ASSET files (the 40 `.ogg` files) still need to be sourced/composed --
+explicitly flagged as separate follow-up work, not done this pass by
+design (user chose "build the code now, source assets later" when asked).
+
 ## Next Step
 
-Accessibility pass is done (BLOCKING findings fixed; HIGH/MEDIUM/LOW/
-ADVISORY findings remain open for a future pass). Audio is the last of the
-4 EPIC-M8 items the user selected -- no music or SFX exist on either stack
-yet. Also worth an on-device visual check of this session's new gear
-button/settings sheet/harvest badge once an emulator is available again,
-before considering the accessibility remediation fully closed. Other
-reasonable directions, none decided:
-1. Style `WorkerAssignmentRow`/`open_field_tab.gd` to match this
+EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user
+selected (security, QA, accessibility, audio). Localization was
+explicitly not selected. Nothing is queued next -- reasonable directions,
+none decided:
+1. Source/compose the 40 real audio asset files per `design/audio/
+   audio-core-gameplay-loop.md`'s naming list and drop them at the
+   documented `res://assets/audio/{sfx,ambience}/` paths -- the code is
+   ready to receive them with zero further changes
+2. Wire the two deferred tabs (`agroforestry_tab.gd`/`niche_farming_tab.gd`)
+   -- small, mechanical, low-risk, explicitly deferred this pass
+3. An on-device visual/audio check once an emulator is available again --
+   nothing in this session's EPIC-M8 work (accessibility gear button/
+   settings sheet/harvest badge, nor the new audio system) has been
+   verified live on-device yet
+4. Style `WorkerAssignmentRow`/`open_field_tab.gd` to match this
    project's established ChunkyButton/StyleBoxFlat visual language --
    explicitly flagged as deferred polish, not done this session
-2. Balance the wage rate (15%, still explicitly unbalanced/proposed) via
+5. Balance the wage rate (15%, still explicitly unbalanced/proposed) via
    a real `/balance-check` pass
-3. The 5 still-open accessibility findings (HIGH: SAFFRON_DARK/FIELD_GREEN
+6. The 5 still-open accessibility findings (HIGH: SAFFRON_DARK/FIELD_GREEN
    button contrast, pinch-only zoom with no single-pointer alt, sub-18px
    body text floors, WorkerAssignmentRow's unstyled controls; MEDIUM:
    long-press-drag reposition with no tap alternative)
+7. A wholly new epic or direction, per user request -- M0 through M8 (all
+   4 selected items) are now complete for this session's scope

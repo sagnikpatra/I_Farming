@@ -45,9 +45,29 @@ isn't lost between sessions. EPIC-M8 ("Post-Migration Hardening") maps
 directly to this checklist's engineering-side items — store readiness
 stays the owner's regardless of how much of this list gets done.
 
-- [ ] Audio: no music or sound effects exist on either stack. Needs an
-      audio-direction pass (`/team-audio`) — sourcing/composing CC0 or
-      licensed music + SFX, then wiring `AudioStreamPlayer` nodes.
+- [x] Audio — `/team-audio` full pipeline run 2026-08-21, scoped to the
+      core gameplay loop (village board + HUD): audio-director (ambient/
+      nature-only soundscape, no melodic music track this pass — sidesteps
+      the real licensing gap for authentic regional-instrument samples,
+      fits a semi-idle loop better than a wearing-thin melody loop would),
+      sound-designer (40-event catalogue: 26 SFX/UI + 14 ambience, the
+      batch-resolve voice-flood hazard resolved via a 12-event threshold),
+      accessibility-specialist (4-slider + mute-all `AccessibilitySheet`
+      controls, confirmed no audio-only critical signal exists), technical-
+      artist + godot-specialist (native `AudioStreamPlayer.max_polyphony`
+      voice-limiting instead of a hand-rolled pool; `default_bus_layout.tres`
+      not runtime `add_bus()`; verified against live Godot 4.7 docs since
+      this project's own engine-reference has zero audio coverage — a real
+      gap this pass surfaced), gameplay-programmer (full implementation).
+      **Code complete and tested — 350/350 GUT passing** (independently
+      re-verified, not just trusted). **Zero real audio asset files exist
+      yet** — every catalogued path is a `ResourceLoader.exists()`-gated
+      no-op until real `.ogg` files are dropped in; sourcing/composing them
+      is a separate follow-up task. `agroforestry_tab.gd`/
+      `niche_farming_tab.gd` wiring (mechanically identical to the done
+      `polyhouse_tab.gd`) and `ui_action_rejected` (needs a `GameEvent`
+      design decision first) explicitly deferred, not silently skipped.
+      Design doc: `design/audio/audio-core-gameplay-loop.md`.
 - [x] QA pass — done 2026-08-21: `/smoke-check` run against the Godot
       build (adapted for this project having no formal `production/
       sprints/`/story-file structure — scoped to "the whole godot/
@@ -149,7 +169,7 @@ Assets: 627 `.obj`/`.mtl` across 4 Kenney kits (13 MB), 31 bundled. **No rigged/
 | M5 — Migration Parity Verification & Cutover | QA/Release | 1.5 wk | M1-M4 | **Complete — cutover decided 2026-08-21, see above** |
 | M6 — Villager Asset Pipeline & Ambient Roaming | Feature | 2–2.5 wk | M1, M2 (gated: villager GDD, CC0 rigged characters) | **Complete** — all 6 characters live in-game with visual variety, measured with no detectable perf cost at the population cap (emulator; real-hardware/formal-budget work stays open project-wide, see below) |
 | M7 — Worker Assignment & Wage Economy | Feature | 1.5–2 wk | M6, M2, M4 (gated: balance pass) | **Complete** — design, economy backend, visual stationing, and assignment UI all built, tested (327/327), and verified live via real touch input — see below |
-| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | **In progress** — security audit, QA/smoke pass, and accessibility (4 BLOCKING findings fixed) all done (see "Release Readiness" above); audio not started |
+| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | **All 4 selected items done** — security audit, QA/smoke pass, accessibility (4 BLOCKING findings fixed), and audio (`/team-audio` core-gameplay-loop pass, code complete, real asset sourcing still open) — see "Release Readiness" above. Localization was not selected. Store readiness remains the owner's own step. |
 
 **Re-baselined estimate**: 10–13 weeks to parity (M0–M5), +3.5–4.5 weeks for villagers/workers (M6–M7), +1 week hardening (M8). Total 14.5–18.5 weeks — higher than ADR-0001's original 8–14 week estimate, mainly due to the character-asset gap and the test-suite work the ADR's own risk analysis requires but didn't budget. Re-baseline again after M0 and after M2.
 

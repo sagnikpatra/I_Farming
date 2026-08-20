@@ -184,6 +184,8 @@ func _build_row(row_data: Dictionary) -> Button:
 
 func _on_host_pressed(host: int) -> void:
 	_economy.plant_host(_plot_id, host)
+	if _economy.dirty:
+		_play_audio(&"economy_purchase_small")
 	_bottom_sheet.close()
 	_village_board.persist_and_rebuild_if_dirty()
 
@@ -191,8 +193,16 @@ func _on_host_pressed(host: int) -> void:
 func _on_sandalwood_pressed() -> void:
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_economy.plant_sandalwood(_plot_id, now)
+	if _economy.dirty:
+		_play_audio(&"economy_plant")
 	_bottom_sheet.close()
 	_village_board.persist_and_rebuild_if_dirty()
+
+
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:

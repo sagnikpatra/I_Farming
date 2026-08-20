@@ -185,9 +185,21 @@ func _on_terminal_pressed() -> void:
 
 
 func _on_sell_pressed(crop: int) -> void:
+	var tier_before: int = _economy.state.event_claimed_tier
 	_economy.sell_to_mandi(crop, _now())
+	if _economy.dirty:
+		_play_audio(&"economy_sell")
+		var tier_after: int = _economy.state.event_claimed_tier
+		for _i in range(tier_after - tier_before):
+			_play_audio(&"liveops_festival_tier_reward")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
+
+
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 # ---------------------------------------------------------------------------

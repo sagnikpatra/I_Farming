@@ -18,3 +18,11 @@ local.properties
 .claude/settings.local.json
 CLAUDE.local.md
 production/session-logs/
+
+# === assets_3d/ (source Kenney kits, not a Godot project of its own) ===
+# godot/.gitignore already covers the real Godot project's .import/ cache;
+# this guards the *source* asset tree specifically, in case a Godot editor
+# ever gets pointed at assets_3d/ directly instead of godot/ (this happened
+# once already — 634 stray *.import files were committed-tree-adjacent
+# cruft here, cleaned up 2026-08-20).
+assets_3d/**/*.import

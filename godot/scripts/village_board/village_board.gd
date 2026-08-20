@@ -94,6 +94,7 @@ const PLOT_READY_TINT := Color(0.95, 0.75, 0.20)
 const WATER_TINT_MULTIPLIER := Color(0.55, 0.80, 0.90)
 
 @onready var _static_layer: Node3D = $StaticLayer
+@onready var _actor_layer: Node3D = $ActorLayer
 @onready var _camera_rig: CameraRig = $CameraRig
 @onready var _growth_tick_timer: Timer = $GrowthTickTimer
 
@@ -112,6 +113,18 @@ var _decoration_nodes_by_id: Dictionary = {}
 ## Owns the economy/save lifecycle for the whole board (see class doc) --
 ## no autoload, no other node touches this.
 var _economy: GameEconomy
+
+## EPIC-M6 ambient villagers (design/gdd/villagers.md). Lives in
+## ActorLayer, same as every VillagerRoamer it spawns -- untouched by
+## StaticLayer's rebuild(). _last_synced_walkable_signature starts empty,
+## which no real signature ever equals (there's always at least the
+## board's margin tiles), so it reliably forces the first sync.
+var _villager_spawner: VillagerSpawner
+var _last_synced_walkable_signature: String = ""
+## EPIC-M7: PlotKind.Kind ordinal (int) -> WorkerStation. See
+## _sync_worker_stations().
+var _worker_stations_by_plot_kind: Dictionary = {}
+const WORKER_STATION_SCENE: PackedScene = preload("res://scenes/village_board/worker_station.tscn")
 
 
 func _ready() -> void:
@@ -138,6 +151,9 @@ func _ready() -> void:
 	else:
 		print("VillageBoard: overlap check passed -- %d zones, no footprint collisions." % zones.size())
 	rebuild(zones)
+
+	_villager_spawner = VillagerSpawner.new(_actor_layer, GRID_COLS, GRID_ROWS, TILE_SIZE)
+	_sync_villagers_if_needed()
 
 	_growth_tick_timer.timeout.connect(_on_growth_tick_timeout)
 
@@ -907,6 +923,14 @@ func try_commit_zone_move(zone_id: String, target_col: int, target_row: int) -> 
 		if _economy.dirty:
 			SaveSystem.save_state(_economy.state)
 			_economy.dirty = false
+		# EPIC-M6: a zone move changes WHICH tiles are reserved without
+		# necessarily changing villager_count() -- persist_and_rebuild_if_dirty()
+		# never runs for this path (dirty is cleared right above, so even a
+		# later growth tick wouldn't catch it), so this is the only place
+		# that can resync roaming villagers away from a spot they might now
+		# be standing inside. See _sync_villagers_if_needed()'s own doc
+		# comment for the walkable-tile-signature check this relies on.
+		_sync_villagers_if_needed()
 	_reposition_zone_group(zone_node, _zone_center_world(zone))
 	return fits
 
@@ -964,6 +988,22 @@ func get_economy() -> GameEconomy:
 	return _economy
 
 
+## Minimal read-only accessor, same rationale as get_economy() above --
+## lets tests observe the EPIC-M6 villager population without a
+## tree-shape-coupled path of their own (VillagerSpawner isn't a scene
+## node, so there's nothing to $-reach here the way get_board_interactor()
+## does).
+func get_villager_spawner() -> VillagerSpawner:
+	return _villager_spawner
+
+
+## Minimal read-only accessor, same rationale as get_villager_spawner()
+## above -- lets tests observe EPIC-M7's stationed workers without a
+## tree-shape-coupled path of their own.
+func get_worker_station(plot_kind: int) -> WorkerStation:
+	return _worker_stations_by_plot_kind.get(plot_kind, null)
+
+
 ## Minimal read-only accessor, same rationale as get_economy() above -- lets
 ## hud.gd reach BoardInteractor (to arm decoration placement) without a
 ## fragile tree-shape-coupled get_node() path of its own, matching
@@ -993,6 +1033,11 @@ func get_camera_rig() -> CameraRig:
 func _on_growth_tick_timeout() -> void:
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_economy.resolve_growth_completions(now)
+	# EPIC-M7: must run after resolve_growth_completions() above so a plot
+	# that just finished growing this same tick is already ReadyToHarvest
+	# and eligible for its zone's worker, not delayed a full extra cycle --
+	# see resolve_worker_actions()'s own doc comment.
+	_economy.resolve_worker_actions(now)
 	persist_and_rebuild_if_dirty()
 
 
@@ -1012,3 +1057,106 @@ func persist_and_rebuild_if_dirty(preserve_camera: bool = true) -> void:
 	SaveSystem.save_state(_economy.state)
 	_economy.dirty = false
 	rebuild(VillageSnapshotMapper.build(_economy.state), preserve_camera)
+	_sync_villagers_if_needed()
+
+
+## EPIC-M6: resyncs the villager population only when the board's walkable
+## area OR the worker-assignment set actually changed -- either
+## villager_count() changed (a new structure zone was just unlocked), a
+## zone moved to different tiles (dragged, via try_commit_zone_move()
+## above), or a worker was assigned/unassigned (EPIC-M7) -- not on every
+## rebuild(). rebuild() runs on every dirty GameState change, including a
+## routine 3s growth tick, and none of the population formula, a
+## villager's walk target, or worker stationing should churn on that.
+## Comparing the full walkable-tile signature (not just villager_count())
+## is what closes a previously-flagged gap: a zone move alone doesn't
+## change villager_count() but DOES change which tiles are reserved, so an
+## in-flight villager's walk target could go stale without this. Appending
+## the worker-assignment signature closes the equivalent EPIC-M7 gap: an
+## assignment changes how many villagers should be roaming vs. stationed
+## without necessarily changing the walkable-tile set at all. See
+## try_commit_zone_move()'s own comment for why this must also be called
+## directly from there, not just from persist_and_rebuild_if_dirty().
+func _sync_villagers_if_needed() -> void:
+	var grid := VillageSnapshotMapper.build_walkable_grid(_economy.state, GRID_COLS, GRID_ROWS)
+	var signature := _walkable_tiles_signature(grid) + "|workers:" + _worker_assignment_signature()
+	if signature == _last_synced_walkable_signature:
+		return
+	_villager_spawner.sync(_economy.state)
+	_sync_worker_stations()
+	_last_synced_walkable_signature = signature
+
+
+## Deterministic string key for a WalkableGrid's current walkable-tile set
+## -- cheap enough to build every dirty-state check (the board is 10x12 =
+## 120 tiles at most) and simpler than exposing WalkableGrid's internal
+## reserved Dictionary just for comparison.
+func _walkable_tiles_signature(grid: WalkableGrid) -> String:
+	var tiles := grid.get_walkable_tiles()
+	var parts: PackedStringArray = []
+	for tile in tiles:
+		parts.append("%d,%d" % [tile.x, tile.y])
+	parts.sort()
+	return ",".join(parts)
+
+
+## EPIC-M7: deterministic string key for the current set of assigned plot
+## kinds -- same rationale as _walkable_tiles_signature() above. Only the
+## *set* of assigned plot kinds is tracked here (not which character each
+## one uses), since a character-key change on an existing assignment still
+## goes through assign_worker() -> _mark_dirty(), and the actual station
+## rendering always reads the live WorkerAssignment fresh in
+## _sync_worker_stations() below regardless of what triggered the resync.
+func _worker_assignment_signature() -> String:
+	var keys: Array = _economy.state.worker_assignments.keys()
+	keys.sort()
+	var parts: PackedStringArray = []
+	for key in keys:
+		parts.append(str(key))
+	return ",".join(parts)
+
+
+## EPIC-M7: rebuilds every WorkerStation from GameState.worker_assignments
+## -- the "called" half of design/gdd/villagers.md §3.6. Torn down and
+## respawned fresh each call, same "simplicity over preserving identity
+## across a resync" rationale VillagerSpawner.sync() already uses.
+func _sync_worker_stations() -> void:
+	for station in _worker_stations_by_plot_kind.values():
+		if is_instance_valid(station):
+			station.queue_free()
+	_worker_stations_by_plot_kind.clear()
+
+	for plot_kind: int in _economy.state.worker_assignments.keys():
+		var assignment: WorkerAssignment = _economy.state.worker_assignments[plot_kind]
+		var zone_id := _zone_id_for_plot_kind(plot_kind)
+		if zone_id.is_empty():
+			continue
+		var zone: ZoneFixture = _zones_by_id.get(zone_id)
+		if zone == null:
+			continue
+		var station := WORKER_STATION_SCENE.instantiate() as WorkerStation
+		_actor_layer.add_child(station)
+		station.setup(_zone_center_world(zone), assignment.character_key)
+		_worker_stations_by_plot_kind[plot_kind] = station
+
+
+## Translates the economy layer's own PlotKind.Kind vocabulary into this
+## board layer's zone-id strings, only where a board-side concept (a
+## zone's world position) is actually needed -- see game_economy.gd's
+## worker-economy section for why GameEconomy itself must never do this
+## translation (Foundation layer must not depend on Presentation layer).
+## Returns "" for AGROFORESTRY (never worker-eligible, see
+## GameEconomy._WORKER_ELIGIBLE_PLOT_KINDS) and FARMHOUSE/MANDI (own no
+## plots, so have no PlotKind mapping at all).
+func _zone_id_for_plot_kind(plot_kind: int) -> String:
+	match plot_kind:
+		PlotKind.Kind.OPEN_FIELD:
+			return VillageSnapshotMapper.ZONE_ID_OPEN_FIELD
+		PlotKind.Kind.POLYHOUSE:
+			return VillageSnapshotMapper.ZONE_ID_POLYHOUSE
+		PlotKind.Kind.AQUACULTURE:
+			return VillageSnapshotMapper.ZONE_ID_AQUACULTURE
+		PlotKind.Kind.VERTICAL_FARM:
+			return VillageSnapshotMapper.ZONE_ID_VERTICAL_FARM
+		_:
+			return ""

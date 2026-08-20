@@ -71,6 +71,11 @@ func _populate() -> void:
 		return
 	_body.add_child(_build_upgrades_row(data))
 
+	# EPIC-M7: worker assignment, only meaningful once the zone exists.
+	var worker_row := WorkerAssignmentRow.new()
+	worker_row.configure(_economy, _village_board, PlotKind.Kind.POLYHOUSE)
+	_body.add_child(worker_row)
+
 
 func _now() -> int:
 	return int(Time.get_unix_time_from_system() * 1000.0)

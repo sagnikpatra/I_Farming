@@ -62,6 +62,11 @@ extends Resource
 ## Simple auto-incrementing id source for new decorations, mirrors how plot
 ## ids already work.
 @export var next_decoration_id: int = 0
+## EPIC-M7: PlotKind.Kind ordinal (int) -> WorkerAssignment. A plot kind
+## with no entry has no assigned worker -- its villager (if any) stays in
+## EPIC-M6's ambient-roaming population instead. See
+## design/gdd/worker-economy.md and game_economy.gd's assign_worker().
+@export var worker_assignments: Dictionary = {}
 
 
 func _init() -> void:

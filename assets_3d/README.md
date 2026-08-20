@@ -63,6 +63,45 @@ Kenney kit (worth another sourcing pass) or a simple hand-built primitive
 (a translucent box for the polyhouse, a flat blue plane + `fence`/`bridge`
 pieces already in `nature-kit` for a pond) rather than a found asset.
 
+## Rigged characters (`kaykit-adventurers/`) — EPIC-M6
+
+The four Kenney kits above are static/unrigged (fine for structures and
+decorations, but no `.obj` kit has skeleton or animation data — `.obj` has
+none by format design). EPIC-M6 (villagers) needed a genuinely different
+pipeline: **glTF/GLB with a real `Skeleton3D` + `AnimationPlayer`**, sourced
+2026-08-21 from **Kay Lousberg**'s `KayKit — Character Pack: Adventurers`
+(Free tier, <https://kaylousberg.itch.io/kaykit-adventurers>), also
+**CC0 1.0** (same license terms as the Kenney kits above; `License.txt` kept
+alongside as the record). Kept here as source-format prep, same as the other
+kits — the curated glTF subset actually used by the Godot project lives at
+`godot/assets_3d/kaykit-adventurers/`.
+
+Trimmed from the ~12MB free-tier download to the glTF-format subset only
+(dropping the bundled FBX/OBJ/Unity duplicates and preview renders), ~4.6MB:
+
+| Folder | Contents |
+|---|---|
+| `KayKit_Adventurers_2.0_FREE/Characters/gltf/` | 6 rigged character `.glb` files (Barbarian, Knight, Mage, Ranger, Rogue, Rogue_Hooded) — 23-bone `Skeleton3D` named `Rig_Medium`, embedded textures |
+| `KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/` | 2 animation-library `.glb` files sharing the same `Rig_Medium` skeleton — `Rig_Medium_MovementBasic.glb` has the roaming-relevant clips: `Walking_A/B/C`, `Running_A/B`, `Jump_*`, `T-Pose`; `Rig_Medium_General.glb` has more (not yet inspected) |
+| `KayKit_Adventurers_2.0_FREE/Assets/gltf/` | 25+ accessory/weapon `.gltf` files (swords, bows, staves, etc.) — fantasy-themed, not obviously farm-appropriate; kept in case a prop (e.g. `staff` → farming tool reskin) proves useful, otherwise unused |
+
+**Verified 2026-08-21** against the project's pinned Godot 4.7.1
+(`E:\Godot\Godot_v4.7.1-stable_win64.exe`): all 6 character `.glb` + 2
+animation `.glb` files import clean with zero errors via a headless editor
+pass (`--headless --editor --quit-after 20`). A one-shot inspection script
+confirmed `Barbarian.glb` produces `Skeleton3D` (23 bones) with mesh parts
+parented correctly, and `Rig_Medium_MovementBasic.glb` produces a real
+`AnimationPlayer` with the clip list above — the script was temporary and
+has been deleted after confirming this.
+
+**Not yet done**: retargeting the shared animation library onto each
+character's own `AnimationPlayer` (or building a shared rig scene the
+villager system instantiates per-NPC), any Indian-village-appropriate
+material/palette pass (these read as generic fantasy-adventurer low-poly,
+same toon-shading technique used elsewhere in the project should unify the
+look), and the actual roaming/pathfinding behavior — all EPIC-M6 scope, not
+started.
+
 ## Not yet done (Part 3 proper)
 
 This is asset acquisition only. None of this is wired into the LibGDX

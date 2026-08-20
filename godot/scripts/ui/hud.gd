@@ -69,6 +69,7 @@ extends CanvasLayer
 
 const EventsTabScene := preload("res://scenes/ui/events_tab.tscn")
 const DecorationPickerScene := preload("res://scenes/ui/decoration_picker.tscn")
+const OpenFieldTabScene := preload("res://scenes/ui/open_field_tab.tscn")
 
 const HUD_MARGIN: int = 16
 ## Fixed status-bar clearance approximation -- real safe-area-aware insets
@@ -90,6 +91,8 @@ const GOLD_LIGHT := Color("#FFE082")
 const RIPE_GOLD := Color("#FFC107")
 const SAFFRON_DARK := Color("#C56A00")
 const LEVEL_BADGE_BLUE := Color("#1976D2")
+## Ported verbatim, same value polyhouse_tab.gd's own copy already uses.
+const FIELD_GREEN := Color("#4CAF50")
 ## Matches OutlinedTitle's `Color.Black.copy(alpha = 0.7f)` exactly -- see
 ## FarmScreen.kt. OutlinedTitle is actually implemented as a text drop
 ## shadow, not a true stroke outline, despite the name -- mirrored here via
@@ -112,6 +115,7 @@ var _inventory_row: HBoxContainer
 var _liveops_banner: Button
 var _sell_all_button: Button
 var _shop_button: Button
+var _open_field_workers_button: Button
 
 
 func _ready() -> void:
@@ -246,6 +250,20 @@ func _on_liveops_banner_pressed() -> void:
 	_bottom_sheet.open(tab)
 
 
+## EPIC-M7: the only reachable path to Open Field's worker-assignment row
+## -- see _build_bottom_left_panel()'s own comment on why Open Field has
+## no zone-tap route to _maybe_open_zone_sheet().
+func _on_open_field_workers_pressed() -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
+	var tab: OpenFieldTab = OpenFieldTabScene.instantiate()
+	tab.configure(economy, _village_board)
+	_bottom_sheet.open(tab)
+
+
 ## Opens the real DecorationPicker (EPIC-M4 slice 3) -- was a placeholder
 ## "coming soon" stub in EPIC-M4 slice 1, per that slice's own class doc.
 func _on_shop_pressed() -> void:
@@ -370,6 +388,18 @@ func _build_bottom_left_panel() -> void:
 	_sell_all_button = _make_chunky_button("Sell All", SAFFRON_DARK)
 	_sell_all_button.pressed.connect(_on_sell_all_pressed)
 	_bottom_left_panel.add_child(_sell_all_button)
+
+	# EPIC-M7: Open Field is the one worker-eligible zone with no zone-level
+	# tap target of its own (has_building=false -- see village_board.gd's
+	# _build_zone(), only plots are pickable there), so it can never reach
+	# _maybe_open_zone_sheet(). This button is the only way to reach its
+	# worker-assignment row (worker_assignment_row.gd) -- Polyhouse and
+	# Aquaculture/Vertical Farm already embed the same row inside their own
+	# real zone-tap sheets (polyhouse_tab.gd/niche_farming_tab.gd) and don't
+	# need this.
+	_open_field_workers_button = _make_chunky_button("🌾 Field Worker", FIELD_GREEN)
+	_open_field_workers_button.pressed.connect(_on_open_field_workers_pressed)
+	_bottom_left_panel.add_child(_open_field_workers_button)
 
 
 func _build_bottom_right_shop() -> void:

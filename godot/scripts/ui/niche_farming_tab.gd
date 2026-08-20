@@ -66,6 +66,11 @@ func _populate() -> void:
 			),
 			"Excavate for ₹%d" % data["aquaculture_cost"], _on_build_aquaculture_pressed
 		))
+	else:
+		# EPIC-M7: worker assignment, only meaningful once the zone exists.
+		var aquaculture_worker_row := WorkerAssignmentRow.new()
+		aquaculture_worker_row.configure(_economy, _village_board, PlotKind.Kind.AQUACULTURE)
+		_body.add_child(aquaculture_worker_row)
 
 	_body.add_child(HSeparator.new())
 
@@ -83,6 +88,10 @@ func _populate() -> void:
 		))
 	else:
 		_body.add_child(_build_electricity_chip(data))
+		# EPIC-M7: worker assignment, only meaningful once the zone exists.
+		var vertical_farm_worker_row := WorkerAssignmentRow.new()
+		vertical_farm_worker_row.configure(_economy, _village_board, PlotKind.Kind.VERTICAL_FARM)
+		_body.add_child(vertical_farm_worker_row)
 
 
 func _now() -> int:

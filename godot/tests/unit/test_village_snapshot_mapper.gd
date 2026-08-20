@@ -380,3 +380,192 @@ func test_zone_fits_allows_a_drag_to_open_ground_far_from_any_zone() -> void:
 	# header: "max column used is 8, max row used is 8") -- genuinely clear
 	# of every zone's max-reserved footprint, in-bounds for a 2x2 zone.
 	assert_true(board._zone_fits(farmhouse, 8, 10))
+
+
+# --- 13. build_walkable_grid() -- EPIC-M6 roaming's GameState integration ----------
+
+const GRID_COLS: int = 10
+const GRID_ROWS: int = 12
+
+
+func test_build_walkable_grid_marks_documented_margin_as_walkable() -> void:
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	# Same margin tile test_zone_fits_allows_a_drag_to_open_ground... already
+	# relies on being genuinely clear of every zone's max-reserved footprint.
+	assert_true(grid.is_walkable(Vector2i(9, 10)))
+
+
+func test_build_walkable_grid_marks_farmhouse_footprint_as_unwalkable() -> void:
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	assert_false(grid.is_walkable(Vector2i(0, 0)))
+	assert_false(grid.is_walkable(Vector2i(1, 1)))
+
+
+func test_build_walkable_grid_reserves_a_not_yet_unlocked_zones_future_footprint() -> void:
+	# has_agroforestry is still false -- deliberately conservative policy
+	# (see build_walkable_grid()'s doc comment): reserve every zone's
+	# maximum footprint regardless of unlock state, same as the drag
+	# validation this reuses.
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	assert_false(grid.is_walkable(Vector2i(1, 7)))  # the exact tile the real overlap bug involved
+
+
+func test_build_walkable_grid_reserves_a_placed_decorations_tile() -> void:
+	eco.place_decoration(DecorationType.Kind.LANTERN, 9.0, 9.0)
+
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	assert_false(grid.is_walkable(Vector2i(9, 9)))
+
+
+func test_build_walkable_grid_follows_a_custom_zone_anchor() -> void:
+	eco.state.zone_layout["polyhouse"] = ZoneAnchor.new(9.0, 9.0)
+
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	# Default Polyhouse anchor (6,0) should be clear now that it moved...
+	assert_true(grid.is_walkable(Vector2i(6, 0)))
+	# ...and the new position should be reserved instead.
+	assert_false(grid.is_walkable(Vector2i(9, 9)))
+
+
+# --- 14. villager_count() -- design/gdd/villagers.md §4's population formula ------
+
+func test_unlocked_zone_count_is_two_with_only_farmhouse_and_mandi() -> void:
+	assert_eq(VillageSnapshotMapper.unlocked_zone_count(eco.state), 2)
+
+
+func test_unlocked_zone_count_increases_per_structure_unlocked() -> void:
+	eco.buy_polyhouse()
+	assert_eq(VillageSnapshotMapper.unlocked_zone_count(eco.state), 3)
+
+	eco.buy_aquaculture()
+	assert_eq(VillageSnapshotMapper.unlocked_zone_count(eco.state), 4)
+
+
+func test_villager_count_is_two_at_the_floor() -> void:
+	# unlockedZoneCount=2 -> clamp(2 + floor(2*0.75), 2, 6) = clamp(3, 2, 6) = 3
+	assert_eq(VillageSnapshotMapper.villager_count(eco.state), 3)
+
+
+func test_villager_count_is_clamped_to_six_at_the_ceiling() -> void:
+	eco.buy_polyhouse()
+	eco.buy_aquaculture()
+	eco.buy_vertical_farm()
+	eco.buy_agroforestry()
+
+	# unlockedZoneCount=6 -> clamp(2 + floor(6*0.75), 2, 6) = clamp(6, 2, 6) = 6
+	assert_eq(VillageSnapshotMapper.villager_count(eco.state), 6)
+
+
+# --- 15. try_commit_zone_move() resyncs villagers -- EPIC-M6 stale-walk-target fix -
+
+## A zone move changes which tiles are reserved without necessarily
+## changing villager_count() -- try_commit_zone_move() must resync the
+## villager population itself (not rely on persist_and_rebuild_if_dirty(),
+## which never runs for this path -- see that method's own comment) or an
+## already-spawned villager's walk target could go stale. This test uses
+## the board's own internally-loaded economy (via its _ready() ->
+## SaveSystem.load_state()), not this file's `eco` -- so it deliberately
+## doesn't assert an exact starting population size, only that a
+## successful move produces a genuinely different set of villager
+## instances, whatever the starting state was.
+func test_try_commit_zone_move_resyncs_villagers_on_a_successful_move() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+
+	# Normalize to Farmhouse's own documented default anchor first. This
+	# test persists to the real user://save.tres via try_commit_zone_move()
+	# (the board's own _ready() loads from there too) -- without this, a
+	# PRIOR run of this same test could leave Farmhouse already at the
+	# target position below, making the real move a same-position no-op
+	# and the resync assertion a flaky false negative (caught exactly this
+	# way on a second consecutive run, 2026-08-21).
+	board.try_commit_zone_move("farmhouse", 0, 0)
+
+	var spawner := board.get_villager_spawner()
+	var before := spawner.get_roamers()
+	assert_false(before.is_empty(), "expected at least one villager on a fresh board load")
+
+	# Col 9 / row 10 is documented margin, genuinely clear of every zone's
+	# max-reserved footprint (see test_zone_fits_allows_a_drag_to_open_ground...
+	# above) -- guaranteed a real, different position after the normalize above.
+	var moved := board.try_commit_zone_move("farmhouse", 8, 10)
+
+	assert_true(moved)
+	var after := spawner.get_roamers()
+	assert_false(after.is_empty())
+	assert_ne(after[0], before[0], "a successful zone move should resync villagers, not leave stale instances")
+
+
+# --- 16. Worker stations -- EPIC-M7 visual stationing, the "called" half of ------
+# --- villagers.md §3.6 -----------------------------------------------------------
+
+## OPEN_FIELD is used throughout this section (not Polyhouse/Aquaculture/
+## Vertical Farm) specifically because it's always unlocked -- these tests
+## drive the board's own internally-loaded economy (via SaveSystem, same
+## real-save-file coupling test_try_commit_zone_move_resyncs_villagers...
+## above already accepts), so a plot kind that needs no purchase first
+## keeps this section's assertions independent of ambient save state.
+
+func test_assigning_a_worker_creates_a_worker_station() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	var eco := board.get_economy()
+
+	eco.assign_worker(PlotKind.Kind.OPEN_FIELD, "ranger")
+	board.persist_and_rebuild_if_dirty()
+
+	var station := board.get_worker_station(PlotKind.Kind.OPEN_FIELD)
+	assert_not_null(station)
+	assert_not_null(station.get_villager())
+
+
+func test_worker_station_is_positioned_away_from_the_scene_origin() -> void:
+	# Weak but meaningful sanity check: Vector3.ZERO would mean setup()
+	# was never actually called with a real zone-center position -- the
+	# open_field zone's default anchor (2,0) is not centered on the
+	# board's origin, so a correctly-wired station must not sit at (0,0,0).
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	var eco := board.get_economy()
+
+	eco.assign_worker(PlotKind.Kind.OPEN_FIELD, "ranger")
+	board.persist_and_rebuild_if_dirty()
+
+	var station := board.get_worker_station(PlotKind.Kind.OPEN_FIELD)
+	assert_ne(station.position, Vector3.ZERO)
+
+
+func test_unassigning_a_worker_removes_its_worker_station() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	var eco := board.get_economy()
+	eco.assign_worker(PlotKind.Kind.OPEN_FIELD, "ranger")
+	board.persist_and_rebuild_if_dirty()
+	assert_not_null(board.get_worker_station(PlotKind.Kind.OPEN_FIELD))
+
+	eco.unassign_worker(PlotKind.Kind.OPEN_FIELD)
+	board.persist_and_rebuild_if_dirty()
+
+	assert_null(board.get_worker_station(PlotKind.Kind.OPEN_FIELD))
+
+
+func test_no_worker_station_exists_for_an_unassigned_plot_kind() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	# Defensively normalize first: this test drives the board's own
+	# SaveSystem-loaded economy, and a PRIOR test in this section could
+	# have left a real, persisted OPEN_FIELD assignment on disk -- without
+	# this, that leftover state would make this "nothing assigned" test a
+	# flaky false negative depending on run history, same class of bug
+	# already caught once this session (see
+	# test_try_commit_zone_move_resyncs_villagers_on_a_successful_move's
+	# own comment).
+	board.get_economy().unassign_worker(PlotKind.Kind.OPEN_FIELD)
+	board.persist_and_rebuild_if_dirty()
+
+	assert_null(board.get_worker_station(PlotKind.Kind.OPEN_FIELD))

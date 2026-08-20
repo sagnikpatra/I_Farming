@@ -447,6 +447,151 @@ func resolve_growth_completions(now: int) -> void:
 		_mark_dirty()
 
 
+# --- EPIC-M7: Worker assignment & automation --------------------------------
+#
+# design/gdd/worker-economy.md, confirmed 2026-08-21. A worker automates one
+# plot kind's harvest-and-replant cycle in exchange for a wage, resolved
+# lazily (same pattern as resolve_growth_completions() above, called right
+# after it -- see village_board.gd's _on_growth_tick_timeout()) so offline
+# automation "just works" without a background service, exactly like
+# ordinary crop growth already does.
+#
+# Keyed by PlotKind.Kind, not the village-board layer's zone-id strings:
+# GameEconomy is Foundation-layer and must not depend on village_board
+# scripts (Presentation layer) -- PlotKind is already this layer's own
+# "which zone" vocabulary (see _plots_of_kind()-style groupings elsewhere in
+# this file), so no new cross-layer dependency is introduced. Translating
+# between a board zone-id and a PlotKind, if ever needed, is the caller's
+# job (e.g. future UI code), not this file's.
+#
+# AGROFORESTRY is deliberately excluded from worker eligibility: Sandalwood
+# planting goes through plant_host()/plant_sandalwood()'s adjacency-puzzle
+# entry point, not plant_seed() -- there is no "replant the same crop"
+# concept to automate there. Not a gap; a scope boundary, not currently
+# revisited by the GDD.
+
+const _WORKER_ELIGIBLE_PLOT_KINDS: Array[PlotKind.Kind] = [
+	PlotKind.Kind.OPEN_FIELD,
+	PlotKind.Kind.POLYHOUSE,
+	PlotKind.Kind.AQUACULTURE,
+	PlotKind.Kind.VERTICAL_FARM,
+]
+
+## design/gdd/worker-economy.md §4: 15% of the harvested crop's base sell
+## value, min ₹1. Explicitly flagged in the GDD as proposed/unbalanced --
+## needs a /balance-check pass with real data before treating as final,
+## same as land-and-structures.md's own formulas shipped unverified.
+const WORKER_WAGE_RATE: float = 0.15
+
+
+func is_plot_kind_worker_eligible(plot_kind: PlotKind.Kind) -> bool:
+	return _WORKER_ELIGIBLE_PLOT_KINDS.has(plot_kind)
+
+
+## Assigns character_key as plot_kind's worker, replacing any existing
+## assignment for that plot kind. Silently no-ops for a non-eligible plot
+## kind (AGROFORESTRY, or any future addition) or for a zone the player
+## hasn't unlocked yet -- matches this file's existing style of
+## silent-no-op on an invalid action (see plant_seed()'s guard clauses
+## above) so callers don't need to pre-validate before calling. Found and
+## fixed while writing this feature's own tests, not a design question --
+## assigning a worker to a zone that doesn't exist yet is an obvious bug,
+## not an open edge case.
+func assign_worker(plot_kind: PlotKind.Kind, character_key: String) -> void:
+	if not is_plot_kind_worker_eligible(plot_kind):
+		return
+	if not _is_plot_kind_unlocked(plot_kind):
+		return
+	state.worker_assignments[plot_kind] = WorkerAssignment.new(plot_kind, character_key)
+	_mark_dirty()
+
+
+## OPEN_FIELD has no unlock flag -- it's available from the start of the
+## game. The other 3 worker-eligible plot kinds each gate behind their own
+## structure's has_* flag (land-and-structures.md §2.3).
+func _is_plot_kind_unlocked(plot_kind: PlotKind.Kind) -> bool:
+	match plot_kind:
+		PlotKind.Kind.OPEN_FIELD:
+			return true
+		PlotKind.Kind.POLYHOUSE:
+			return state.has_polyhouse
+		PlotKind.Kind.AQUACULTURE:
+			return state.has_aquaculture
+		PlotKind.Kind.VERTICAL_FARM:
+			return state.has_vertical_farm
+		_:
+			return false
+
+
+## Returns the assigned villager to EPIC-M6's ambient-roaming population
+## (per design/gdd/villagers.md §3.6, confirmed 2026-08-21) -- the actual
+## roaming hand-off is village_board.gd/VillagerSpawner's job, not this
+## economy-layer method's; this only clears the persisted assignment.
+func unassign_worker(plot_kind: PlotKind.Kind) -> void:
+	if not state.worker_assignments.has(plot_kind):
+		return
+	state.worker_assignments.erase(plot_kind)
+	_mark_dirty()
+
+
+func has_worker_assigned(plot_kind: PlotKind.Kind) -> bool:
+	return state.worker_assignments.has(plot_kind)
+
+
+func get_worker_assignment(plot_kind: PlotKind.Kind) -> WorkerAssignment:
+	return state.worker_assignments.get(plot_kind, null)
+
+
+## Lazy, read-time resolution -- same rationale as resolve_growth_completions()
+## above. For every assigned worker, walks that plot kind's ReadyToHarvest
+## plots and runs one harvest-and-replant cycle per plot. Must be called
+## after resolve_growth_completions() in the same tick so a plot that just
+## finished growing is already eligible, not delayed a full extra cycle.
+func resolve_worker_actions(now: int) -> void:
+	for plot_kind: int in state.worker_assignments.keys():
+		for plot: Plot in state.plots:
+			if plot.kind != plot_kind:
+				continue
+			if plot.state.kind != PlotState.Kind.READY_TO_HARVEST:
+				continue
+			_resolve_worker_cycle(plot, now)
+
+
+## One worker harvest-and-replant cycle for a single ReadyToHarvest plot,
+## implementing design/gdd/worker-economy.md §5's confirmed edge-case rules:
+## - Inventory full: skip entirely, no wage charged, retry next resolution
+##   (mirrors harvest_plot()'s own manual-tap behavior in that case).
+## - Can't afford the replant (or, for Saffron, Electricity has lapsed --
+##   plant_seed() already gates that exact case): still harvest (wage
+##   charged for that), leave the plot Empty rather than replanting.
+## Coins are clamped at 0 -- the GDD never discusses a worker driving the
+## player negative, and letting a wage do so would be a surprising,
+## undiscussed mechanic; not letting it happen is the conservative default.
+func _resolve_worker_cycle(plot: Plot, now: int) -> void:
+	if total_inventory_units() >= storage_capacity():
+		return  # skip this cycle entirely, no wage -- inventory full
+
+	var crop: int = plot.state.crop
+	var crop_def := GameData.crop_def(crop)
+	var wage: int = _worker_wage_for(crop_def)
+
+	harvest_plot(plot.id, now)  # plot.state.crop read above; plot is now Empty
+
+	state.coins = maxi(state.coins - wage, 0)
+	_push_event("A worker harvested %s %s (wage: ₹%d)." % [crop_def.emoji, crop_def.display_name, wage])
+
+	var can_afford_replant: bool = state.coins >= crop_def.seed_cost
+	var electricity_ok: bool = crop != CropType.Kind.SAFFRON or is_electricity_active(now)
+	if can_afford_replant and electricity_ok:
+		plant_seed(plot.id, crop, now)
+
+	_mark_dirty()
+
+
+func _worker_wage_for(crop_def: CropDef) -> int:
+	return maxi(roundi(crop_def.base_sell_price * WORKER_WAGE_RATE), 1)
+
+
 ## Deterministic, replayable theft check: same plot+hour always resolves the
 ## same way, so re-evaluating after an offline gap (or after buying Security
 ## late) is consistent and needs no extra persisted state beyond

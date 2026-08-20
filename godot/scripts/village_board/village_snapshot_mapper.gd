@@ -172,6 +172,55 @@ static func max_reserved_tiles(zone_id: String, anchor: Vector2i) -> Array[Vecto
 	return tiles
 
 
+## Builds a WalkableGrid for EPIC-M6 villager roaming (see
+## design/gdd/villagers.md §3's walkable-area rule, which explicitly asks
+## for this to reuse max_reserved_tiles() rather than a second occupancy
+## system -- this is that integration). Every zone's MAXIMUM possible
+## footprint is reserved regardless of current unlock state, same
+## deliberately-conservative policy the layout-overlap fix already uses
+## (see max_reserved_tiles()'s own doc comment) -- so a zone unlocked
+## mid-session never needs an in-progress villager's path recomputed
+## around newly-appeared geometry. Every placed decoration's tile is
+## reserved too.
+static func build_walkable_grid(state: GameState, grid_cols: int, grid_rows: int) -> WalkableGrid:
+	var reserved: Array[Vector2i] = []
+	var all_zone_ids := [
+		ZONE_ID_FARMHOUSE, ZONE_ID_OPEN_FIELD, ZONE_ID_POLYHOUSE, ZONE_ID_MANDI,
+		ZONE_ID_AGROFORESTRY, ZONE_ID_AQUACULTURE, ZONE_ID_VERTICAL_FARM,
+	]
+	for zone_id in all_zone_ids:
+		var anchor := resolved_anchor(state, zone_id)
+		reserved.append_array(max_reserved_tiles(zone_id, anchor))
+	for decoration: Decoration in state.decorations:
+		reserved.append(Vector2i(roundi(decoration.tile_x), roundi(decoration.tile_y)))
+	return WalkableGrid.new(grid_cols, grid_rows, reserved)
+
+
+## design/gdd/villagers.md §4's `unlockedZoneCount` formula input --
+## Farmhouse and Mandi always count (never gated behind a `has_*` flag in
+## GameState); the four Tier-2-4 structures count once their unlock flag
+## is set.
+static func unlocked_zone_count(state: GameState) -> int:
+	var count := 2  # farmhouse + mandi
+	if state.has_polyhouse:
+		count += 1
+	if state.has_agroforestry:
+		count += 1
+	if state.has_aquaculture:
+		count += 1
+	if state.has_vertical_farm:
+		count += 1
+	return count
+
+
+## design/gdd/villagers.md §4's villager-count formula:
+## clamp(2 + floor(unlockedZoneCount * 0.75), 2, 6). Proposed/unbalanced --
+## see that section's own "needs on-device visual tuning" note; not a
+## final tuned value.
+static func villager_count(state: GameState) -> int:
+	return clampi(2 + int(floor(unlocked_zone_count(state) * 0.75)), 2, 6)
+
+
 static func _add_rect(tiles: Array[Vector2i], origin: Vector2i, width: int, depth: int) -> void:
 	for dx in range(width):
 		for dz in range(depth):

@@ -41,6 +41,7 @@ const MandiTabScene := preload("res://scenes/ui/mandi_tab.tscn")
 const PolyhouseTabScene := preload("res://scenes/ui/polyhouse_tab.tscn")
 const AgroforestryTabScene := preload("res://scenes/ui/agroforestry_tab.tscn")
 const NicheFarmingTabScene := preload("res://scenes/ui/niche_farming_tab.tscn")
+const OpenFieldTabScene := preload("res://scenes/ui/open_field_tab.tscn")
 const AgroPlantPickerScene := preload("res://scenes/ui/agro_plant_picker.tscn")
 const GrowingInfoCardScene := preload("res://scenes/ui/growing_info_card.tscn")
 const DecorationInfoCardScene := preload("res://scenes/ui/decoration_info_card.tscn")
@@ -763,8 +764,15 @@ func _maybe_open_zone_sheet(zone_id: String) -> void:
 			var tab: NicheFarmingTab = NicheFarmingTabScene.instantiate()
 			tab.configure(economy, _village_board)
 			hud.get_bottom_sheet().open(tab)
+		VillageSnapshotMapper.ZONE_ID_OPEN_FIELD:
+			# EPIC-M7: Open Field previously had no zone-level sheet at all
+			# (plot taps already handle planting/harvesting directly) --
+			# now hosts worker-assignment UI, see open_field_tab.gd.
+			var tab: OpenFieldTab = OpenFieldTabScene.instantiate()
+			tab.configure(economy, _village_board)
+			hud.get_bottom_sheet().open(tab)
 		_:
-			pass  # ZONE_ID_OPEN_FIELD has no management sheet -- select-only.
+			pass
 
 
 ## Vector3 world-space hit, or null if the ray is parallel to the ground

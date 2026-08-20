@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dq6vt4nqf3xkr"]
+
+[ext_resource type="Script" path="res://scripts/village_board/villager.gd" id="1"]
+
+[node name="Villager" type="Node3D"]
+script = ExtResource("1")

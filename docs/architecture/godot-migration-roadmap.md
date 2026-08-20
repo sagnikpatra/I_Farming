@@ -37,32 +37,76 @@ judgment — genuinely outside what this decision, or any engineering work,
 can resolve. Those remain open, tracked under "Release Readiness" below,
 not part of this engine-choice decision.
 
-## Release Readiness (not started)
+## Release Readiness (EPIC-M8, in progress)
 
 Everything needed to take the now-cut-over Godot build from "verified
 parity" to "a real player can download and play it," tracked here so it
-isn't lost between sessions:
+isn't lost between sessions. EPIC-M8 ("Post-Migration Hardening") maps
+directly to this checklist's engineering-side items — store readiness
+stays the owner's regardless of how much of this list gets done.
 
 - [ ] Audio: no music or sound effects exist on either stack. Needs an
       audio-direction pass (`/team-audio`) — sourcing/composing CC0 or
       licensed music + SFX, then wiring `AudioStreamPlayer` nodes.
-- [ ] QA pass: `/qa-plan` + `/smoke-check` have never been run against the
-      Godot build. Everything verified so far was this project's own
-      on-device driving, not an independent test pass.
-- [ ] Accessibility: `/accessibility-specialist` review never run (text
-      scaling, colorblind modes — HUD has no such support today).
+- [x] QA pass — done 2026-08-21: `/smoke-check` run against the Godot
+      build (adapted for this project having no formal `production/
+      sprints/`/story-file structure — scoped to "the whole godot/
+      project post EPIC-M0-M7" instead). **328/328 GUT tests passing.**
+      Found and closed a real coverage gap (`open_field_tab.gd` had no
+      test file, unlike every sibling tab); found and flagged one open
+      gap for a future session (`board_interactor.gd`'s gesture state
+      machine has no dedicated test file). All manual smoke-check
+      batches confirmed clean. Report: `production/qa/smoke-2026-08-21.md`.
+      `/qa-plan` itself wasn't run in its literal form — its Phase 1
+      scope resolution assumes story files this project doesn't have;
+      noted as a process gap in the smoke-check report rather than
+      forced through.
+- [x] Accessibility — audit done 2026-08-21: `accessibility-specialist`
+      reviewed HUD/village board/management sheets against WCAG 2.1 AA,
+      scoped to this project's real profile (touch-only mobile, no
+      gamepad/keyboard, no dialogue/subtitles, zero audio exists yet).
+      **4 BLOCKING findings (no accessibility settings screen at all;
+      white text on the cream sheet background, ~1.06:1 contrast, 8
+      sites; white text on active gold chips, ~1.63:1, 3 sites; harvest-
+      ready plots signaled by tint hue alone), 5 HIGH, 1 MEDIUM, 1 LOW, 1
+      ADVISORY, 1 DEFERRED (audio, until EPIC-M8's audio pass exists).**
+      All 4 BLOCKING findings fixed and GUT-verified the same session
+      (336/336 passing, up from 328 — 8 new tests for the new
+      `AccessibilitySettings` resource): added a `BottomSheet`-based
+      Accessibility settings screen (text-size cycling + a colorblind-
+      safe blue/orange palette toggle that hot-reloads the board live),
+      fixed all 11 contrast sites plus one more caught during remediation
+      that the static read had missed (HUD's LiveOps banner), and added a
+      checkmark badge decal so harvest-readiness isn't color-only anymore.
+      HIGH/MEDIUM/LOW/ADVISORY findings remain open for a follow-up pass.
+      **On-device visual verification not yet performed** (no emulator
+      available this session) — recommended before considering this
+      fully closed. Report: `production/qa/accessibility/
+      village-board-and-management-sheets-audit-2026-08-21.md`.
 - [ ] Localization: game is English/Hindi-label-mixed by design (`design/
       gdd/`) but has no real i18n string-table pipeline (`/localize`).
-- [ ] Security/save-integrity audit: `/security-audit` never run against
-      the Godot save format or any future networked feature.
+- [x] Security/save-integrity audit — done 2026-08-21: `/security-audit
+      full` run against the Godot save format and economy logic. **1 HIGH
+      finding (SEC-001: save-loaded crop/host/decoration enum ordinals
+      weren't bounds-checked before catalogue lookup — a hand-edited or
+      corrupted save could crash repeatedly on the board's own 3s growth
+      timer), 2 LOW findings (SEC-002: test tooling shipping in the
+      release APK; SEC-003: a theoretical, currently-inapplicable Godot
+      Resource-loading note). Zero CRITICAL/MEDIUM.** SEC-001 and SEC-002
+      both fixed and verified live the same session (fresh export,
+      install, launch, screenshot — zero regression). Local save-editing
+      was explicitly assessed and **not** flagged as a vulnerability —
+      correct for a single-player, no-leaderboard, no-IAP game, matching
+      this genre's norm (Stardew Valley and similar all ship
+      plaintext-editable saves). Report: `production/security/
+      security-audit-2026-08-21.md`.
 - [ ] Store readiness: `/release-checklist` + `/launch-checklist` never
       run. Needs a real Play Console developer account (owner-only step),
       signed release keystore (separate from the debug key used
       throughout this migration), store listing copy/screenshots, and a
       privacy policy.
-- [ ] EPIC-M6/M7 (villagers, worker assignment): still gated on sourcing a
-      CC0 rigged-character asset pipeline — see that section below for
-      active sourcing status.
+- [x] EPIC-M6/M7 (villagers, worker assignment): complete — see their own
+      sections above.
 
 ---
 
@@ -105,7 +149,7 @@ Assets: 627 `.obj`/`.mtl` across 4 Kenney kits (13 MB), 31 bundled. **No rigged/
 | M5 — Migration Parity Verification & Cutover | QA/Release | 1.5 wk | M1-M4 | **Complete — cutover decided 2026-08-21, see above** |
 | M6 — Villager Asset Pipeline & Ambient Roaming | Feature | 2–2.5 wk | M1, M2 (gated: villager GDD, CC0 rigged characters) | **Complete** — all 6 characters live in-game with visual variety, measured with no detectable perf cost at the population cap (emulator; real-hardware/formal-budget work stays open project-wide, see below) |
 | M7 — Worker Assignment & Wage Economy | Feature | 1.5–2 wk | M6, M2, M4 (gated: balance pass) | **Complete** — design, economy backend, visual stationing, and assignment UI all built, tested (327/327), and verified live via real touch input — see below |
-| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | Not started (see "Release Readiness" above) |
+| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | **In progress** — security audit, QA/smoke pass, and accessibility (4 BLOCKING findings fixed) all done (see "Release Readiness" above); audio not started |
 
 **Re-baselined estimate**: 10–13 weeks to parity (M0–M5), +3.5–4.5 weeks for villagers/workers (M6–M7), +1 week hardening (M8). Total 14.5–18.5 weeks — higher than ADR-0001's original 8–14 week estimate, mainly due to the character-asset gap and the test-suite work the ADR's own risk analysis requires but didn't budget. Re-baseline again after M0 and after M2.
 

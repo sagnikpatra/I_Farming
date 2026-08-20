@@ -1,0 +1,74 @@
+## Player-facing accessibility preferences -- text scale + colorblind-safe
+## palette. Added to close the BLOCKING §0 finding in
+## production/qa/accessibility/village-board-and-management-sheets-audit-
+## 2026-08-21.md ("no accessibility settings screen exists at all").
+##
+## ARCHITECTURE: a plain Resource (not an autoload) persisted to its own
+## small user:// file, loaded/saved via the same static-method-on-a-
+## standalone-class pattern SaveSystem already uses for GameState --
+## deliberately kept separate from GameState/save.tres rather than folded
+## into the economy save schema, since these are player preferences, not
+## game progress, and don't belong in a save-integrity/tamper-audit surface
+## (see production/security/security-audit-2026-08-21.md's SEC-001).
+## VillageBoard owns the loaded instance (mirrors its existing "sole
+## authority" pattern for GameEconomy, see village_board.gd's _ready()) and
+## exposes it via get_accessibility_settings() for HUD/AccessibilitySheet to
+## read and mutate; `changed` lets VillageBoard re-render live when the
+## colorblind-safe palette is toggled without a scene relaunch.
+class_name AccessibilitySettings
+extends Resource
+
+const SAVE_PATH: String = "user://accessibility.tres"
+
+## Allowed values only -- kept to a small, deliberately-bounded set (rather
+## than a free float) to limit how much untested layout-break risk any one
+## toggle can introduce across the many hardcoded-font-size sheets flagged
+## as still-open in the audit's §5 (HIGH, not blocking).
+const TEXT_SCALE_STEPS: Array[float] = [1.0, 1.15, 1.3]
+
+@export var text_scale: float = 1.0
+@export var colorblind_safe: bool = false
+
+## Not named `changed` -- Resource already declares a native `changed`
+## signal (fired by ResourceSaver/the editor's own property-change
+## tracking); redeclaring it here is a compile error ("Member 'changed'
+## redefined"), caught by the GUT suite the first time this file was run.
+signal settings_changed
+
+
+## Loads from disk, or returns fresh defaults if no prefs file exists yet or
+## it's corrupt/unreadable -- same fallback shape as SaveSystem.load_state().
+static func load_or_default(path: String = SAVE_PATH) -> AccessibilitySettings:
+	if not FileAccess.file_exists(path):
+		return AccessibilitySettings.new()
+	var loaded: Resource = ResourceLoader.load(path, "AccessibilitySettings", ResourceLoader.CACHE_MODE_IGNORE)
+	if loaded == null or not (loaded is AccessibilitySettings):
+		push_warning("AccessibilitySettings: prefs file at %s failed to load -- using defaults." % path)
+		return AccessibilitySettings.new()
+	return loaded
+
+
+## Saves to disk. Returns true on success.
+func save(path: String = SAVE_PATH) -> bool:
+	var err: Error = ResourceSaver.save(self, path)
+	if err != OK:
+		push_warning("AccessibilitySettings: failed to save to %s (error %d)." % [path, err])
+		return false
+	return true
+
+
+## Advances text_scale to the next step in TEXT_SCALE_STEPS, wrapping back to
+## the first. Persists and emits `settings_changed`.
+func cycle_text_scale() -> void:
+	var idx := TEXT_SCALE_STEPS.find(text_scale)
+	var next_idx := (idx + 1) % TEXT_SCALE_STEPS.size() if idx != -1 else 0
+	text_scale = TEXT_SCALE_STEPS[next_idx]
+	save()
+	settings_changed.emit()
+
+
+## Toggles colorblind_safe. Persists and emits `settings_changed`.
+func toggle_colorblind_safe() -> void:
+	colorblind_safe = not colorblind_safe
+	save()
+	settings_changed.emit()

@@ -194,6 +194,11 @@ func _on_sell_pressed(crop: int) -> void:
 # Widget construction
 # ---------------------------------------------------------------------------
 
+# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1): both
+# _build_build_card() and _build_intro() add their labels directly to the
+# sheet body, which sits on BottomSheet's cream background -- these must use
+# SOIL_BROWN_DARK, not the Color.WHITE default that's only safe on colored
+# panel backgrounds.
 func _build_build_card() -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -204,10 +209,10 @@ func _build_build_card() -> VBoxContainer:
 	emoji_label.text = "🏛️"
 	emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	emoji_label.label_settings = _make_label_settings(48, Color.WHITE)
+	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label("Register at the Local Mandi", 18)
+	var title_label := _make_title_label("Register at the Local Mandi", 18, SOIL_BROWN_DARK)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title_label)
 
@@ -218,7 +223,8 @@ func _build_build_card() -> VBoxContainer:
 			+ "selling, within safe bands -- a genuine alternative to Sell All, "
 			+ "not a replacement for it."
 		),
-		13
+		13,
+		SOIL_BROWN_DARK
 	)
 	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -236,7 +242,7 @@ func _build_intro() -> VBoxContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 6)
 
-	var title_label := _make_title_label("🏛️ Local Mandi · e-NAM", 18)
+	var title_label := _make_title_label("🏛️ Local Mandi · e-NAM", 18, SOIL_BROWN_DARK)
 	box.add_child(title_label)
 
 	var blurb_label := _make_title_label(
@@ -245,7 +251,8 @@ func _build_intro() -> VBoxContainer:
 			+ "flood the market and the price dips until it recovers. Produce "
 			+ "from protected cultivation earns an automatic A-Grade bonus."
 		),
-		12
+		12,
+		SOIL_BROWN_DARK
 	)
 	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(blurb_label)

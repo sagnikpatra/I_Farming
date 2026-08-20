@@ -123,19 +123,23 @@ func _build_header(data: Dictionary) -> VBoxContainer:
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
 	header.add_theme_constant_override("separation", 2)
 
+	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
+	# this header sits directly on BottomSheet's cream background, not inside
+	# a _make_panel() card -- these labels must use SOIL_BROWN_DARK, not the
+	# Color.WHITE default that's only safe on colored panel backgrounds.
 	var emoji_label := Label.new()
 	emoji_label.text = current.emoji
 	emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	emoji_label.label_settings = _make_label_settings(44, Color.WHITE)
+	emoji_label.label_settings = _make_label_settings(44, SOIL_BROWN_DARK)
 	header.add_child(emoji_label)
 
-	var name_label := _make_title_label(current.display_name, 20)
+	var name_label := _make_title_label(current.display_name, 20, SOIL_BROWN_DARK)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(name_label)
 
 	var level_label := _make_title_label(
-		"Farmhouse Level %d of %d" % [current.level, GameData.farmhouse_max_level()], 12
+		"Farmhouse Level %d of %d" % [current.level, GameData.farmhouse_max_level()], 12, SOIL_BROWN_DARK
 	)
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(level_label)
@@ -195,7 +199,8 @@ func _build_storage_bar(progress: float) -> ProgressBar:
 
 
 func _build_max_level_message() -> Label:
-	var label := _make_title_label("🎉 Your farmhouse has reached its finest form.", 14)
+	# A11Y: sits directly on the cream background -- see _build_header()'s note.
+	var label := _make_title_label("🎉 Your farmhouse has reached its finest form.", 14, SOIL_BROWN_DARK)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return label

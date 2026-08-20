@@ -20,6 +20,11 @@ class_name GrowingInfoCard
 extends VBoxContainer
 
 const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
+# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1): this
+# whole card is added straight to the BottomSheet's cream body with no
+# _make_panel() wrapper, so Color.WHITE (safe only on colored panels) is
+# unreadable here -- measured ~1.06:1 contrast.
+const SOIL_BROWN_DARK := Color("#3E2412")
 
 
 func configure(crop: int) -> void:
@@ -32,21 +37,21 @@ func configure(crop: int) -> void:
 	emoji_label.text = crop_def.emoji
 	emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	emoji_label.label_settings = _make_label_settings(40, Color.WHITE)
+	emoji_label.label_settings = _make_label_settings(40, SOIL_BROWN_DARK)
 	add_child(emoji_label)
 
 	var name_label := Label.new()
 	name_label.text = crop_def.display_name
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.label_settings = _make_label_settings(18, Color.WHITE)
+	name_label.label_settings = _make_label_settings(18, SOIL_BROWN_DARK)
 	add_child(name_label)
 
 	var subtitle_label := Label.new()
 	subtitle_label.text = "sells ₹%d" % crop_def.base_sell_price
 	subtitle_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle_label.label_settings = _make_label_settings(14, Color(1.0, 1.0, 1.0, 0.9))
+	subtitle_label.label_settings = _make_label_settings(14, Color(0.243, 0.141, 0.071, 0.9))
 	add_child(subtitle_label)
 
 

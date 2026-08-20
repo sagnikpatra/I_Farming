@@ -164,8 +164,18 @@ static func is_subsidy_unlocked(total_harvests: int) -> bool:
 static var _crop_defs: Dictionary = {}
 
 
+## Falls back to Wheat's def for an out-of-range/unknown ordinal, matching
+## farmhouse_level_def()'s existing "always return a safe, valid entry"
+## precedent rather than returning null -- keeps every existing call site
+## working unchanged. Closes SEC-001 (production/security/security-audit-2026-08-21.md):
+## a save-loaded PlotState.crop ordinal outside CropType.Kind's defined
+## range previously crashed on this Dictionary lookup, repeatedly, on the
+## board's own 3s growth-resolution timer.
 static func crop_def(crop: CropType.Kind) -> CropDef:
 	_ensure_crop_defs()
+	if not _crop_defs.has(crop):
+		push_error("GameData.crop_def: unknown crop ordinal %s -- falling back to Wheat" % crop)
+		return _crop_defs[CropType.Kind.WHEAT]
 	return _crop_defs[crop]
 
 
@@ -233,8 +243,13 @@ static func crops_for_plot_kind(kind: PlotKind.Kind) -> Array[int]:
 static var _host_defs: Dictionary = {}
 
 
+## Same SEC-001 fix as crop_def() above -- falls back to Pigeon Pea (the
+## cheapest, most basic host) for an out-of-range/unknown ordinal.
 static func host_type_def(host: HostType.Kind) -> HostTypeDef:
 	_ensure_host_defs()
+	if not _host_defs.has(host):
+		push_error("GameData.host_type_def: unknown host ordinal %s -- falling back to Pigeon Pea" % host)
+		return _host_defs[HostType.Kind.PIGEON_PEA]
 	return _host_defs[host]
 
 
@@ -250,8 +265,13 @@ static func _ensure_host_defs() -> void:
 static var _decoration_defs: Dictionary = {}
 
 
+## Same SEC-001 fix as crop_def() above -- falls back to Potted Plant (the
+## cheapest, most basic decoration) for an out-of-range/unknown ordinal.
 static func decoration_type_def(decoration: DecorationType.Kind) -> DecorationTypeDef:
 	_ensure_decoration_defs()
+	if not _decoration_defs.has(decoration):
+		push_error("GameData.decoration_type_def: unknown decoration ordinal %s -- falling back to Potted Plant" % decoration)
+		return _decoration_defs[DecorationType.Kind.POTTED_PLANT]
 	return _decoration_defs[decoration]
 
 

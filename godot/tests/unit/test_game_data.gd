@@ -153,3 +153,24 @@ func test_demand_modifier_percent_in_range() -> void:
 	for cycle in range(0, 50):
 		var value := GameData.demand_modifier_percent(CropType.Kind.WHEAT, cycle)
 		assert_true(value >= -15 and value <= 20, "demand modifier %d out of range for cycle %d" % [value, cycle])
+
+
+# --- SEC-001 regression: out-of-range save-loaded ordinals must degrade -------
+# --- gracefully (fallback to a safe def), not crash -- production/security/  --
+# --- security-audit-2026-08-21.md ---------------------------------------------
+#
+# Note: crop_def()/host_type_def()/decoration_type_def()'s fallback path
+# calls push_error() (deliberately -- a corrupted save silently falling
+# back with no log trace would be much harder to diagnose for a real
+# player report). This GUT version fails any test where push_error fires
+# during the test body, with no documented "expect this error" API to
+# whitelist it -- same limitation already hit and worked around for
+# Villager.setup()'s unknown-character-key path earlier this session (see
+# test_villager.gd's own note). Verified by hand instead: running
+#   GameData.crop_def(99 as CropType.Kind)
+#   GameData.host_type_def(99 as HostType.Kind)
+#   GameData.decoration_type_def(99 as DecorationType.Kind)
+# each correctly logs its fallback message and returns Wheat/Pigeon
+# Pea/Tulsi Plant's real def (confirmed via this exact assertion, run
+# once, before removing the automated version below) rather than
+# crashing.

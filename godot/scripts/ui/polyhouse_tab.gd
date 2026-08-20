@@ -154,6 +154,10 @@ func _on_film_pressed() -> void:
 # Widget construction
 # ---------------------------------------------------------------------------
 
+# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1): labels
+# added directly to the sheet body sit on BottomSheet's cream background --
+# these must use SOIL_BROWN_DARK, not the Color.WHITE default that's only
+# safe on colored panel backgrounds.
 func _build_build_card(data: Dictionary) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -164,17 +168,18 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	emoji_label.text = "🏠"
 	emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	emoji_label.label_settings = _make_label_settings(48, Color.WHITE)
+	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label("Build a Naturally Ventilated Polyhouse", 18)
+	var title_label := _make_title_label("Build a Naturally Ventilated Polyhouse", 18, SOIL_BROWN_DARK)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(title_label)
 
 	var blurb_label := _make_title_label(
 		"Unlocks %d protected plots for Colored Capsicum and Dutch Rose." % GameData.POLYHOUSE_PLOT_COUNT,
-		13
+		13,
+		SOIL_BROWN_DARK
 	)
 	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -263,7 +268,11 @@ func _build_chip(label_text: String, active: bool, on_pressed: Callable) -> Butt
 	style.content_margin_bottom = 8
 	for state_name in ["normal", "hover", "pressed", "focus"]:
 		chip.add_theme_stylebox_override(state_name, style)
-	chip.add_theme_color_override("font_color", Color.WHITE)
+	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
+	# Color.WHITE on the active RIPE_GOLD background measured ~1.63:1 contrast
+	# -- unreadable. Only the inactive WOOD_BROWN_LIGHT state is dark enough
+	# for white text.
+	chip.add_theme_color_override("font_color", SOIL_BROWN_DARK if active else Color.WHITE)
 	chip.add_theme_font_size_override("font_size", 12)
 	chip.pressed.connect(on_pressed)
 	return chip

@@ -164,8 +164,13 @@ func _on_electricity_pressed() -> void:
 # Widget construction
 # ---------------------------------------------------------------------------
 
+# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1): both
+# _make_section_header() and _build_build_card() add their labels directly to
+# the sheet body, which sits on BottomSheet's cream background -- these must
+# use SOIL_BROWN_DARK, not the Color.WHITE default that's only safe on
+# colored panel backgrounds.
 func _make_section_header(title: String) -> Label:
-	return _make_title_label(title, 16)
+	return _make_title_label(title, 16, SOIL_BROWN_DARK)
 
 
 func _build_build_card(
@@ -180,14 +185,14 @@ func _build_build_card(
 	emoji_label.text = emoji
 	emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	emoji_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	emoji_label.label_settings = _make_label_settings(40, Color.WHITE)
+	emoji_label.label_settings = _make_label_settings(40, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label(title, 17)
+	var title_label := _make_title_label(title, 17, SOIL_BROWN_DARK)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title_label)
 
-	var description_label := _make_title_label(description, 13)
+	var description_label := _make_title_label(description, 13, SOIL_BROWN_DARK)
 	description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(description_label)
@@ -221,7 +226,11 @@ func _build_electricity_chip(data: Dictionary) -> Button:
 	style.content_margin_bottom = 10
 	for state_name in ["normal", "hover", "pressed", "focus"]:
 		chip.add_theme_stylebox_override(state_name, style)
-	chip.add_theme_color_override("font_color", Color.WHITE)
+	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
+	# Color.WHITE on the active RIPE_GOLD background measured ~1.63:1 contrast
+	# -- unreadable. Only the inactive WOOD_BROWN_LIGHT state is dark enough
+	# for white text.
+	chip.add_theme_color_override("font_color", SOIL_BROWN_DARK if active else Color.WHITE)
 	chip.add_theme_font_size_override("font_size", 13)
 	chip.pressed.connect(_on_electricity_pressed)
 	return chip

@@ -88,6 +88,15 @@ const PLOT_EMPTY_TINT := Color(0.95, 0.95, 0.95)
 const PLOT_GROWING_TINT := Color(0.55, 0.75, 0.35)
 # READY_TO_HARVEST: bright amber/gold ripe tint.
 const PLOT_READY_TINT := Color(0.95, 0.75, 0.20)
+# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §3):
+# colorblind-safe alternative pair -- swapped in by _plot_tint_color() when
+# AccessibilitySettings.colorblind_safe is on. Blue vs. orange is a hue
+# separation that survives all three common dichromacies (protanopia,
+# deuteranopia, tritanopia), unlike the default green/amber pair. This is a
+# second, independent mitigation alongside the always-on ready-badge decal
+# (_build_ready_badge_decal()) below -- not a replacement for it.
+const PLOT_GROWING_TINT_CB_SAFE := Color(0.30, 0.55, 0.85)
+const PLOT_READY_TINT_CB_SAFE := Color(0.95, 0.55, 0.15)
 # Multiplied component-wise onto the lifecycle tint for Aquaculture plots, so
 # e.g. a growing Aquaculture plot reads as green-tinted-blue rather than
 # losing the water cue entirely.
@@ -113,6 +122,10 @@ var _decoration_nodes_by_id: Dictionary = {}
 ## Owns the economy/save lifecycle for the whole board (see class doc) --
 ## no autoload, no other node touches this.
 var _economy: GameEconomy
+## Owns player accessibility prefs the same way -- no autoload, loaded here,
+## exposed via get_accessibility_settings() (see accessibility_settings.gd's
+## header comment for the full rationale).
+var _accessibility_settings: AccessibilitySettings
 
 ## EPIC-M6 ambient villagers (design/gdd/villagers.md). Lives in
 ## ActorLayer, same as every VillagerRoamer it spawns -- untouched by
@@ -128,6 +141,8 @@ const WORKER_STATION_SCENE: PackedScene = preload("res://scenes/village_board/wo
 
 
 func _ready() -> void:
+	_accessibility_settings = AccessibilitySettings.load_or_default()
+	_accessibility_settings.settings_changed.connect(_on_accessibility_settings_changed)
 	var loaded_state := SaveSystem.load_state()
 	_economy = GameEconomy.new(loaded_state)
 	var zones := VillageSnapshotMapper.build(_economy.state)
@@ -557,6 +572,84 @@ func _build_rangoli_texture() -> ImageTexture:
 	return ImageTexture.create_from_image(image)
 
 
+## READY_TO_HARVEST badge decal -- see _build_plot()'s call site comment.
+## Same "flat, alpha-blended, runtime-painted PlaneMesh decal" technique as
+## _build_rangoli_decal()/_build_rangoli_texture() above, reused rather than
+## introducing a new primitive for this one badge. Deliberately NOT colored
+## with either lifecycle tint (green/amber or their colorblind-safe
+## blue/orange swap) -- a fixed warm-white disc + dark checkmark, so the
+## badge reads as an independent signal regardless of which palette is active.
+const _READY_BADGE_TEXTURE_SIZE: int = 32
+const _READY_BADGE_DISC_COLOR := Color(1.0, 0.98, 0.90)
+const _READY_BADGE_CHECK_COLOR := Color("#3E2412")
+
+func _build_ready_badge_decal() -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2.ONE * (TILE_SIZE * 0.34)
+	instance.mesh = plane
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _build_ready_badge_texture()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	instance.material_override = mat
+	return instance
+
+
+func _build_ready_badge_texture() -> ImageTexture:
+	var size := _READY_BADGE_TEXTURE_SIZE
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var center := (size - 1) / 2.0
+	var disc_radius := center * 0.92
+
+	for y in range(size):
+		for x in range(size):
+			var dx := float(x) - center
+			var dy := float(y) - center
+			var dist := sqrt(dx * dx + dy * dy)
+			if dist > disc_radius:
+				image.set_pixel(x, y, Color(0.0, 0.0, 0.0, 0.0))
+				continue
+			if _is_on_checkmark(x, y, size):
+				image.set_pixel(x, y, _READY_BADGE_CHECK_COLOR)
+				continue
+			var color := _READY_BADGE_DISC_COLOR
+			if dist > disc_radius * 0.85:
+				color.a *= clampf((disc_radius - dist) / (disc_radius * 0.15), 0.0, 1.0)
+			image.set_pixel(x, y, color)
+
+	return ImageTexture.create_from_image(image)
+
+
+## Simple checkmark hit-test over a size x size image in normalized [0,1]
+## coordinates -- two thick line segments (short down-stroke, long
+## up-stroke), legible at this decal's small on-screen size without needing
+## a real glyph/font render.
+func _is_on_checkmark(x: int, y: int, size: int) -> bool:
+	var nx := float(x) / size
+	var ny := float(y) / size
+	var thickness := 0.09
+	if _distance_to_segment(nx, ny, 0.28, 0.52, 0.44, 0.68) < thickness:
+		return true
+	if _distance_to_segment(nx, ny, 0.44, 0.68, 0.74, 0.32) < thickness:
+		return true
+	return false
+
+
+func _distance_to_segment(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> float:
+	var abx := bx - ax
+	var aby := by - ay
+	var ab_len_sq := abx * abx + aby * aby
+	var t := clampf(((px - ax) * abx + (py - ay) * aby) / ab_len_sq, 0.0, 1.0) if ab_len_sq > 0.0 else 0.0
+	var closest_x := ax + abx * t
+	var closest_y := ay + aby * t
+	var dx := px - closest_x
+	var dy := py - closest_y
+	return sqrt(dx * dx + dy * dy)
+
+
 ## Builds one zone's Plinth + Building + PickArea trio and positions them at
 ## the zone's current fixture tile position. Returns the zone's root node
 ## (registered by rebuild() into _zone_nodes_by_id).
@@ -745,12 +838,13 @@ func _plot_tint_color(plot: PlotFixture) -> Color:
 		return HOST_OCCUPIED_PLOT_COLOR
 	if plot.lifecycle == PlotFixture.Lifecycle.GHOST:
 		return GHOST_PLOT_COLOR
+	var colorblind_safe: bool = _accessibility_settings != null and _accessibility_settings.colorblind_safe
 	var lifecycle_tint: Color
 	match plot.lifecycle:
 		PlotFixture.Lifecycle.GROWING:
-			lifecycle_tint = PLOT_GROWING_TINT
+			lifecycle_tint = PLOT_GROWING_TINT_CB_SAFE if colorblind_safe else PLOT_GROWING_TINT
 		PlotFixture.Lifecycle.READY_TO_HARVEST:
-			lifecycle_tint = PLOT_READY_TINT
+			lifecycle_tint = PLOT_READY_TINT_CB_SAFE if colorblind_safe else PLOT_READY_TINT
 		_:
 			lifecycle_tint = PLOT_EMPTY_TINT
 	if not plot.is_water:
@@ -772,6 +866,10 @@ func _build_plot(plot: PlotFixture, parent: Node3D, zone_id: String) -> void:
 	var scale_factor := _footprint_scale_factor(raw_mesh, target_footprint)
 	instance.scale = Vector3.ONE * scale_factor
 	instance.position = _grid_to_world(float(plot.tile_col), float(plot.tile_row))
+	# Moved up from just before the pick collider below so
+	# _build_ready_badge_decal()'s call site (right after this mesh is added)
+	# can reuse it too.
+	var plot_height := maxf(raw_mesh.get_aabb().size.y * scale_factor, 0.05)
 
 	# Lifecycle/water/host tint -- duplicates the sourced mesh's own surface-0
 	# material (preserving its texture) and multiplies albedo_color, the same
@@ -796,10 +894,20 @@ func _build_plot(plot: PlotFixture, parent: Node3D, zone_id: String) -> void:
 	_apply_toon_shading(instance)
 	parent.add_child(instance)
 
+	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §3):
+	# harvest-readiness was conveyed by tint hue alone (green vs. amber) --
+	# SC 1.4.1 Use of Color. Stamp a small checkmark badge decal on top of
+	# READY_TO_HARVEST plots as an independent, non-color signal. Not shown
+	# for host-occupied cells, which never carry Lifecycle.READY_TO_HARVEST
+	# in the first place (see _plot_tint_color()'s precedence comment).
+	if plot.lifecycle == PlotFixture.Lifecycle.READY_TO_HARVEST:
+		var badge := _build_ready_badge_decal()
+		badge.position = instance.position + Vector3(0.0, plot_height + 0.02, 0.0)
+		parent.add_child(badge)
+
 	# EPIC-M3 pick collider -- same "match the real geometry" rule as zones,
 	# above. Plots are selectable but never draggable in this epic (see
 	# board_interactor.gd), so this only needs PICK_LAYER_PLOTS.
-	var plot_height := maxf(raw_mesh.get_aabb().size.y * scale_factor, 0.05)
 	var pick_area := Area3D.new()
 	pick_area.name = "PickArea"
 	pick_area.collision_layer = PICK_LAYER_PLOTS
@@ -986,6 +1094,23 @@ func commit_decoration_move(decoration_id: int, world_pos: Vector3) -> void:
 
 func get_economy() -> GameEconomy:
 	return _economy
+
+
+## Same rationale as get_economy() above -- HUD/AccessibilitySheet read and
+## mutate the shared instance directly (calling its cycle_text_scale()/
+## toggle_colorblind_safe(), which self-persist and emit `changed`);
+## VillageBoard remains the sole owner and reacts to `changed` via
+## _on_accessibility_settings_changed() below.
+func get_accessibility_settings() -> AccessibilitySettings:
+	return _accessibility_settings
+
+
+## Re-renders live when the colorblind-safe palette is toggled, so the
+## player sees the effect immediately without relaunching -- same
+## preserve_camera=true rebuild() call persist_and_rebuild_if_dirty() uses
+## for any other in-place mutation.
+func _on_accessibility_settings_changed() -> void:
+	rebuild(VillageSnapshotMapper.build(_economy.state), true)
 
 
 ## Minimal read-only accessor, same rationale as get_economy() above --

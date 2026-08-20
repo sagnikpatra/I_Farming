@@ -70,6 +70,7 @@ extends CanvasLayer
 const EventsTabScene := preload("res://scenes/ui/events_tab.tscn")
 const DecorationPickerScene := preload("res://scenes/ui/decoration_picker.tscn")
 const OpenFieldTabScene := preload("res://scenes/ui/open_field_tab.tscn")
+const AccessibilitySheetScene := preload("res://scenes/ui/accessibility_sheet.tscn")
 
 const HUD_MARGIN: int = 16
 ## Fixed status-bar clearance approximation -- real safe-area-aware insets
@@ -116,6 +117,7 @@ var _liveops_banner: Button
 var _sell_all_button: Button
 var _shop_button: Button
 var _open_field_workers_button: Button
+var _accessibility_button: Button
 
 
 func _ready() -> void:
@@ -266,6 +268,19 @@ func _on_open_field_workers_pressed() -> void:
 
 ## Opens the real DecorationPicker (EPIC-M4 slice 3) -- was a placeholder
 ## "coming soon" stub in EPIC-M4 slice 1, per that slice's own class doc.
+## Opens the AccessibilitySheet -- see the accessibility_button's own comment
+## at its construction site for what BLOCKING finding this closes.
+func _on_accessibility_pressed() -> void:
+	if _village_board == null:
+		return
+	var settings := _village_board.get_accessibility_settings()
+	if settings == null:
+		return
+	var sheet: AccessibilitySheet = AccessibilitySheetScene.instantiate()
+	sheet.configure(settings, _village_board)
+	_bottom_sheet.open(sheet)
+
+
 func _on_shop_pressed() -> void:
 	if _village_board == null:
 		return
@@ -360,8 +375,15 @@ func _build_top_right_resources() -> void:
 	_level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	level_panel.add_child(_level_label)
 
+	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §0):
+	# the one entry point into AccessibilitySheet -- closes the "no
+	# accessibility settings screen exists at all" BLOCKING finding.
+	_accessibility_button = _make_accessibility_button()
+	_accessibility_button.pressed.connect(_on_accessibility_pressed)
+
 	_top_right_resources.add_child(coin_panel)
 	_top_right_resources.add_child(level_panel)
+	_top_right_resources.add_child(_accessibility_button)
 
 
 func _build_bottom_left_panel() -> void:
@@ -375,7 +397,7 @@ func _build_bottom_left_panel() -> void:
 	# now genuinely tappable. font_color stays WHITE, matching
 	# _make_chunky_button()'s default (same contrast level the original
 	# PanelContainer+white-LabelSettings version already shipped with).
-	_liveops_banner = _make_chunky_button("", RIPE_GOLD)
+	_liveops_banner = _make_chunky_button("", RIPE_GOLD, SOIL_BROWN_DARK)
 	_liveops_banner.visible = false
 	_liveops_banner.pressed.connect(_on_liveops_banner_pressed)
 	_bottom_left_panel.add_child(_liveops_banner)
@@ -507,7 +529,15 @@ func _make_inventory_chip(emoji: String, count: int) -> PanelContainer:
 	return chip
 
 
-func _make_chunky_button(label_text: String, color: Color) -> Button:
+## A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
+## font_color now defaults to WHITE (correct for the SAFFRON_DARK/FIELD_GREEN
+## backgrounds this is normally called with -- that pairing is the audit's
+## separate, still-open HIGH finding, not this BLOCKING one) but callers on
+## the RIPE_GOLD background (e.g. the LiveOps banner below) must pass
+## SOIL_BROWN_DARK explicitly -- white-on-RIPE_GOLD measured ~1.63:1
+## contrast, the same unreadable pairing already fixed in polyhouse_tab.gd/
+## agroforestry_tab.gd/niche_farming_tab.gd's chip builders.
+func _make_chunky_button(label_text: String, color: Color, font_color: Color = Color.WHITE) -> Button:
 	var button := Button.new()
 	button.text = label_text
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -526,7 +556,7 @@ func _make_chunky_button(label_text: String, color: Color) -> Button:
 	for state_name in ["normal", "hover", "pressed", "focus"]:
 		button.add_theme_stylebox_override(state_name, style)
 	for color_slot in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		button.add_theme_color_override(color_slot, Color.WHITE)
+		button.add_theme_color_override(color_slot, font_color)
 	button.add_theme_font_size_override("font_size", 14)
 	return button
 
@@ -569,6 +599,32 @@ func _make_circular_panel(bg_color: Color, diameter: int, border_color: Color) -
 	return panel
 
 
+## A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §0/§2):
+## a real tappable Button (unlike _make_circular_panel()'s decorative
+## PanelContainer), sized 44x44 -- comfortably above the ADVISORY touch-
+## target note the same audit raised about the Quick Nav Bar's chips (§2),
+## which this new button deliberately does not repeat.
+func _make_accessibility_button() -> Button:
+	var button := Button.new()
+	button.text = "⚙"
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = Vector2(44, 44)
+	var style := StyleBoxFlat.new()
+	style.bg_color = WOOD_BROWN_LIGHT
+	style.set_corner_radius_all(22)
+	style.set_border_width_all(2)
+	style.border_color = GOLD_LIGHT
+	style.shadow_size = 3
+	style.shadow_color = Color(0, 0, 0, 0.35)
+	style.set_content_margin_all(0)
+	for state_name in ["normal", "hover", "pressed", "focus"]:
+		button.add_theme_stylebox_override(state_name, style)
+	button.add_theme_color_override("font_color", Color.WHITE)
+	button.add_theme_font_size_override("font_size", 20)
+	return button
+
+
 ## OutlinedTitle equivalent -- see TEXT_SHADOW_COLOR's doc comment on why
 ## this is a drop shadow, not a stroke outline. True bold weight would need a
 ## bundled font resource (this project's fonts are default-OS-fallback only,
@@ -585,9 +641,26 @@ func _make_title_label(text: String, font_size: int, color: Color = Color.WHITE)
 
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
 	var settings := LabelSettings.new()
-	settings.font_size = font_size
+	settings.font_size = _scaled_font_size(font_size)
 	settings.font_color = color
 	settings.shadow_size = 4
 	settings.shadow_color = TEXT_SHADOW_COLOR
 	settings.shadow_offset = Vector2(2, 3)
 	return settings
+
+
+## A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §0/§5):
+## applies AccessibilitySettings.text_scale to every label built via
+## _make_label_settings() -- HUD is the one always-visible screen this
+## mechanism is wired into today, demonstrating it actually works end to
+## end. The per-sheet floors §5 flagged (12-14px body text across the
+## *_tab.gd management sheets, and this file's own _make_chunky_button()
+## font sizes) are a separate, still-open HIGH finding -- not part of this
+## round's BLOCKING-only fix.
+func _scaled_font_size(base_size: int) -> int:
+	var scale: float = 1.0
+	if _village_board != null:
+		var settings := _village_board.get_accessibility_settings()
+		if settings != null:
+			scale = settings.text_scale
+	return roundi(float(base_size) * scale)

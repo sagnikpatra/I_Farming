@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
-Feature: M8 - Post-Migration Hardening. All 4 user-selected items (security audit, QA pass, accessibility, audio) now done. EPIC-M8 complete for this session's scope.
-Task: Security audit done (1 HIGH + 2 LOW found, HIGH+one LOW fixed and verified live). QA/smoke pass done (found+closed one real test-coverage gap). Accessibility audit done (4 BLOCKING fixed, 5 HIGH/1 MEDIUM/1 LOW/1 ADVISORY/1 DEFERRED open) -- on-device visual check still pending, no emulator this session. Audio pass done via full /team-audio pipeline (5 agents: audio-director, sound-designer, accessibility-specialist, technical-artist, godot-specialist, gameplay-programmer) -- AudioManager + 40-event catalogue + bus routing + AccessibilitySheet volume controls all implemented and wired, 350/350 GUT passing (independently re-verified). Zero real audio ASSET files exist yet (deliberate ResourceLoader.exists()-gated no-op until sourced) -- separate follow-up task. Reports/docs written to production/ and design/audio/. Nothing further queued for EPIC-M8.
+Feature: M8 - Post-Migration Hardening. All 4 user-selected items (security audit, QA pass, accessibility, audio) now done. EPIC-M8 complete for this session's scope. Session paused here at user's request ("will continue later").
+Task: Security audit done (1 HIGH + 2 LOW found, HIGH+one LOW fixed and verified live). QA/smoke pass done (found+closed one real test-coverage gap). Accessibility audit done (4 BLOCKING fixed, 5 HIGH/1 MEDIUM/1 LOW/1 ADVISORY/1 DEFERRED open) -- on-device visual check still pending. Audio pass done via full /team-audio pipeline (5 agents: audio-director, sound-designer, accessibility-specialist, technical-artist, godot-specialist, gameplay-programmer) -- AudioManager + 40-event catalogue + bus routing + AccessibilitySheet volume controls all implemented and wired, 350/350 GUT passing (independently re-verified). Zero real audio ASSET files exist yet (deliberate ResourceLoader.exists()-gated no-op until sourced) -- separate follow-up task. All EPIC-M8 code committed and pushed (commits 2dcc4d6, 36d19fc on feature/isometric-village-view). Verified live on the user's physical Android phone (Vivo, com.zonkrik.ifarming.godot) via a fresh debug export/install -- confirmed rendering correctly. Cleared a real device-side mixup: the phone also had the OLD pre-migration native app (com.zonkrik.ifarming) installed, which the user mistook for an outdated build; uninstalled it. The apparent "outdated" look after that was actually just a brand-new save file on the phone (fresh install = default GameState, 3 starting plots) vs. the emulator's session-long accumulated save -- not a bug. Copied the emulator's save.tres onto the phone (byte-verified, 13446 bytes) so both devices now show matching progress.
 <!-- /STATUS -->
 
 # Active Session State
@@ -2567,22 +2567,86 @@ ASSET files (the 40 `.ogg` files) still need to be sourced/composed --
 explicitly flagged as separate follow-up work, not done this pass by
 design (user chose "build the code now, source assets later" when asked).
 
+## 2026-08-21 (cont'd an eighteenth time) -- On-device verification on the user's physical phone, resolved a real device mixup, session paused
+
+User asked to "run on my phone" after EPIC-M8 was fully committed/pushed.
+Found the physical device already connected via `adb devices` (a Vivo,
+serial `10BG5310GK000ZC`) alongside the emulator -- targeted it explicitly
+with `-s` throughout rather than assuming the emulator. Exported a fresh
+debug APK (`--export-debug "Android"`), installed it, launched it via
+`monkey`, and verified with a real screenshot (not just trusting the
+launch command's exit code) -- confirmed the village board rendering
+correctly with the new accessibility gear button visible in the HUD.
+
+**User then said "the mobile version seems outdated"**. Investigated
+rather than assumed my own build was correct -- `adb shell pm list
+packages` revealed the phone had TWO related apps installed:
+`com.zonkrik.ifarming` (the OLD pre-migration native Kotlin/Compose+
+LibGDX app, last updated 2026-08-17, 4 days stale) and
+`com.zonkrik.ifarming.godot` (the Godot version, just installed). The user
+had very likely opened the old one from their home screen -- both
+plausibly look similar/identically named. Confirmed via `dumpsys package`
+timestamps rather than guessing, explained the mixup, and uninstalled the
+old native app on user confirmation ("yes").
+
+**User then said "still old shows"** -- re-checked (only the Godot package
+remained installed, confirmed as foreground activity, fresh screenshot
+showed villagers in different positions than the prior screenshot proving
+live simulation, not a cached/stale render) and reported this evidence
+plainly rather than re-asserting the same claim a second time unchanged.
+User pushed back ("you are wrong") -- did not dig in defensively; asked a
+more concrete, humbler clarifying question instead of repeating "evidence"
+they'd already rejected. User clarified: "in the virtual I saw more fields
+to sow but here inly 3, buildings are also different" -- immediately
+recognizable as a save-file/game-progress difference, not a build/version
+issue at all. Confirmed concretely (not just inferred) via
+`GameData.STARTING_PLOTS = 3`, an exact match to what the user described,
+and via the phone's `files/` directory genuinely having no `save.tres` yet
+(only `shader_cache/`) -- a brand-new game, exactly as expected from a
+first-ever install on that device, since this game saves locally
+per-device with no cloud sync.
+
+Offered two remedies (play fresh, or copy the emulator's save onto the
+phone) -- user picked "copy the save" (2). The emulator had been closed
+since earlier in the session; relaunched `Medium_Phone` via
+`emulator.exe -avd Medium_Phone`, used the `Monitor` tool (not a manual
+sleep loop) polling `adb devices` + `getprop sys.boot_completed` to detect
+real readiness. Pulled `files/save.tres` from the emulator's app-private
+storage via `run-as ... cat`, hit a real Git-Bash path-mangling bug
+pushing it to the phone (`/data/local/tmp/save.tres` got silently rewritten
+to `C:/Program Files/Git/data/local/tmp/save.tres` by MSYS's POSIX-path
+auto-conversion) -- diagnosed the exact error message rather than retrying
+blindly, fixed with `MSYS_NO_PATHCONV=1`, and verified the transplant
+byte-for-byte (13446 bytes both sides, not just "the command didn't
+error"). Force-restarted the app on the phone and confirmed via a final
+screenshot: coin count jumped to 475,038, matching the emulator's
+progress, full villager cast and structures now visible.
+
+User then said "thanks. Will continue later with work. make sure you save
+everything" -- checked `git status` first rather than assuming there was
+something new to commit: none of this on-device troubleshooting touched
+the repository at all (pure device/adb operations), so there was nothing
+new to commit code-wise. Updated this state file with the full episode for
+continuity, since that IS worth persisting even though no source changed.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user
-selected (security, QA, accessibility, audio). Localization was
-explicitly not selected. Nothing is queued next -- reasonable directions,
-none decided:
+selected (security, QA, accessibility, audio) -- code committed and pushed
+(`2dcc4d6`, `36d19fc` on `feature/isometric-village-view`), verified
+running live on the user's own phone with matching save-state to the
+emulator. Localization was explicitly not selected. Session paused here at
+the user's request. Reasonable directions for next time, none decided:
 1. Source/compose the 40 real audio asset files per `design/audio/
    audio-core-gameplay-loop.md`'s naming list and drop them at the
    documented `res://assets/audio/{sfx,ambience}/` paths -- the code is
    ready to receive them with zero further changes
 2. Wire the two deferred tabs (`agroforestry_tab.gd`/`niche_farming_tab.gd`)
    -- small, mechanical, low-risk, explicitly deferred this pass
-3. An on-device visual/audio check once an emulator is available again --
-   nothing in this session's EPIC-M8 work (accessibility gear button/
-   settings sheet/harvest badge, nor the new audio system) has been
-   verified live on-device yet
+3. An on-device AUDIO check specifically once real asset files exist --
+   the accessibility gear button/settings sheet/harvest badge and the
+   audio system's code path are now confirmed rendering live on a real
+   phone, but there's still no actual sound to verify (no asset files yet)
 4. Style `WorkerAssignmentRow`/`open_field_tab.gd` to match this
    project's established ChunkyButton/StyleBoxFlat visual language --
    explicitly flagged as deferred polish, not done this session

@@ -145,12 +145,16 @@ static func format_hours_minutes(remaining_ms: int) -> String:
 
 func _on_build_aquaculture_pressed() -> void:
 	_economy.buy_aquaculture()
+	if _economy.dirty:
+		_play_audio(&"progression_structure_unlock")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
 
 func _on_build_vertical_farm_pressed() -> void:
 	_economy.buy_vertical_farm()
+	if _economy.dirty:
+		_play_audio(&"progression_structure_unlock")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -161,8 +165,19 @@ func _on_build_vertical_farm_pressed() -> void:
 ## rationale as polyhouse_tab.gd's Renew Film chip).
 func _on_electricity_pressed() -> void:
 	_economy.renew_electricity(_now())
+	if _economy.dirty:
+		_play_audio(&"economy_purchase_small")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
+
+
+## Mechanically identical to polyhouse_tab.gd's _play_audio() -- see that
+## file for the null-guard rationale (get_audio_manager() returns null in
+## unit tests, where _village_board is a bare double with no audio system).
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 # ---------------------------------------------------------------------------

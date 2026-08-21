@@ -85,6 +85,8 @@ static func build_view_data(economy: GameEconomy) -> Dictionary:
 
 func _on_build_pressed() -> void:
 	_economy.buy_agroforestry()
+	if _economy.dirty:
+		_play_audio(&"progression_structure_unlock")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -96,8 +98,19 @@ func _on_security_pressed() -> void:
 	if _economy.state.has_security:
 		return
 	_economy.buy_security()
+	if _economy.dirty:
+		_play_audio(&"economy_purchase_small")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
+
+
+## Mechanically identical to polyhouse_tab.gd's _play_audio() -- see that
+## file for the null-guard rationale (get_audio_manager() returns null in
+## unit tests, where _village_board is a bare double with no audio system).
+func _play_audio(event_key: StringName) -> void:
+	var audio := _village_board.get_audio_manager()
+	if audio != null:
+		audio.play_sfx(event_key)
 
 
 # ---------------------------------------------------------------------------

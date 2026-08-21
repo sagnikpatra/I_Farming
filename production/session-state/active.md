@@ -3139,6 +3139,55 @@ its rasterization math. 360/360 GUT tests pass.
 either fixed and verified, or the one deliberate DEFER (§7, audio
 substantially addressed via EPIC-M8's sliders but not re-audited).
 
+## 2026-08-21 (same session, cont'd) -- Audio accessibility re-audit, then fixed the loudness bug it found
+
+User asked for the audio re-audit (the one deliberate DEFER left in the
+2026-08-21 accessibility audit, now that EPIC-M8's real assets/sliders
+exist). Wrote `production/qa/accessibility/audio-accessibility-
+reaudit-2026-08-21.md` against this project's own `.claude/agents/
+accessibility-specialist.md` Audio Accessibility checklist. Verdict: the
+mixer architecture itself (4 sliders + mute, live-applied, correctly
+routed via `default_bus_layout.tres`, no audio-only critical info
+anywhere -- checked every catalogued event's actual call site, not just
+trusted the design doc's claim) is solid. But independently re-measured
+all 40 delivered audio files with real `ffmpeg loudnorm` rather than
+trusting the sourcing pipeline's self-report, and found a real HIGH
+finding: of the 22 "regular" SFX/UI files, only 2 actually landed in the
+documented -16 to -14 LUFS target; most measured 3-13dB under, some
+unmeasurably short. Ambience and the 4 celebratory stingers were
+correctly on-target. Also flagged a missing Master-bus limiter (LOW).
+
+User said "fix the loudness normalization now." Investigating the actual
+cause changed the diagnosis, not just the fix: confirmed directly (real
+two-pass `loudnorm` on the worst-case file could only reach -26.45 LUFS
+before hitting its own true-peak ceiling) that the ORIGINAL -16 to -14
+LUFS *integrated* target was simply wrong for sub-second transients --
+mathematically unreachable without clipping or destructive compression,
+not a mastering-execution failure. Tried silence-trimming first (the
+initial hypothesis for the low readings) -- this broke 2 files
+(`sfx_economy_sell_02.ogg`'s trim discarded its actual peak transient
+down to a 24ms fragment), caught via an implausible +25dB gain
+calculation before it reached the real asset directory, not shipped.
+Corrected fix: peak-normalized all 22 files directly (no trim) to a
+consistent -2.0dBFS target, -0.8 to +4.0dB gain needed across the board
+(sane, no clipping). Verified per file (duration unchanged, confirms no
+content cut) and via a clean 22/22 headless re-import pass. Also added
+the Master-bus limiter -- generated via a one-off script that used the
+real `AudioServer`+`ResourceSaver` rather than hand-typed `.tres` syntax
+against this HIGH-knowledge-risk pinned Godot version, then independently
+verified all 4 buses still resolve correctly afterward.
+
+Updated `design/audio/audio-core-gameplay-loop.md` §4/§5 and `godot/
+assets/audio/CREDITS.md` to record the corrected target/technique (so
+future audio work uses the right yardstick, not the wrong one this pass
+found). 360/360 GUT tests pass throughout, unaffected (audio isn't
+unit-tested, consistent with this codebase's existing convention).
+Originals backed up to the session scratchpad before any file was
+touched. Committed (`a01d054`). Not pushed.
+
+**Every item from both the 2026-08-21 accessibility audit and its
+deferred audio re-audit is now closed.**
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user

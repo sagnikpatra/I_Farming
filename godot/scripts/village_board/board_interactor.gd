@@ -104,6 +104,20 @@ var _drag_decoration_start_ground_hit: Vector3 = Vector3.ZERO
 ## (see this file's own header comment).
 var _armed_decoration_type: int = -1
 
+## MEDIUM a11y fix (village-board-and-management-sheets-audit-2026-08-21.md
+## §4, SC 2.5.1): a tap-based alternative to long-press-drag for
+## repositioning a zone or decoration, toggled from the HUD's Move button
+## (hud.gd, via set_move_mode_active()). A 2-step "pick, then place"
+## sequence, generalizing _armed_decoration_type's own one-shot "next tap
+## consumes it" pattern to two taps instead of one. Mutually exclusive with
+## _armed_decoration_type -- set_move_mode_active(true) clears it.
+var _move_mode_active: bool = false
+## {} while move mode is on but nothing picked yet (the "pick" step); once
+## a zone/decoration is tapped, holds the same {"kind": ..., "id"/
+## "decoration_id": ...} shape _pick() returns, while waiting for the
+## destination tap (the "place" step). See _handle_move_mode_tap().
+var _move_target: Dictionary = {}
+
 # -- Two-finger pinch-zoom state --
 var _active_touches: Dictionary = {}  # touch index -> last known Vector2 screen position
 var _pinch_last_distance_px: float = -1.0
@@ -248,7 +262,9 @@ func _advance_primary_gesture(relative: Vector2) -> void:
 func _release_primary_touch() -> void:
 	match _mode:
 		_Mode.PENDING_TAP:
-			if _armed_decoration_type != -1:
+			if _move_mode_active:
+				_handle_move_mode_tap()
+			elif _armed_decoration_type != -1:
 				_handle_armed_decoration_tap()
 			else:
 				var pick := _pick(
@@ -293,6 +309,8 @@ func _release_primary_touch() -> void:
 func _on_long_press_timeout(request_id: int) -> void:
 	if request_id != _long_press_request_id or _mode != _Mode.PENDING_TAP:
 		return  # Stale timer: touch already released/moved/ended since this was scheduled.
+	if _move_mode_active:
+		return  # Move mode is a tap-only alternative -- never also starts a drag.
 	if _long_press_pick.is_empty():
 		return  # Long-press over empty ground (or a non-draggable plot): nothing to drag.
 	if _long_press_pick["kind"] == "decoration":
@@ -600,6 +618,89 @@ func _handle_armed_decoration_tap() -> void:
 	if economy.dirty:
 		_play_audio(&"economy_purchase_small")
 	_village_board.persist_and_rebuild_if_dirty()
+
+
+## Called by the HUD's Move button (hud.gd) -- toggles move mode on/off.
+## Turning it off mid-pick (a target already chosen, destination not yet
+## tapped) discards the pending target rather than leaving stale state
+## around for a later, unrelated tap to accidentally consume.
+func set_move_mode_active(active: bool) -> void:
+	_move_mode_active = active
+	_move_target = {}
+	if active:
+		_armed_decoration_type = -1  # Mutually exclusive -- see this file's own doc comment above.
+	_deselect()
+
+
+func is_move_mode_active() -> bool:
+	return _move_mode_active
+
+
+## Step 1 (no _move_target yet): a tap on a zone or decoration arms it as
+## the move target -- zones get the usual _select() highlight (matches
+## long-press-drag's own _begin_zone_drag(), which also calls _select());
+## decorations get no highlight, matching _open_decoration_info_card()'s
+## established "no highlight for decorations" precedent (see this file's
+## header comment there). A tap on anything else (empty ground, a plot) is
+## a no-op -- stays in the pick step rather than silently exiting move mode,
+## so a mis-tap doesn't force the player to re-open the HUD toggle.
+##
+## Step 2 (_move_target already set): ANY tap commits the move to that
+## ground position, reusing the exact same commit paths long-press-drag
+## already uses (try_commit_zone_move()'s bounds/overlap validation for
+## zones; commit_decoration_move()'s always-succeeds behavior for
+## decorations -- see _commit_zone_drag()/_commit_decoration_drag() above).
+## Move mode turns itself off after one full pick-then-place cycle,
+## matching _armed_decoration_type's one-shot design -- the player re-taps
+## the HUD button to move something else.
+func _handle_move_mode_tap() -> void:
+	if _move_target.is_empty():
+		var pick := _pick(
+			_touch_last_screen_pos, VillageBoard.PICK_LAYER_ZONES | VillageBoard.PICK_LAYER_DECORATIONS
+		)
+		if pick.is_empty():
+			return
+		_move_target = pick
+		if pick["kind"] == "zone":
+			_select("zone", pick["id"])
+		return
+
+	var hit = _ground_hit(_touch_last_screen_pos)
+	var target := _move_target
+	_move_target = {}
+	_move_mode_active = false
+	if hit == null:
+		_deselect()
+		return
+
+	if target["kind"] == "zone":
+		_commit_zone_move_mode(target["id"], hit)
+	else:
+		_village_board.commit_decoration_move(target["decoration_id"], hit)
+		_play_audio(&"ui_drag_drop_success")  # Always succeeds -- see _commit_decoration_drag()'s own comment.
+	_deselect()
+
+
+## Same origin-delta math _commit_zone_drag() uses, just anchored on the
+## zone's CURRENT center instead of a drag-start snapshot taken at gesture
+## begin -- a zone's own footprint size means the tapped ground point can't
+## be converted directly into a tile origin, but the delta from its own
+## current center cancels that out identically either way.
+func _commit_zone_move_mode(zone_id: String, destination_hit: Vector3) -> void:
+	var start_center := _village_board.get_zone_center_world(zone_id)
+	var delta: Vector3 = destination_hit - start_center
+	var tile_dx := roundi(delta.x / VillageBoard.TILE_SIZE)
+	var tile_dz := roundi(delta.z / VillageBoard.TILE_SIZE)
+	var start_tile := _village_board.get_zone_tile_origin(zone_id)
+	var committed := _village_board.try_commit_zone_move(
+		zone_id, start_tile.x + tile_dx, start_tile.y + tile_dz
+	)
+	if committed:
+		_play_audio(&"ui_drag_drop_success")
+	else:
+		push_warning(
+			"BoardInteractor: move-mode target for zone '%s' out of bounds or overlapping -- move cancelled." % zone_id
+		)
 
 
 func _maybe_open_seed_picker(plot_id: int, plot_kind: int) -> void:

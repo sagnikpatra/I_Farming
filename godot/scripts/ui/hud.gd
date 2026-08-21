@@ -121,6 +121,9 @@ var _sell_all_button: Button
 var _shop_button: Button
 var _open_field_workers_button: Button
 var _accessibility_button: Button
+var _zoom_in_button: Button
+var _zoom_out_button: Button
+var _move_mode_button: Button
 
 
 func _ready() -> void:
@@ -174,7 +177,24 @@ func _refresh() -> void:
 	_level_label.text = "%d" % economy.state.farmhouse_level
 	_refresh_inventory(economy.state.inventory)
 	_refresh_liveops_banner(economy, now)
+	_refresh_move_mode_button()
 	_reposition_all()
+
+
+## Move mode (§4 MEDIUM fix, see _on_move_mode_pressed()) auto-disarms
+## itself in board_interactor.gd after one full pick-then-place cycle --
+## synced here (on the same periodic refresh every other live HUD element
+## already uses) rather than only in the press handler, so the button
+## doesn't stay visually "active" after a move completes on its own.
+func _refresh_move_mode_button() -> void:
+	if _move_mode_button == null or _village_board == null:
+		return
+	var interactor := _village_board.get_board_interactor()
+	if interactor == null:
+		return
+	_move_mode_button.self_modulate = (
+		Color(1.3, 1.15, 0.6) if interactor.is_move_mode_active() else Color.WHITE
+	)
 
 
 func _refresh_inventory(inventory: Dictionary) -> void:
@@ -307,6 +327,40 @@ func _on_accessibility_pressed() -> void:
 	var sheet: AccessibilitySheet = AccessibilitySheetScene.instantiate()
 	sheet.configure(settings, _village_board)
 	_bottom_sheet.open(sheet)
+
+
+## Same 1.1x factor board_interactor.gd's own desktop-only mouse-wheel path
+## already uses (_on_mouse_button()) -- one button tap now delivers the same
+## zoom step one scroll-wheel notch always did, not an invented new amount.
+func _on_zoom_in_pressed() -> void:
+	if _village_board == null:
+		return
+	_play_ui_audio(&"ui_button_tap")
+	_village_board.get_camera_rig().zoom_by(1.1)
+
+
+func _on_zoom_out_pressed() -> void:
+	if _village_board == null:
+		return
+	_play_ui_audio(&"ui_button_tap")
+	_village_board.get_camera_rig().zoom_by(1.0 / 1.1)
+
+
+## Toggles board_interactor.gd's move mode on/off and reflects the new
+## state on the button itself (self_modulate -- see this button's own
+## construction comment). Reads the interactor's own is_move_mode_active()
+## after toggling rather than tracking a parallel bool here, so this stays
+## correct even if something else ever turns move mode off first (e.g. a
+## future BottomSheet-open interrupting it) -- one source of truth.
+func _on_move_mode_pressed() -> void:
+	if _village_board == null:
+		return
+	var interactor := _village_board.get_board_interactor()
+	if interactor == null:
+		return
+	_play_ui_audio(&"ui_button_tap")
+	interactor.set_move_mode_active(not interactor.is_move_mode_active())
+	_refresh_move_mode_button()  # Immediate feedback -- don't wait for the next periodic _refresh().
 
 
 func _on_shop_pressed() -> void:
@@ -477,7 +531,43 @@ func _build_bottom_right_shop() -> void:
 	_bottom_right_shop = VBoxContainer.new()
 	_bottom_right_shop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bottom_right_shop.alignment = BoxContainer.ALIGNMENT_CENTER
+	_bottom_right_shop.add_theme_constant_override("separation", 10)
 	add_child(_bottom_right_shop)
+
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §4,
+	# HIGH): camera zoom was reachable only via two-finger pinch on the
+	# shipping touch path (the InputEventMouseButton wheel fallback in
+	# board_interactor.gd is explicitly desktop-editor-only, not a shipped
+	# alternative) -- a real SC 2.5.1 Pointer Gestures violation, since
+	# pinch has no single-pointer equivalent anywhere else in the app.
+	# Zoom is non-essential (the board always loads fully framed via
+	# CameraRig.frame_bounds()), so a simple +/- button pair satisfies the
+	# criterion. Reuses UiTheme.make_circular_emoji_button() (no sourced
+	# icon exists for zoom in any curated kit -- see that function's own
+	# doc comment on when this constructor is the right call) at 44px,
+	# meeting §2's separate ADVISORY touch-target-size note at the same
+	# time rather than repeating that gap in a brand-new control.
+	var zoom_row := HBoxContainer.new()
+	zoom_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zoom_row.add_theme_constant_override("separation", 8)
+	_zoom_out_button = UiTheme.make_circular_emoji_button("−", WOOD_BROWN_LIGHT, 44)
+	_zoom_out_button.pressed.connect(_on_zoom_out_pressed)
+	_zoom_in_button = UiTheme.make_circular_emoji_button("+", WOOD_BROWN_LIGHT, 44)
+	_zoom_in_button.pressed.connect(_on_zoom_in_pressed)
+	zoom_row.add_child(_zoom_out_button)
+	zoom_row.add_child(_zoom_in_button)
+	_bottom_right_shop.add_child(zoom_row)
+
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §4,
+	# MEDIUM): a tap-based alternative to long-press-drag for repositioning
+	# a zone or decoration -- see board_interactor.gd's set_move_mode_active()/
+	# _handle_move_mode_tap() for the actual pick-then-place sequence this
+	# toggles. self_modulate (not a restyled StyleBoxTexture) is the active-
+	# state signal here -- cheap and sufficient for a single on/off toggle,
+	# not worth a new UiTheme chrome variant for one button.
+	_move_mode_button = UiTheme.make_circular_emoji_button("📍", WOOD_BROWN_LIGHT, 44)
+	_move_mode_button.pressed.connect(_on_move_mode_pressed)
+	_bottom_right_shop.add_child(_move_mode_button)
 
 	# Icon replacement (design/art/ui-visual-direction-2026-08.md §2.5): the
 	# old 🎨 emoji is replaced with game-icons' shoppingCart glyph -- "cart"
@@ -489,7 +579,9 @@ func _build_bottom_right_shop() -> void:
 	_shop_button.pressed.connect(_on_shop_pressed)
 	_bottom_right_shop.add_child(_shop_button)
 
-	var shop_label := _make_title_label("Shop", 12)
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §5,
+	# HIGH): 12px -> this project's 14px floor.
+	var shop_label := _make_title_label("Shop", 14)
 	shop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bottom_right_shop.add_child(shop_label)
 

@@ -145,7 +145,7 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 			+ "semi-parasitic -- it must be planted next to a host plant (Pigeon Pea, Neem, or "
 			+ "Acacia) and takes weeks to mature, but a single mature tree is worth a fortune."
 		),
-		13,
+		14,
 		SOIL_BROWN_DARK
 	)
 	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -182,8 +182,9 @@ func _build_security_chip(data: Dictionary) -> Button:
 
 func _build_hint_label() -> Label:
 	# A11Y: sits directly on the cream background -- see _build_build_card()'s note.
+	# Also raised 12px -> this project's 14px floor (§5, HIGH).
 	var label := _make_title_label(
-		"Plant a host next to an empty tile, then Sandalwood beside the host.", 12, SOIL_BROWN_DARK
+		"Plant a host next to an empty tile, then Sandalwood beside the host.", 14, SOIL_BROWN_DARK
 	)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return label

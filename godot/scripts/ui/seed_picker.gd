@@ -149,7 +149,9 @@ func _build_row(crop: int, affordable: bool) -> Button:
 	var details_label := Label.new()
 	details_label.text = format_crop_details(crop_def)
 	details_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	details_label.label_settings = _make_label_settings(12, Color(1.0, 1.0, 1.0, 0.9))
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §5,
+	# HIGH): 12px -> this project's 14px floor for frequently-read text.
+	details_label.label_settings = _make_label_settings(14, Color(1.0, 1.0, 1.0, 0.9))
 	info.add_child(name_label)
 	info.add_child(details_label)
 	left.add_child(info)

@@ -190,9 +190,10 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(title_label)
 
+	# A11Y fix (§5, HIGH): 13px -> this project's 14px floor.
 	var blurb_label := _make_title_label(
 		"Unlocks %d protected plots for Colored Capsicum and Dutch Rose." % GameData.POLYHOUSE_PLOT_COUNT,
-		13,
+		14,
 		SOIL_BROWN_DARK
 	)
 	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -287,7 +288,8 @@ func _build_chip(label_text: String, active: bool, on_pressed: Callable) -> Butt
 	# -- unreadable. Only the inactive WOOD_BROWN_LIGHT state is dark enough
 	# for white text.
 	chip.add_theme_color_override("font_color", SOIL_BROWN_DARK if active else Color.WHITE)
-	chip.add_theme_font_size_override("font_size", 12)
+	# A11Y fix (§5, HIGH): 12px -> this project's 14px floor.
+	chip.add_theme_font_size_override("font_size", 14)
 	chip.pressed.connect(on_pressed)
 	return chip
 

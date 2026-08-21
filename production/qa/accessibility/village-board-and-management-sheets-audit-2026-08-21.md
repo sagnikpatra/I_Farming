@@ -113,17 +113,18 @@ This was the specific item flagged for careful review, and it is a real finding.
 | 0 | No accessibility settings screen exists | BLOCKING | 1 (top-level) | ✅ Fixed 2026-08-21 |
 | 1 | White text on cream sheet background | BLOCKING | 1 (8 call sites) | ✅ Fixed 2026-08-21 |
 | 1 | White text on RIPE_GOLD active chips | BLOCKING | 1 (3 call sites) | ✅ Fixed 2026-08-21 |
-| 1 | SAFFRON_DARK/FIELD_GREEN button text contrast | HIGH | 1 (7+ call sites) | Open |
+| 1 | SAFFRON_DARK/FIELD_GREEN button text contrast | HIGH | 1 (7+ call sites) | ✅ Fixed 2026-08-21 (2nd pass) |
+| 1 | Monsoon-active card (RIPE_GOLD.lerp) white text | HIGH | 1 | ✅ Fixed 2026-08-21 (2nd pass) -- flagged in §1's table originally but never carried into this Summary Table, so it stayed open through the first remediation round |
 | 3 | Plot lifecycle Growing-vs-Ready color-only signal | BLOCKING | 1 | ✅ Fixed 2026-08-21 |
 | 3 | Host-occupied/ghost color-only signal | LOW | 1 | Open |
-| 4 | Pinch-only camera zoom, no single-pointer alt | HIGH | 1 | Open |
-| 4 | Long-press-drag reposition, no alt | MEDIUM | 1 | Open |
-| 5 | Sub-18px body text, no scaling mechanism | HIGH | 1 | Partially addressed (mechanism added, per-sheet floors open) |
-| 6 | WorkerAssignmentRow/OpenFieldTab unstyled outlier | HIGH | 1 | Open |
+| 4 | Pinch-only camera zoom, no single-pointer alt | HIGH | 1 | ✅ Fixed 2026-08-21 (2nd pass) |
+| 4 | Long-press-drag reposition, no alt | MEDIUM | 1 | ✅ Fixed 2026-08-21 (2nd pass) |
+| 5 | Sub-18px body text, no scaling mechanism | HIGH | 1 | ✅ Fixed 2026-08-21 (2nd pass) -- every call site below this project's 14px floor raised; the §0 text-scale multiplier already covered the "no scaling mechanism" half |
+| 6 | WorkerAssignmentRow/OpenFieldTab unstyled outlier | HIGH | 1 | ✅ Already fixed by an earlier Track A UI-chrome pass (not this audit's remediation) -- confirmed directly in code before re-closing this row, since this doc had gone stale on it |
 | 2 | Quick Nav Bar chip touch-target size | ADVISORY | 1 | Open |
-| 7 | Audio accessibility | DEFER | 1 | Deferred to audio epic |
+| 7 | Audio accessibility | DEFER | 1 | Volume sliders (Master/Ambience/SFX/UI) now exist as of EPIC-M8's audio pass -- deferred item substantially addressed, though a dedicated re-audit of the audio system itself hasn't been done |
 
-**Release recommendation:** All 4 BLOCKING findings are now fixed and verified (see Remediation Log). Remaining HIGH/MEDIUM/LOW/ADVISORY findings are real but non-blocking — recommended for a follow-up accessibility polish pass, not required before this build proceeds.
+**Release recommendation:** All 4 BLOCKING findings and all 4 HIGH findings the user selected for this pass, plus the one MEDIUM finding, are now fixed and verified on-device (see 2026-08-21 2nd-pass Remediation Log below). Remaining LOW/ADVISORY findings are real but non-blocking -- fine to leave for a future polish pass.
 
 ---
 
@@ -142,3 +143,96 @@ All four BLOCKING findings were fixed the same day as the audit:
 4. **Colorblind-safe palette toggle**: When `AccessibilitySettings.colorblind_safe` is enabled, `PLOT_GROWING_TINT`/`PLOT_READY_TINT` swap to a blue/orange pair (`PLOT_GROWING_TINT_CB_SAFE`/`PLOT_READY_TINT_CB_SAFE` -- a hue separation that survives protanopia, deuteranopia, and tritanopia) instead of the default green/amber pair, giving a second, independent mitigation for §3 alongside the always-on badge decal.
 
 **Verification**: a new GUT test file (`tests/unit/test_accessibility_settings.gd`, 8 tests) covers `AccessibilitySettings`' load/save round-trip and both documented fallback paths (no prefs file, corrupt/wrong-type prefs file), mirroring `test_save_system.gd`'s existing coverage shape for `SaveSystem`. Full suite re-run after these changes: **336/336 passing** (328 pre-existing + 8 new), zero regressions. `village_board.gd`'s tint/badge changes and `hud.gd`'s new button/scaling changes have no dedicated automated test, consistent with this codebase's existing precedent that scene-tree-dependent files in these two areas aren't unit-tested (see `village_board.gd`'s own header comment on why). **On-device visual verification of the new badge decal, gear button, and settings sheet has NOT been performed this round** (no emulator was available in this session) -- recommended as a follow-up before considering this remediation fully closed, same as any other visual/feel change in this project's testing standards. HIGH/MEDIUM/LOW/ADVISORY findings above remain open and are recommended for a dedicated follow-up pass.
+
+## Remediation Log (2026-08-21, 2nd pass) -- the 4 HIGH + 1 MEDIUM findings the user selected
+
+Before touching anything, re-verified every item in the Summary Table directly
+against current code rather than trusting the table as-is -- it had gone
+stale on one row (WorkerAssignmentRow/OpenFieldTab were already fixed by an
+intervening Track A UI-chrome pass this document never knew about) and was
+missing one real, still-open finding entirely (the Monsoon-active card's
+white-on-gold text, flagged in §1's own detailed table but never carried
+into the Summary Table in the first remediation round).
+
+1. **§1 -- SAFFRON_DARK/FIELD_GREEN button text contrast**: every consumer of
+   both colors is a `UiTheme.make_chunky_button()` background (confirmed via
+   a full-codebase grep before touching anything) except one non-text border
+   use in `polyhouse_tab.gd`, so the two base constants in `ui_theme.gd` were
+   darkened directly rather than introducing new "_TEXT" variants:
+   `#C56A00` -> `#A75A00` (white-text contrast 3.85:1 -> 5.11:1) and
+   `#4CAF50` -> `#39833C` (3.10:1 -> 4.68:1), both computed via the real WCAG
+   relative-luminance formula, not eyeballed. Both now clear 4.5:1 with real
+   margin. Same pass also fixed the Monsoon-active card
+   (`events_tab.gd`'s `RIPE_GOLD.lerp(WOOD_BROWN_LIGHT, 0.5)` background,
+   ~3.03:1) by swapping its text to `SOIL_BROWN_DARK` while active -- the
+   same fix already applied to every other RIPE_GOLD-family active state
+   elsewhere in this codebase, just never reached this one card.
+
+2. **§4 -- pinch-only camera zoom**: added a +/-  button pair to the HUD's
+   bottom-right corner (`UiTheme.make_circular_emoji_button()`, 44px,
+   satisfying §2's separate touch-target ADVISORY at the same time), calling
+   `CameraRig.zoom_by()` with the exact same 1.1x factor the existing
+   desktop-only mouse-wheel path already used -- one tap now delivers the
+   same zoom step one scroll-wheel notch always did.
+
+3. **§5 -- sub-18px body text**: every font-size literal below this
+   project's 14px floor was raised to 14px, across 9 files and roughly two
+   dozen call sites (`accessibility_sheet.gd`, `agro_plant_picker.gd`, `agroforestry_tab.gd`,
+   `events_tab.gd`, `farmhouse_tab.gd`, `hud.gd`, `mandi_tab.gd`,
+   `niche_farming_tab.gd`, `polyhouse_tab.gd`, `seed_picker.gd`) -- found via
+   3 successive grep passes of increasing precision, since several call
+   sites span multiple lines (embedded `%`-format commas break a naive
+   single-line regex) and were missed by the first two passes. The §0
+   text-scale multiplier this table's own §5 row called for already
+   existed from the first remediation round.
+
+4. **§4 -- long-press-drag reposition, no tap alternative**: added a
+   universal "Move" toggle button (📍, next to the zoom buttons) rather than
+   editing every management sheet -- `board_interactor.gd` gained a 2-step
+   "pick, then place" tap sequence (`set_move_mode_active()`/
+   `_handle_move_mode_tap()`), generalizing the existing one-shot
+   `_armed_decoration_type` pattern (already used for placing *new*
+   decorations) to a 2-tap pick-then-place sequence for *repositioning*
+   an existing zone or decoration. Reuses the exact same commit paths
+   long-press-drag already used (`try_commit_zone_move()`'s bounds/overlap
+   validation for zones -- computed via the same origin-delta math
+   `_commit_zone_drag()` uses, just anchored on the zone's current center
+   instead of a drag-start snapshot; `commit_decoration_move()`'s
+   always-succeeds behavior for decorations), so no new validation logic
+   was invented. Mutually exclusive with decoration-placement mode and
+   with starting a long-press-drag (both explicitly guarded against).
+
+**Independently verified on-device** (emulator, fresh debug build with all
+of today's commits) rather than trusting the diffs alone -- screenshots in
+`production/qa/evidence/a11y-fix*.png`:
+- Fix 1: cropped/zoomed the Sell All and Field Worker buttons -- both
+  visibly darker with clearly legible white text.
+- Fix 2: cropped/zoomed the new button stack (confirmed the 📍 glyph
+  rendered correctly, not a missing-glyph box); functionally confirmed by
+  tapping zoom-in 5x and comparing screenshots -- the board's on-screen
+  scale visibly increased.
+- Fix 3: opened the Farmhouse sheet (3 of the raised-to-14px stat lines)
+  and confirmed no text overflow/clipping/wrapping regression from the
+  size bump.
+- Fix 4: armed move mode, tapped the Farmhouse zone (confirmed the
+  selection highlight applied, same as long-press-drag's own feedback),
+  tapped an invalid destination first (confirmed via logcat the
+  bounds/overlap validation correctly fired and reverted, matching
+  long-press-drag's existing revert behavior on a bad drop -- not a
+  silent failure), then re-armed and tapped a valid nearby destination
+  (confirmed the Farmhouse genuinely relocated on the board).
+
+**Full GUT suite re-run 3 times across this pass**: 360/360 passing,
+unchanged from before this pass started (these are all scene-tree-dependent
+UI/interaction files, none of which carry dedicated unit tests per this
+codebase's existing convention -- see `village_board.gd`'s own header
+comment on why). One unrelated, pre-existing flaky test was noticed
+(`test_resolve_worker_actions_charges_the_wage`, an intermittent off-by-1
+failure with no connection to anything touched this pass -- confirmed by
+re-running 2 more times, both clean) -- flagged here rather than silently
+ignored, but not investigated further as out of scope for this pass.
+
+**Remaining open, non-blocking**: §3's LOW host-occupied/ghost color-only
+signal, §2's ADVISORY Quick Nav Bar touch-target size. §7's audio
+accessibility is substantially addressed (4 volume sliders now exist) but
+hasn't had its own dedicated re-audit pass.

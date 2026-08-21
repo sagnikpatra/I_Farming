@@ -128,19 +128,32 @@ func _build_monsoon_card(data: Dictionary) -> PanelContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 4)
 
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §1,
+	# HIGH -- flagged in the audit's own table but never carried into its
+	# Summary Table, so it stayed unfixed alongside that pass's BLOCKING
+	# rows): white text on the active RIPE_GOLD.lerp(WOOD_BROWN_LIGHT, 0.5)
+	# background measured ~3.03:1, below 4.5:1 even for the 17px title (which
+	# doesn't clear the large-text 3:1 threshold either) -- same defect
+	# family as the RIPE_GOLD active-chip fix already applied elsewhere
+	# (agroforestry_tab.gd/niche_farming_tab.gd), same SOIL_BROWN_DARK fix.
+	# The inactive WOOD_BROWN_LIGHT background is unaffected -- that's the
+	# audit's own explicitly-cited "safe" baseline, used unchanged.
+	var text_color: Color = SOIL_BROWN_DARK if active else Color.WHITE
 	box.add_child(_make_title_label(
-		"🌧️ Monsoon Season -- Active" if active else "☁️ Monsoon Season", 17
+		"🌧️ Monsoon Season -- Active" if active else "☁️ Monsoon Season", 17, text_color
 	))
 	var remaining := format_duration(data["monsoon_remaining_ms"])
+	# A11Y fix (§5, HIGH): both raised 12px -> this project's 14px floor.
 	box.add_child(_make_title_label(
-		"Ends in %s" % remaining if active else "Next monsoon in %s" % remaining, 12
+		"Ends in %s" % remaining if active else "Next monsoon in %s" % remaining, 14, text_color
 	))
 	var blurb := _make_title_label(
 		(
 			"While active, open-field crops grow 20% faster but risk a 10% chance of total "
 			+ "flood loss when they mature. Polyhouse owners are completely immune."
 		),
-		12
+		14,
+		text_color
 	)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(blurb)
@@ -161,8 +174,9 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 
 	box.add_child(_make_title_label("%s %s" % [festival.emoji, festival.display_name], 17))
 	var remaining := format_duration(data["festival_remaining_ms"])
+	# A11Y fix (§5, HIGH): both raised 12px -> this project's 14px floor.
 	box.add_child(_make_title_label(
-		"Active -- ends in %s" % remaining if active else "Not running -- next festival in %s" % remaining, 12
+		"Active -- ends in %s" % remaining if active else "Not running -- next festival in %s" % remaining, 14
 	))
 	var crop_def := GameData.crop_def(festival.target_crop)
 	var target_blurb := _make_title_label(
@@ -171,7 +185,7 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 			% [crop_def.emoji, crop_def.display_name]
 			+ "tiers."
 		),
-		12
+		14
 	)
 	target_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(target_blurb)
@@ -195,8 +209,11 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 		))
 	box.add_child(tiers_box)
 
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §5,
+	# HIGH): raised to this project's 14px floor -- applies to
+	# active_label below and both labels in _build_tier_row().
 	if data["has_premium"]:
-		var active_label := _make_title_label("🎫 Premium Pass active for this festival", 12, RIPE_GOLD)
+		var active_label := _make_title_label("🎫 Premium Pass active for this festival", 14, RIPE_GOLD)
 		box.add_child(active_label)
 	else:
 		box.add_child(_build_premium_pass_button(active))
@@ -213,7 +230,7 @@ func _build_tier_row(
 	row.add_theme_constant_override("separation", 8)
 
 	var left := _make_title_label(
-		"%s Tier %d (%d pts)" % ["✅" if reached else "▫️", tier_number, threshold], 12
+		"%s Tier %d (%d pts)" % ["✅" if reached else "▫️", tier_number, threshold], 14
 	)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left)
@@ -222,7 +239,7 @@ func _build_tier_row(
 		"₹%d + ₹%d" % [free_reward, premium_reward] if has_premium
 		else "₹%d (+₹%d 🔒)" % [free_reward, premium_reward]
 	)
-	row.add_child(_make_title_label(reward_text, 12))
+	row.add_child(_make_title_label(reward_text, 14))
 
 	return row
 

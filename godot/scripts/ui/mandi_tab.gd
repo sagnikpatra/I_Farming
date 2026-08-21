@@ -318,11 +318,15 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 	name_row.add_theme_constant_override("separation", 4)
 	var name_label := _make_title_label(crop_def.display_name, 14)
 	name_row.add_child(name_label)
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §5,
+	# HIGH): both raised to this project's 14px floor -- "Held: N" and
+	# "A-Grade" are exactly the frequently-read status/numeric text the
+	# audit calls out, not decoration.
 	if row_data["is_graded"]:
-		var graded_label := _make_title_label("A-Grade", 10, FIELD_GREEN_LIGHT)
+		var graded_label := _make_title_label("A-Grade", 14, FIELD_GREEN_LIGHT)
 		name_row.add_child(graded_label)
 	name_col.add_child(name_row)
-	name_col.add_child(_make_title_label("Held: %d" % held, 11))
+	name_col.add_child(_make_title_label("Held: %d" % held, 14))
 	left.add_child(name_col)
 
 	var right := VBoxContainer.new()
@@ -333,7 +337,9 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 		var forecast: int = row_data["forecast_percent"]
 		var forecast_trend := "▲" if forecast >= 0 else "▼"
 		var forecast_sign := "+" if forecast >= 0 else ""
-		right.add_child(_make_title_label("Tomorrow: %s %s%d%%" % [forecast_trend, forecast_sign, forecast], 10))
+		# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md
+		# §5, HIGH): 10px -> this project's 14px floor.
+		right.add_child(_make_title_label("Tomorrow: %s %s%d%%" % [forecast_trend, forecast_sign, forecast], 14))
 
 	info_row.add_child(left)
 	info_row.add_child(right)

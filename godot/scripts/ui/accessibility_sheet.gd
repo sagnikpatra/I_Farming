@@ -86,8 +86,9 @@ func _build_text_scale_row() -> PanelContainer:
 	cycle_button.pressed.connect(_on_cycle_text_scale_pressed)
 	box.add_child(cycle_button)
 
+	# A11Y fix (§5, HIGH): 12px -> this project's 14px floor.
 	var hint := _make_title_label(
-		"Takes effect next time you open the app.", 12, Color(1.0, 1.0, 1.0, 0.8)
+		"Takes effect next time you open the app.", 14, Color(1.0, 1.0, 1.0, 0.8)
 	)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(hint)
@@ -165,7 +166,11 @@ func _build_volume_slider_row(label_text: String, initial_value: float, setter: 
 	var row := VBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var percent_label := _make_title_label("%s: %d%%" % [label_text, roundi(initial_value * 100.0)], 13)
+	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §5,
+	# HIGH): raised from 13px to this project's 14px floor for frequently-
+	# read status text -- doubly so here, since this label reports the
+	# player's own live volume setting on the accessibility sheet itself.
+	var percent_label := _make_title_label("%s: %d%%" % [label_text, roundi(initial_value * 100.0)], 14)
 	row.add_child(percent_label)
 
 	var slider := HSlider.new()

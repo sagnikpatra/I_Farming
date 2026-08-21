@@ -84,8 +84,20 @@ const WOOD_BROWN_MID := Color("#8A5A34")
 const WOOD_BROWN_LIGHT := Color("#A9713F")
 const GOLD_LIGHT := Color("#FFE082")
 const RIPE_GOLD := Color("#FFC107")
-const SAFFRON_DARK := Color("#C56A00")
-const FIELD_GREEN := Color("#4CAF50")
+## Accessibility fix (production/qa/accessibility/village-board-and-management-
+## sheets-audit-2026-08-21.md §1, HIGH): both colors darkened from their
+## original #C56A00/#4CAF50 specifically to clear SC 1.4.3's 4.5:1 contrast
+## bar for white button-label text at these buttons' actual 15px font size
+## (the audit's own "darken ~10-15% luminance" recommendation, not the
+## alternative "bump to 18px large-text" option -- every consumer of these
+## two constants is a _make_chunky_button() background per this file's own
+## grep, so a shared, silent brand-identity shift here is lower-risk than
+## a per-call-site font-size bump that would visually diverge from every
+## other 15px chunky button in the app). Measured (WCAG relative-luminance
+## formula): SAFFRON_DARK white-text contrast 3.85:1 -> 5.11:1; FIELD_GREEN
+## 3.10:1 -> 4.68:1. Both now clear 4.5:1 with real margin, not just barely.
+const SAFFRON_DARK := Color("#A75A00")
+const FIELD_GREEN := Color("#39833C")
 const CREAM_BACKDROP := Color("#FFF3DA")
 const LEVEL_BADGE_BLUE := Color("#1976D2")
 const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)

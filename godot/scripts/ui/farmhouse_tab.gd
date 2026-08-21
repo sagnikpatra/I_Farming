@@ -167,9 +167,12 @@ func _build_bonuses_card(title: String, def: FarmhouseLevelDef) -> PanelContaine
 	box.add_theme_constant_override("separation", 4)
 
 	box.add_child(_make_title_label(title, 16))
-	box.add_child(_make_title_label("📦 Storage capacity: %d units" % def.storage_capacity, 13))
-	box.add_child(_make_title_label("⚡ Growth speed: +%d%% faster" % def.growth_speed_bonus_percent, 13))
-	box.add_child(_make_title_label("💰 Sell price: +%d%%" % def.sell_price_bonus_percent, 13))
+	# A11Y fix (§5, HIGH): all 3 raised 13px -> this project's 14px floor --
+	# these are exactly the "frequently-read numeric/status text" the audit
+	# calls out, not decoration.
+	box.add_child(_make_title_label("📦 Storage capacity: %d units" % def.storage_capacity, 14))
+	box.add_child(_make_title_label("⚡ Growth speed: +%d%% faster" % def.growth_speed_bonus_percent, 14))
+	box.add_child(_make_title_label("💰 Sell price: +%d%%" % def.sell_price_bonus_percent, 14))
 
 	card.add_child(box)
 	return card

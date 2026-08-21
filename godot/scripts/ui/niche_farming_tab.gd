@@ -212,7 +212,8 @@ func _build_build_card(
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title_label)
 
-	var description_label := _make_title_label(description, 13, SOIL_BROWN_DARK)
+	# A11Y fix (§5, HIGH): 13px -> this project's 14px floor.
+	var description_label := _make_title_label(description, 14, SOIL_BROWN_DARK)
 	description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(description_label)
@@ -273,7 +274,9 @@ func _build_electricity_chip(data: Dictionary) -> Button:
 	var font_alpha: float = 1.0 if can_afford else 0.5
 	chip.add_theme_color_override("font_color", Color(font_color.r, font_color.g, font_color.b, font_alpha))
 	chip.add_theme_color_override("font_disabled_color", Color(font_color.r, font_color.g, font_color.b, font_alpha))
-	chip.add_theme_font_size_override("font_size", 13)
+	# A11Y fix (§5, HIGH): 13px -> this project's 14px floor -- this chip's
+	# text ("Powered: Xh Ym left") is frequently-read status, not decoration.
+	chip.add_theme_font_size_override("font_size", 14)
 	if can_afford:
 		chip.pressed.connect(_on_electricity_pressed)
 	return chip

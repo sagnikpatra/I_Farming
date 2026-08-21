@@ -222,6 +222,59 @@ func _on_mouse_motion(event: InputEventMouseMotion) -> void:
 # Single-finger (or mouse) gesture state machine
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Pure logic -- directly unit-tested (tests/unit/test_board_interactor.gd),
+# no scene-tree dependency. Extracted from the gesture state machine's own
+# decision points below, per production/qa/smoke-2026-08-21.md's flagged gap
+# ("a 5-state gesture machine... no dedicated test file... real unit-testing
+# this would mean extracting its gesture-resolution logic into pure
+# functions"). Same "extract the pure decision, test it directly" pattern
+# every other file in this codebase already uses (build_view_data(),
+# AudioManager.pick_variant(), etc.) -- not a full input-simulation harness,
+# which the smoke-check report itself flagged as a larger, separate effort.
+# ---------------------------------------------------------------------------
+
+## PENDING_TAP -> PANNING_CAMERA is the only real decision
+## _advance_primary_gesture() makes; every other _Mode there just dispatches
+## to an unconditional update method, not a branch. Pure function of
+## (current mode, screen-space distance moved since touch-down) -> next mode.
+static func next_gesture_mode(current_mode: _Mode, moved_px: float) -> _Mode:
+	if current_mode == _Mode.PENDING_TAP and moved_px > TAP_MAX_MOVEMENT_PX:
+		return _Mode.PANNING_CAMERA
+	return current_mode
+
+
+## Which of 3 mutually-exclusive tap-consumption paths _release_primary_touch()
+## takes on a PENDING_TAP release.
+enum TapDispatch { MOVE_MODE, ARMED_DECORATION, NORMAL_PICK }
+
+## Precedence matters: move mode and armed-decoration-placement are meant to
+## be mutually exclusive in practice (set_move_mode_active() clears
+## _armed_decoration_type when turning move mode on), but this function's
+## own precedence order is what actually decides behavior if that invariant
+## were ever violated -- worth pinning down explicitly rather than leaving
+## implicit in an if/elif chain.
+static func classify_tap_dispatch(move_mode_active: bool, armed_decoration_type: int) -> TapDispatch:
+	if move_mode_active:
+		return TapDispatch.MOVE_MODE
+	if armed_decoration_type != -1:
+		return TapDispatch.ARMED_DECORATION
+	return TapDispatch.NORMAL_PICK
+
+
+## Whether a scheduled long-press timeout should still fire. False (stale)
+## if the touch already ended/moved past PENDING_TAP since this timer was
+## scheduled (request_id mismatch, or mode changed), or if move mode is
+## active (a tap-only alternative that must never also start a drag -- see
+## _on_long_press_timeout()'s own call site).
+static func is_long_press_still_valid(
+	request_id: int, current_request_id: int, current_mode: _Mode, move_mode_active: bool
+) -> bool:
+	if request_id != current_request_id or current_mode != _Mode.PENDING_TAP:
+		return false
+	return not move_mode_active
+
+
 func _begin_primary_touch(index: int, pos: Vector2) -> void:
 	_primary_touch_index = index
 	_touch_start_screen_pos = pos
@@ -244,11 +297,10 @@ func _begin_primary_touch(index: int, pos: Vector2) -> void:
 
 func _advance_primary_gesture(relative: Vector2) -> void:
 	var moved := _touch_last_screen_pos.distance_to(_touch_start_screen_pos)
+	_mode = next_gesture_mode(_mode, moved)
 	match _mode:
 		_Mode.PENDING_TAP:
-			if moved > TAP_MAX_MOVEMENT_PX:
-				_mode = _Mode.PANNING_CAMERA
-				_pan_camera_by_screen_delta(relative)
+			pass  # Still deciding tap vs. drag -- see next_gesture_mode().
 		_Mode.PANNING_CAMERA:
 			_pan_camera_by_screen_delta(relative)
 		_Mode.DRAGGING_ZONE:
@@ -262,40 +314,41 @@ func _advance_primary_gesture(relative: Vector2) -> void:
 func _release_primary_touch() -> void:
 	match _mode:
 		_Mode.PENDING_TAP:
-			if _move_mode_active:
-				_handle_move_mode_tap()
-			elif _armed_decoration_type != -1:
-				_handle_armed_decoration_tap()
-			else:
-				var pick := _pick(
-					_touch_last_screen_pos,
-					VillageBoard.PICK_LAYER_ZONES | VillageBoard.PICK_LAYER_PLOTS | VillageBoard.PICK_LAYER_DECORATIONS
-				)
-				if pick.get("kind") == "decoration":
-					# No selection highlight for decorations -- matches the
-					# Kotlin original (GdxSelection's info card IS the
-					# feedback, no separate highlight box). Handled before
-					# the general _select() call below, which only knows
-					# about zone/plot footprints.
-					_open_decoration_info_card(pick.get("decoration_id", -1))
-				elif not pick.is_empty():
-					_select(pick["kind"], pick["id"])
-					if pick["kind"] == "plot" and pick.get("plot_lifecycle") == PlotFixture.Lifecycle.EMPTY:
-						if pick.get("plot_kind") == PlotKind.Kind.AGROFORESTRY:
-							if pick.get("host_occupied", false):
-								_remove_host(pick.get("plot_id", -1))
+			match classify_tap_dispatch(_move_mode_active, _armed_decoration_type):
+				TapDispatch.MOVE_MODE:
+					_handle_move_mode_tap()
+				TapDispatch.ARMED_DECORATION:
+					_handle_armed_decoration_tap()
+				TapDispatch.NORMAL_PICK:
+					var pick := _pick(
+						_touch_last_screen_pos,
+						VillageBoard.PICK_LAYER_ZONES | VillageBoard.PICK_LAYER_PLOTS | VillageBoard.PICK_LAYER_DECORATIONS
+					)
+					if pick.get("kind") == "decoration":
+						# No selection highlight for decorations -- matches the
+						# Kotlin original (GdxSelection's info card IS the
+						# feedback, no separate highlight box). Handled before
+						# the general _select() call below, which only knows
+						# about zone/plot footprints.
+						_open_decoration_info_card(pick.get("decoration_id", -1))
+					elif not pick.is_empty():
+						_select(pick["kind"], pick["id"])
+						if pick["kind"] == "plot" and pick.get("plot_lifecycle") == PlotFixture.Lifecycle.EMPTY:
+							if pick.get("plot_kind") == PlotKind.Kind.AGROFORESTRY:
+								if pick.get("host_occupied", false):
+									_remove_host(pick.get("plot_id", -1))
+								else:
+									_maybe_open_agro_plant_picker(pick.get("plot_id", -1))
 							else:
-								_maybe_open_agro_plant_picker(pick.get("plot_id", -1))
-						else:
-							_maybe_open_seed_picker(pick.get("plot_id", -1), pick.get("plot_kind", -1))
-					elif pick["kind"] == "plot" and pick.get("plot_lifecycle") == PlotFixture.Lifecycle.READY_TO_HARVEST:
-						_harvest_plot(pick.get("plot_id", -1))
-					elif pick["kind"] == "plot" and pick.get("plot_lifecycle") == PlotFixture.Lifecycle.GROWING:
-						_maybe_open_growing_info_card(pick.get("plot_id", -1))
-					elif pick["kind"] == "zone":
-						_maybe_open_zone_sheet(pick["id"])
-				else:
-					_deselect()
+								_maybe_open_seed_picker(pick.get("plot_id", -1), pick.get("plot_kind", -1))
+						elif pick["kind"] == "plot" and pick.get("plot_lifecycle") == PlotFixture.Lifecycle.READY_TO_HARVEST:
+							_harvest_plot(pick.get("plot_id", -1))
+						elif pick["kind"] == "plot" and pick.get("plot_lifecycle") == PlotFixture.Lifecycle.GROWING:
+							_maybe_open_growing_info_card(pick.get("plot_id", -1))
+						elif pick["kind"] == "zone":
+							_maybe_open_zone_sheet(pick["id"])
+					else:
+						_deselect()
 		_Mode.DRAGGING_ZONE:
 			_commit_zone_drag()
 		_Mode.DRAGGING_DECORATION:
@@ -307,10 +360,8 @@ func _release_primary_touch() -> void:
 
 
 func _on_long_press_timeout(request_id: int) -> void:
-	if request_id != _long_press_request_id or _mode != _Mode.PENDING_TAP:
-		return  # Stale timer: touch already released/moved/ended since this was scheduled.
-	if _move_mode_active:
-		return  # Move mode is a tap-only alternative -- never also starts a drag.
+	if not is_long_press_still_valid(request_id, _long_press_request_id, _mode, _move_mode_active):
+		return  # Stale timer, or move mode active -- see is_long_press_still_valid()'s own doc comment.
 	if _long_press_pick.is_empty():
 		return  # Long-press over empty ground (or a non-draggable plot): nothing to drag.
 	if _long_press_pick["kind"] == "decoration":

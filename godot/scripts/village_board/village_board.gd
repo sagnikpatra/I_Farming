@@ -1116,10 +1116,30 @@ func _plot_tint_color(plot: PlotFixture) -> Color:
 	)
 
 
+## Crop growth-stage geometry pass: a plot whose crop has a real staged model
+## (see VillageFixtureData.crop_stage_model_path() for exactly which crops
+## qualify -- currently Wheat/Tomato/Capsicum) renders that model instead of
+## the flat crops_dirtSingle.obj + lifecycle-tint fallback every other crop
+## (and every EMPTY/GHOST plot) still uses. Never attempted for a
+## host-occupied Agroforestry cell -- host_occupied rendering (foliage-green
+## tint, see _plot_tint_color()) takes precedence regardless of what
+## plot.crop happens to hold, same precedence order that function documents.
 func _build_plot(plot: PlotFixture, parent: Node3D, zone_id: String) -> void:
 	var instance := MeshInstance3D.new()
 	instance.name = "Plot_%s" % plot.label
-	var raw_mesh: Mesh = load(VillageFixtureData.CROP_PLOT)
+
+	var wants_stage_model := not plot.host_occupied and (
+		plot.lifecycle == PlotFixture.Lifecycle.GROWING
+		or plot.lifecycle == PlotFixture.Lifecycle.READY_TO_HARVEST
+	)
+	var stage_model_path := ""
+	if wants_stage_model:
+		stage_model_path = VillageFixtureData.crop_stage_model_path(
+			plot.crop, plot.lifecycle == PlotFixture.Lifecycle.READY_TO_HARVEST
+		)
+	var has_stage_model := not stage_model_path.is_empty()
+
+	var raw_mesh: Mesh = load(stage_model_path if has_stage_model else VillageFixtureData.CROP_PLOT)
 	instance.mesh = raw_mesh
 	var target_footprint := TILE_SIZE * FILL_RATIO
 	var scale_factor := _footprint_scale_factor(raw_mesh, target_footprint)
@@ -1130,25 +1150,44 @@ func _build_plot(plot: PlotFixture, parent: Node3D, zone_id: String) -> void:
 	# can reuse it too.
 	var plot_height := maxf(raw_mesh.get_aabb().size.y * scale_factor, 0.05)
 
-	# Lifecycle/water/host tint -- duplicates the sourced mesh's own surface-0
-	# material (preserving its texture) and multiplies albedo_color, the same
-	# "preserve texture, only multiply albedo" language _apply_toon_shading()
-	# already uses below. Applied via material_override (not
-	# set_surface_override_material) specifically so _apply_toon_shading()'s
-	# material_override branch patches diffuse/specular in place rather than
-	# overwriting this tint with a fresh untinted duplicate.
-	var tint := _plot_tint_color(plot)
-	var source_mat: Material = raw_mesh.surface_get_material(0) if raw_mesh.get_surface_count() > 0 else null
-	var tint_mat: StandardMaterial3D = source_mat.duplicate() if source_mat is StandardMaterial3D else StandardMaterial3D.new()
-	tint_mat.albedo_color = Color(
-		tint_mat.albedo_color.r * tint.r,
-		tint_mat.albedo_color.g * tint.g,
-		tint_mat.albedo_color.b * tint.b,
-		tint.a,
-	)
-	if tint.a < 1.0:
-		tint_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	instance.material_override = tint_mat
+	if has_stage_model:
+		# A real staged model already visually distinguishes Growing (sprout/
+		# unripe stage) from Ready (mature/ripe stage) via its own baked
+		# texture and silhouette -- an additional green/amber lifecycle-tint
+		# multiply on top would fight that baked coloring rather than
+		# reinforce it (e.g. multiplying the amber READY tint onto
+		# crops_wheatStageB's already-golden ripe texture over-saturates it
+		# toward orange). So this branch leaves material_override unset
+		# entirely and lets _apply_toon_shading()'s "no override" path below
+		# patch toon shading directly onto the model's own imported
+		# materials, unchanged otherwise -- same technique zone buildings
+		# with sourced models (e.g. Farmhouse) already use. The
+		# READY_TO_HARVEST checkmark badge decal below is unaffected by this
+		# choice: it's an independent, deliberately non-color a11y signal
+		# (SC 1.4.1), not part of the tint system, so it still renders on
+		# staged-model plots exactly as it does on tint-only ones.
+		pass
+	else:
+		# Lifecycle/water/host tint -- duplicates the sourced mesh's own
+		# surface-0 material (preserving its texture) and multiplies
+		# albedo_color, the same "preserve texture, only multiply albedo"
+		# language _apply_toon_shading() already uses below. Applied via
+		# material_override (not set_surface_override_material) specifically
+		# so _apply_toon_shading()'s material_override branch patches
+		# diffuse/specular in place rather than overwriting this tint with a
+		# fresh untinted duplicate.
+		var tint := _plot_tint_color(plot)
+		var source_mat: Material = raw_mesh.surface_get_material(0) if raw_mesh.get_surface_count() > 0 else null
+		var tint_mat: StandardMaterial3D = source_mat.duplicate() if source_mat is StandardMaterial3D else StandardMaterial3D.new()
+		tint_mat.albedo_color = Color(
+			tint_mat.albedo_color.r * tint.r,
+			tint_mat.albedo_color.g * tint.g,
+			tint_mat.albedo_color.b * tint.b,
+			tint.a,
+		)
+		if tint.a < 1.0:
+			tint_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		instance.material_override = tint_mat
 
 	_apply_toon_shading(instance)
 	parent.add_child(instance)

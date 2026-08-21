@@ -1,0 +1,70 @@
+## Covers VillageFixtureData.crop_stage_model_path() -- the pure crop-ordinal
+## + stage -> staged-model-path lookup added for the crop growth-stage
+## geometry pass (Track B sourced the models into assets_3d/ but deliberately
+## left them unwired -- see design/art/ui-visual-direction-2026-08.md, §3).
+## Exercises every CropType.Kind ordinal explicitly so a future crop addition
+## that forgets to extend the match's `_` fallback is caught here rather than
+## silently rendering a bad-fit model on the board.
+extends GutTest
+
+
+func test_wheat_growing_returns_wheat_stage_a() -> void:
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.WHEAT, false),
+		VillageFixtureData.CROP_WHEAT_STAGE_GROWING
+	)
+
+
+func test_wheat_ready_returns_wheat_stage_b() -> void:
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.WHEAT, true),
+		VillageFixtureData.CROP_WHEAT_STAGE_READY
+	)
+
+
+func test_tomato_growing_and_ready_use_the_leafy_stand_in_model() -> void:
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.TOMATO, false),
+		VillageFixtureData.CROP_LEAFY_STAGE_GROWING
+	)
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.TOMATO, true),
+		VillageFixtureData.CROP_LEAFY_STAGE_READY
+	)
+
+
+func test_capsicum_growing_and_ready_use_the_leafy_stand_in_model() -> void:
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.CAPSICUM, false),
+		VillageFixtureData.CROP_LEAFY_STAGE_GROWING
+	)
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.CAPSICUM, true),
+		VillageFixtureData.CROP_LEAFY_STAGE_READY
+	)
+
+
+## Paddy/Dutch Rose/Sandalwood/Makhana/Pond Fish/Saffron deliberately have no
+## sourced model that reasonably fits their real shape (see
+## village_fixture_data.gd's own doc comment) -- every one of them must
+## return "" so village_board.gd's _build_plot() falls back to the existing
+## dirt-mesh+tint rendering instead of forcing a bad-fit model onto them.
+func test_crops_with_no_reasonable_model_fit_return_empty_string() -> void:
+	var unmapped_crops: Array[int] = [
+		CropType.Kind.PADDY,
+		CropType.Kind.DUTCH_ROSE,
+		CropType.Kind.SANDALWOOD,
+		CropType.Kind.MAKHANA,
+		CropType.Kind.POND_FISH,
+		CropType.Kind.SAFFRON,
+	]
+	for crop in unmapped_crops:
+		assert_eq(VillageFixtureData.crop_stage_model_path(crop, false), "")
+		assert_eq(VillageFixtureData.crop_stage_model_path(crop, true), "")
+
+
+## PlotFixture.crop's "-1 = no crop planted" sentinel (EMPTY/GHOST/host-
+## occupied cells) must not match any crop's mapping.
+func test_no_crop_sentinel_returns_empty_string() -> void:
+	assert_eq(VillageFixtureData.crop_stage_model_path(-1, false), "")
+	assert_eq(VillageFixtureData.crop_stage_model_path(-1, true), "")

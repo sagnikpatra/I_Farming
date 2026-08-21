@@ -36,6 +36,15 @@ var plot_id: int = -1
 ## board_interactor.gd (via village_board.gd's PickArea meta) to decide which
 ## crops GameData.crops_for_plot_kind() should offer in the seed picker.
 var kind: PlotKind.Kind = PlotKind.Kind.OPEN_FIELD
+## Crop growth-stage geometry pass: the real Plot.state.crop this fixture was
+## built from -- CropType.Kind ordinal, or -1 for a plot with no planted crop
+## (EMPTY, GHOST, or an Agroforestry host-occupied cell, mirroring
+## PlotState.crop's own "-1 when EMPTY" convention, see plot_state.gd). Read
+## by village_board.gd's _build_plot() via VillageFixtureData.
+## crop_stage_model_path() to pick a real staged crop model (Wheat/Tomato/
+## Capsicum) instead of the flat dirt-mesh+tint fallback, when one exists for
+## this crop.
+var crop: int = -1
 
 func _init(p_tile_col: int, p_tile_row: int, p_label: String = "plot") -> void:
 	tile_col = p_tile_col

@@ -80,3 +80,48 @@ const AMBIENT_CLUTTER_MODELS: Array[String] = [
 	"res://assets_3d/nature-kit/OBJ format/rock_smallA.obj",
 	"res://assets_3d/nature-kit/OBJ format/rock_smallB.obj",
 ]
+
+## Crop growth-stage geometry pass: real staged crop models (Track B sourced
+## these into assets_3d/ but deliberately left them unwired -- see
+## design/art/ui-visual-direction-2026-08.md, §3). Wheat gets an exact model
+## match. Tomato/Capsicum have no tomato/pepper-specific sourced model in any
+## curated kit; crops_leafsStage{A,B} (a generic leafy-vegetable silhouette)
+## is used as an approximation for both -- a real judgment call, not a proven
+## fit, flagged here the same way the audio pass flagged its bird-species
+## approximations (production/audio EPIC-M8 notes).
+##
+## Paddy/Dutch Rose/Sandalwood/Makhana/Pond Fish/Saffron are deliberately
+## NOT mapped: corn stalks (crops_cornStageA-D.obj, also sourced but unused)
+## don't read as rice paddy, and sandalwood/saffron/rose need species-specific
+## geometry nothing in the curated kits provides. Those crops stay on the
+## existing flat dirt-mesh + lifecycle-tint rendering via
+## crop_stage_model_path() returning "" for them -- see that function's own
+## doc comment and village_board.gd's _build_plot(), which falls back to
+## CROP_PLOT whenever this returns "".
+const CROP_WHEAT_STAGE_GROWING := "res://assets_3d/nature-kit/OBJ format/crops_wheatStageA.obj"
+const CROP_WHEAT_STAGE_READY := "res://assets_3d/nature-kit/OBJ format/crops_wheatStageB.obj"
+const CROP_LEAFY_STAGE_GROWING := "res://assets_3d/nature-kit/OBJ format/crops_leafsStageA.obj"
+const CROP_LEAFY_STAGE_READY := "res://assets_3d/nature-kit/OBJ format/crops_leafsStageB.obj"
+
+
+## Real staged crop-growth model for `crop` at its current stage, or "" if
+## this crop has no staged model (see the constants block above for exactly
+## which crops are and aren't mapped, and why). `is_ready` selects the
+## second/riper stage (PlotFixture.Lifecycle.READY_TO_HARVEST) vs. the first/
+## sprouting stage (Lifecycle.GROWING) -- callers must not call this for
+## Lifecycle.EMPTY/GHOST, which have no crop planted at all.
+##
+## `crop` is typed CropType.Kind for editor/call-site clarity, but (like
+## GameData.crop_def()) is routinely called with a plain int that may be -1
+## (PlotFixture.crop's "no crop planted" sentinel, e.g. a host-occupied
+## Agroforestry cell) -- GDScript enum-typed params don't enforce membership,
+## and the `match` below's `_` branch safely returns "" for that case, same
+## as for every crop ordinal deliberately left unmapped.
+static func crop_stage_model_path(crop: CropType.Kind, is_ready: bool) -> String:
+	match crop:
+		CropType.Kind.WHEAT:
+			return CROP_WHEAT_STAGE_READY if is_ready else CROP_WHEAT_STAGE_GROWING
+		CropType.Kind.TOMATO, CropType.Kind.CAPSICUM:
+			return CROP_LEAFY_STAGE_READY if is_ready else CROP_LEAFY_STAGE_GROWING
+		_:
+			return ""

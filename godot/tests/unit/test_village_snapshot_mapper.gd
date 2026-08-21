@@ -207,6 +207,38 @@ func test_ready_to_harvest_plot_maps_to_ready_to_harvest_lifecycle() -> void:
 	assert_eq(fixture.lifecycle, PlotFixture.Lifecycle.READY_TO_HARVEST)
 
 
+# --- 5b. PlotState.crop -> PlotFixture.crop threading (crop growth-stage geometry) ---
+
+func test_empty_plot_fixture_carries_no_crop() -> void:
+	var plot: Plot = eco.state.plots[0]
+	var zones := VillageSnapshotMapper.build(eco.state)
+	var open_field := _zone_by_id(zones, "open_field")
+	var fixture := _plot_with_id(open_field, plot.id)
+	assert_not_null(fixture)
+	assert_eq(fixture.crop, -1)
+
+
+func test_growing_plot_fixture_carries_the_real_planted_crop_ordinal() -> void:
+	var plot: Plot = eco.state.plots[0]
+	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW)
+	var zones := VillageSnapshotMapper.build(eco.state)
+	var open_field := _zone_by_id(zones, "open_field")
+	var fixture := _plot_with_id(open_field, plot.id)
+	assert_not_null(fixture)
+	assert_eq(fixture.crop, CropType.Kind.WHEAT)
+
+
+func test_ready_to_harvest_plot_fixture_still_carries_the_planted_crop_ordinal() -> void:
+	var plot: Plot = eco.state.plots[0]
+	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW)
+	eco.resolve_growth_completions(NOW + 121 * 1000)  # Wheat grows in 120s.
+	var zones := VillageSnapshotMapper.build(eco.state)
+	var open_field := _zone_by_id(zones, "open_field")
+	var fixture := _plot_with_id(open_field, plot.id)
+	assert_not_null(fixture)
+	assert_eq(fixture.crop, CropType.Kind.WHEAT)
+
+
 # --- 6. Agroforestry host_occupied ---------------------------------------------------
 
 func test_agroforestry_host_occupied_true_only_for_the_hosted_plot() -> void:

@@ -276,6 +276,7 @@ static func _simple_zone_plots(
 		fixture.plot_id = plot.id
 		fixture.kind = kind
 		fixture.is_water = is_water
+		fixture.crop = plot.state.crop
 		plots.append(fixture)
 	return plots
 
@@ -308,6 +309,7 @@ static func _build_open_field(state: GameState) -> ZoneFixture:
 		fixture.lifecycle = _lifecycle_from_plot_state(plot.state.kind)
 		fixture.plot_id = plot.id
 		fixture.kind = PlotKind.Kind.OPEN_FIELD
+		fixture.crop = plot.state.crop
 		plots.append(fixture)
 	if open_field_plots.size() < GameData.MAX_PLOTS:
 		var ghost_index := open_field_plots.size()
@@ -374,6 +376,7 @@ static func _build_agroforestry(state: GameState) -> ZoneFixture:
 			fixture.lifecycle = _lifecycle_from_plot_state(plot.state.kind)
 			fixture.plot_id = plot.id
 			fixture.kind = PlotKind.Kind.AGROFORESTRY
+			fixture.crop = plot.state.crop
 			plots.append(fixture)
 	return ZoneFixture.new(
 		ZONE_ID_AGROFORESTRY, "Agroforestry", VillageFixtureData.AGROFORESTRY_MODEL,

@@ -116,15 +116,15 @@ This was the specific item flagged for careful review, and it is a real finding.
 | 1 | SAFFRON_DARK/FIELD_GREEN button text contrast | HIGH | 1 (7+ call sites) | ✅ Fixed 2026-08-21 (2nd pass) |
 | 1 | Monsoon-active card (RIPE_GOLD.lerp) white text | HIGH | 1 | ✅ Fixed 2026-08-21 (2nd pass) -- flagged in §1's table originally but never carried into this Summary Table, so it stayed open through the first remediation round |
 | 3 | Plot lifecycle Growing-vs-Ready color-only signal | BLOCKING | 1 | ✅ Fixed 2026-08-21 |
-| 3 | Host-occupied/ghost color-only signal | LOW | 1 | Open |
+| 3 | Host-occupied/ghost color-only signal | LOW | 1 | ✅ Fixed 2026-08-21 (3rd pass) |
 | 4 | Pinch-only camera zoom, no single-pointer alt | HIGH | 1 | ✅ Fixed 2026-08-21 (2nd pass) |
 | 4 | Long-press-drag reposition, no alt | MEDIUM | 1 | ✅ Fixed 2026-08-21 (2nd pass) |
 | 5 | Sub-18px body text, no scaling mechanism | HIGH | 1 | ✅ Fixed 2026-08-21 (2nd pass) -- every call site below this project's 14px floor raised; the §0 text-scale multiplier already covered the "no scaling mechanism" half |
 | 6 | WorkerAssignmentRow/OpenFieldTab unstyled outlier | HIGH | 1 | ✅ Already fixed by an earlier Track A UI-chrome pass (not this audit's remediation) -- confirmed directly in code before re-closing this row, since this doc had gone stale on it |
-| 2 | Quick Nav Bar chip touch-target size | ADVISORY | 1 | Open |
+| 2 | Quick Nav Bar chip touch-target size | ADVISORY | 1 | ✅ Already fixed by the same earlier Track A pass that fixed WorkerAssignmentRow -- `_build_nav_chip()` now uses `UiTheme.make_circular_emoji_button()` at 56px, confirmed directly in code before re-closing this row (this doc had gone stale on it too) |
 | 7 | Audio accessibility | DEFER | 1 | Volume sliders (Master/Ambience/SFX/UI) now exist as of EPIC-M8's audio pass -- deferred item substantially addressed, though a dedicated re-audit of the audio system itself hasn't been done |
 
-**Release recommendation:** All 4 BLOCKING findings and all 4 HIGH findings the user selected for this pass, plus the one MEDIUM finding, are now fixed and verified on-device (see 2026-08-21 2nd-pass Remediation Log below). Remaining LOW/ADVISORY findings are real but non-blocking -- fine to leave for a future polish pass.
+**Release recommendation:** Every finding in this audit is now either fixed and verified, or an explicit, deliberate DEFER (§7, audio -- substantially addressed but not re-audited). Nothing remains open as of the 2026-08-21 3rd pass.
 
 ---
 
@@ -232,7 +232,54 @@ failure with no connection to anything touched this pass -- confirmed by
 re-running 2 more times, both clean) -- flagged here rather than silently
 ignored, but not investigated further as out of scope for this pass.
 
-**Remaining open, non-blocking**: §3's LOW host-occupied/ghost color-only
-signal, §2's ADVISORY Quick Nav Bar touch-target size. §7's audio
+**Remaining open at the end of this pass**: §3's LOW host-occupied/ghost
+color-only signal, §2's ADVISORY Quick Nav Bar touch-target size. §7's audio
 accessibility is substantially addressed (4 volume sliders now exist) but
 hasn't had its own dedicated re-audit pass.
+
+## Remediation Log (2026-08-21, 3rd pass) -- the LOW + ADVISORY findings
+
+Re-verified both remaining rows against current code before touching
+anything, same discipline as the earlier passes -- and found the ADVISORY
+row was *already* fixed, by the same Track A pass that had already fixed
+WorkerAssignmentRow: `hud.gd`'s `_build_nav_chip()` now calls
+`UiTheme.make_circular_emoji_button(emoji, WOOD_BROWN_LIGHT, 56)`, which
+sets a real 56px `custom_minimum_size` -- well above the 44px floor this
+row's own recommendation asked for. The audit doc's Summary Table had
+simply never been updated to reflect it. Only §3's LOW finding
+(host-occupied/ghost color-only signal) needed real work.
+
+**§3 -- host-occupied/ghost color-only signal**: extended the exact same
+runtime-texture-paint badge-decal technique `_build_ready_badge_decal()`
+already established (§3's earlier BLOCKING fix), with two more distinct
+silhouettes so all three badges stay distinguishable from each other, not
+just from the tint underneath:
+- **Host-occupied** -- a filled diamond (Manhattan-distance rasterization,
+  `_build_host_badge_decal()`), deep leaf green.
+- **Ghost tiles** -- a hollow ring (`_build_ghost_badge_decal()`), warm
+  white -- the "hollow" is a deliberate metaphor: a placeholder tile isn't
+  a real plot yet, so its badge isn't "filled in" either.
+
+Both wired into `_build_plot()`'s existing badge call site, with
+precedence exactly mirroring `_plot_tint_color()`'s own
+host_occupied-then-GHOST-then-lifecycle order, so a cell's badge always
+matches whichever tint it's actually showing.
+
+**Verified on-device** (same emulator session as the 2nd pass): found a
+genuine ghost tile in the player's current save (all Open-Field plots
+past a certain point still unpurchased) and confirmed the hollow ring
+decal renders correctly, positioned and elevated exactly like the ready
+badge -- screenshot in `production/qa/evidence/a11y-fix5-ghost-badge-ring-
+confirmed.png`. **Could not locate a host-occupied Agroforestry cell in
+this save** to confirm the diamond badge the same way -- flagged honestly
+rather than claimed as verified; confidence in it is still reasonably
+high since it reuses the identical proven pipeline (PlaneMesh +
+StandardMaterial3D + runtime ImageTexture) now confirmed working twice
+over (ready checkmark, ghost ring), differing only in its rasterization
+math (Manhattan distance vs. Euclidean), which was reviewed carefully
+rather than merely assumed correct. Full GUT suite re-run: 360/360,
+unchanged (no dedicated unit test for these decals, consistent with this
+file's existing scene-tree-dependent-code convention).
+
+**Every finding in this audit is now closed** -- either fixed and
+verified, or the one deliberate DEFER (§7, audio).

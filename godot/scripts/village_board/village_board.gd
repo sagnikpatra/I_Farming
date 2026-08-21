@@ -899,6 +899,99 @@ func _distance_to_segment(px: float, py: float, ax: float, ay: float, bx: float,
 	return sqrt(dx * dx + dy * dy)
 
 
+## Host-occupied badge decal -- LOW a11y fix (village-board-and-management-
+## sheets-audit-2026-08-21.md §3): host-occupied cells were previously
+## conveyed only by HOST_OCCUPIED_PLOT_COLOR's tint (SC 1.4.1 Use of Color).
+## Same runtime-texture-paint technique as _build_ready_badge_decal() above,
+## deliberately a DIFFERENT silhouette (filled diamond, not a filled circle)
+## rather than just a different color on the same disc shape -- so the two
+## badges stay distinguishable from each other under the colorblind-safe
+## palette too, not just distinguishable from the tint tinting underneath
+## either of them.
+const _HOST_BADGE_TEXTURE_SIZE: int = 32
+const _HOST_BADGE_FILL_COLOR := Color("#2E5C1A")  # deep leaf green -- reads as "planted", distinct from the ready badge's warm white
+const _HOST_BADGE_OUTLINE_COLOR := Color(0.95, 0.98, 0.90)
+
+func _build_host_badge_decal() -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2.ONE * (TILE_SIZE * 0.30)
+	instance.mesh = plane
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _build_host_badge_texture()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	instance.material_override = mat
+	return instance
+
+
+func _build_host_badge_texture() -> ImageTexture:
+	var size := _HOST_BADGE_TEXTURE_SIZE
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var center := (size - 1) / 2.0
+	# Manhattan distance (|dx|+|dy|) <= a fixed radius traces a diamond --
+	# the cheapest way to rasterize a shape whose silhouette is obviously
+	# not a circle at this decal's small on-screen size.
+	var half_diag := center * 0.92
+	for y in range(size):
+		for x in range(size):
+			var manhattan := absf(float(x) - center) + absf(float(y) - center)
+			if manhattan > half_diag:
+				image.set_pixel(x, y, Color(0.0, 0.0, 0.0, 0.0))
+				continue
+			var color := _HOST_BADGE_OUTLINE_COLOR if manhattan > half_diag * 0.78 else _HOST_BADGE_FILL_COLOR
+			if manhattan > half_diag * 0.85:
+				color.a *= clampf((half_diag - manhattan) / (half_diag * 0.15), 0.0, 1.0)
+			image.set_pixel(x, y, color)
+
+	return ImageTexture.create_from_image(image)
+
+
+## Ghost-tile badge decal -- same §3 LOW fix as the host badge above, for
+## GHOST_PLOT_COLOR's own color-only signal. A hollow ring, not a filled
+## shape -- distinct from both the ready badge's filled circle and the host
+## badge's filled diamond, and the "hollow" itself is a deliberate visual
+## metaphor (a placeholder tile isn't a real plot yet, so its badge isn't
+## "filled in" either).
+const _GHOST_BADGE_TEXTURE_SIZE: int = 32
+const _GHOST_BADGE_RING_COLOR := Color(1.0, 1.0, 1.0, 0.55)
+
+func _build_ghost_badge_decal() -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2.ONE * (TILE_SIZE * 0.30)
+	instance.mesh = plane
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _build_ghost_badge_texture()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	instance.material_override = mat
+	return instance
+
+
+func _build_ghost_badge_texture() -> ImageTexture:
+	var size := _GHOST_BADGE_TEXTURE_SIZE
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var center := (size - 1) / 2.0
+	var outer_radius := center * 0.92
+	var inner_radius := outer_radius * 0.65
+	for y in range(size):
+		for x in range(size):
+			var dx := float(x) - center
+			var dy := float(y) - center
+			var dist := sqrt(dx * dx + dy * dy)
+			if dist > outer_radius or dist < inner_radius:
+				image.set_pixel(x, y, Color(0.0, 0.0, 0.0, 0.0))
+				continue
+			image.set_pixel(x, y, _GHOST_BADGE_RING_COLOR)
+
+	return ImageTexture.create_from_image(image)
+
+
 ## Builds one zone's Plinth + Building + PickArea trio and positions them at
 ## the zone's current fixture tile position. Returns the zone's root node
 ## (registered by rebuild() into _zone_nodes_by_id).
@@ -1195,11 +1288,25 @@ func _build_plot(plot: PlotFixture, parent: Node3D, zone_id: String) -> void:
 	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §3):
 	# harvest-readiness was conveyed by tint hue alone (green vs. amber) --
 	# SC 1.4.1 Use of Color. Stamp a small checkmark badge decal on top of
-	# READY_TO_HARVEST plots as an independent, non-color signal. Not shown
-	# for host-occupied cells, which never carry Lifecycle.READY_TO_HARVEST
-	# in the first place (see _plot_tint_color()'s precedence comment).
-	if plot.lifecycle == PlotFixture.Lifecycle.READY_TO_HARVEST:
-		var badge := _build_ready_badge_decal()
+	# READY_TO_HARVEST plots as an independent, non-color signal.
+	#
+	# LOW fix (same §3, added in a later pass): host-occupied and GHOST
+	# tiles had the identical color-only-signal problem
+	# (HOST_OCCUPIED_PLOT_COLOR/GHOST_PLOT_COLOR), just lower severity/
+	# frequency per the audit's own note. Same badge-decal treatment, two
+	# more distinct silhouettes (filled diamond / hollow ring -- see
+	# _build_host_badge_decal()/_build_ghost_badge_decal()'s own doc
+	# comments). Precedence exactly mirrors _plot_tint_color()'s own
+	# host_occupied-then-GHOST-then-lifecycle order, so a cell's badge
+	# always matches whichever tint it's actually showing.
+	var badge: MeshInstance3D = null
+	if plot.host_occupied:
+		badge = _build_host_badge_decal()
+	elif plot.lifecycle == PlotFixture.Lifecycle.GHOST:
+		badge = _build_ghost_badge_decal()
+	elif plot.lifecycle == PlotFixture.Lifecycle.READY_TO_HARVEST:
+		badge = _build_ready_badge_decal()
+	if badge != null:
 		badge.position = instance.position + Vector3(0.0, plot_height + 0.02, 0.0)
 		parent.add_child(badge)
 

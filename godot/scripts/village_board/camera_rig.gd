@@ -110,16 +110,51 @@ func clamp_pan_position(target: Vector2) -> Vector2:
 
 
 func _compute_default_distance(extents: Vector2) -> float:
+	var viewport_size := get_viewport().get_visible_rect().size
+	return compute_framing_distance(
+		extents, viewport_size, CAMERA_FOV_DEGREES, FRAMING_MARGIN
+	)
+
+
+## Pure framing-distance calculation, extracted out of _compute_default_distance()
+## so it's testable without a live Viewport (same "extract the pure decision"
+## pattern board_interactor.gd uses for its gesture-mode functions -- see
+## tests/unit/test_camera_rig.gd).
+##
+## Landscape (aspect > 1.0) fills the board's width edge-to-edge instead of
+## padding out to whichever axis is stricter. Past aspect 1.0, depth is
+## almost always the stricter (larger) distance -- distance_for_width shrinks
+## as aspect grows (a wider viewport needs less distance to fit a given
+## width), but distance_for_depth doesn't depend on aspect at all. Framing to
+## the portrait-style max() in landscape therefore backs the camera out to
+## satisfy depth, and the wide viewport's surplus horizontal FOV at that
+## distance shows empty space on both sides of the board instead of board.
+##
+## Deliberately asymmetric with the portrait/square branch below: this trades
+## "whole board visible with zero panning" for "board fills the screen"
+## *only* in landscape. Portrait keeps the EPIC-M1 zero-pan-on-load
+## guarantee, since portrait is this project's primary target and the
+## narrower viewport there doesn't have surplus width to reclaim in the
+## first place. The board's top/bottom depth extremes land just outside the
+## initial landscape view, but _recompute_pan_bounds() already computes
+## non-zero pan slack for whichever axis isn't fully visible at the current
+## distance, so they're reachable via the existing pan_by()/center_on() --
+## no separate plumbing needed here.
+static func compute_framing_distance(
+	extents: Vector2, viewport_size: Vector2, fov_degrees: float, framing_margin: float
+) -> float:
 	var half_width := extents.x / 2.0
 	var half_depth := extents.y / 2.0
 
-	var viewport_size := get_viewport().get_visible_rect().size
 	var aspect := viewport_size.x / viewport_size.y if viewport_size.y > 0.0 else 1.0
 
-	var half_vfov_rad := deg_to_rad(CAMERA_FOV_DEGREES / 2.0)
+	var half_vfov_rad := deg_to_rad(fov_degrees / 2.0)
 	var distance_for_depth := half_depth / tan(half_vfov_rad)
 	var distance_for_width := half_width / (tan(half_vfov_rad) * aspect)
-	return maxf(distance_for_depth, distance_for_width) * FRAMING_MARGIN
+
+	if aspect > 1.0:
+		return distance_for_width * framing_margin
+	return maxf(distance_for_depth, distance_for_width) * framing_margin
 
 
 ## Recomputes pan_min/pan_max for the *current* _distance: the ground-plane

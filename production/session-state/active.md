@@ -3671,23 +3671,68 @@ blue, cool-toned board. Day's phase verified via a temporary forced-hour
 override (instrument-then-delete, reverted before commit), confirmed
 pixel-identical to the existing look. Committed as `81a0d3c`. Not pushed.
 
+## 2026-08-22 (cont'd) -- Villager idle pauses built -- feature-scoping pass fully closed
+
+User said "next" -- picked up the last remaining item. First resolved
+the brief's own flagged prerequisite for real (not assumed): direct
+glTF-binary inspection of Rig_Medium_General.glb (previously "sourced
+but never inspected" per both villagers.md and the scoping brief) found
+15 real animation clips, including Idle_A/Idle_B on the shared
+Rig_Medium skeleton -- unblocking the M-complexity path. Wrote design/gdd/
+richer-ambient-villagers.md scoped to just the idle-pause mechanic
+(congregating, decoration-lingering, and night population thinning all
+need new cross-component data this self-contained slice doesn't have --
+documented as explicit stretch, same discipline as every other item this
+session).
+
+villager.gd merges Idle_A/Idle_B into the existing "moves" library;
+villager_roamer.gd gains an Idle-Pause state (35% chance, 2-5s, after
+each walk leg). Caught a real bug while writing tests, not in review:
+the initial idle-resume logic never picked a new target when the timer
+elapsed, so the next frame re-rolled the idle chance against the same
+still-empty path, chaining into repeated idles instead of resuming --
+caught because it made the pre-existing movement tests genuinely flaky
+across repeated runs (not fixable by padding the step count, since a
+continuously-cycling roamer can complete extra round trips just as
+easily as it can idle within any fixed budget). Fixed the resume logic
+properly, then fixed the tests properly too: explicitly seeded the two
+movement tests to a verified non-idling RNG sequence rather than relying
+on assumed determinism, restoring their exact-step-count assertions;
+confirmed non-flaky across 5 repeated full-suite runs afterward.
+
+16 new/updated GUT tests, 454/454 passing. User's phone reconnected
+mid-task ("and check on my phone") -- verified there instead of the
+emulator: idle-pause fires live during ordinary play, confirmed via a
+temporary always-idle override (reverted before commit) showing both
+villagers in a distinct correct standing pose (not T-posed/frozen), and
+confirmed a villager genuinely resuming its walk and relocating after
+the idle timer elapsed -- validating the resume-bug fix live, not just
+in tests. Also incidentally reconfirmed Real-time day/night is live
+correctly on the phone too (same night-blue lighting as the emulator
+showed earlier). Committed as `028c36a`. Phone left on the clean
+production build. Not pushed.
+
+**All 5 items from the 2026-08-22 feature-scoping pass are now built.**
+Updated docs/architecture/feature-scoping-2026-08-22.md's summary to
+reflect this -- each item's own stretch goals remain open, undecided
+future work, not scheduled.
+
 ## Next Step
 
-1. Nothing is currently in-flight from this session. Everything reached
-   a stopping point: real-hardware perf (closed), cloud-save ADR
-   (Proposed, awaiting the user picking a phase to start), Chanda Visit
-   (built), Farmhouse visual tiers (built), Gems & Daily Tasks (built),
-   Real-time day/night (built), and 1 remaining open feature brief
-   (richer ambient villager behavior -- gated on checking whether the
-   sourced character rig has a usable idle animation clip first, per
-   the brief's own note; not picked yet).
-2. The physical phone disconnected mid-session -- worth reconnecting via
-   USB if the user wants further real-hardware verification; the
-   emulator remains available as a fallback verification target either
-   way.
-3. The earlier "screen alignment" question is still technically
+1. Nothing is currently in-flight from this session. Every item from
+   both this session's scope-discussion passes is now built and
+   committed: Chanda Visit, Farmhouse visual tiers, Gems & Daily Tasks,
+   Real-time day/night, and Villager idle pauses (all 2026-08-22). The
+   cloud-save ADR (`adr-0003-cloud-save-and-player-accounts.md`) remains
+   Proposed, not actioned -- Phase 0 (schema versioning + JSON transport)
+   is its own recommended first step whenever the user wants to start
+   it. Real-hardware performance budgeting is closed. Per the
+   Collaborative Design Principle, the next move is the user's: pick a
+   stretch goal from any of the 5 built features, start the cloud-save
+   ADR, or name a new direction entirely.
+2. The earlier "screen alignment" question is still technically
    unconfirmed by the user (they moved on to other topics before
    answering) -- low urgency, evidence points to "not a bug" (the
    intended locked-zone placeholder visual).
-4. Localization, store readiness -- still open, still need the user
+3. Localization, store readiness -- still open, still need the user
    specifically (see entries above).

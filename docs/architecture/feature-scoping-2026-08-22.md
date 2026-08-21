@@ -235,12 +235,21 @@ shipped here.
 | 1 | Building upgrades change layout | M (Farmhouse-only) / L (footprint growth + all structures) | Resolves `land-and-structures.md`'s open collision-validation question if footprint grows | **Built (2026-08-22, commit `d03eaee`)** -- Farmhouse model re-skin only, fixed footprint; footprint growth and the other 3 structures' sub-upgrades stay open stretch goals |
 | 2 | Gems via daily tasks | M (grind-only) / L (if real-money purchasable) | Real-money path needs a billing-integration decision first | **Built (2026-08-22, commit `85a0079`)** -- grind-only, as scoped; real-money purchase stays explicitly out of scope (no billing integration exists) |
 | 3 | Real-world-timezone weather | S/M (cosmetic, recommended) / L (mechanical, not recommended) | New device-timezone read dependency either way | **Built (2026-08-22, commit `81a0d3c`)** -- Option A (cosmetic day/night, S complexity); Option B (seasonal palette) and villager lamp-lighting stay open stretch goals |
-| 4 | Richer ambient villager behavior | M (contingent) / L (if new animation sourcing needed) | Verify `Rig_Medium_General.glb` has a usable idle clip first | Open |
+| 4 | Richer ambient villager behavior | M (contingent) / L (if new animation sourcing needed) | Verify `Rig_Medium_General.glb` has a usable idle clip first | **Built (2026-08-22, commit `028c36a`)** -- prerequisite confirmed true (Idle_A/Idle_B exist), idle-pause shipped at M; congregating, decoration lingering, and night population thinning stay open stretch goals |
 | 5 | Festival chanda visiting-NPCs | L | — | **Built (2026-08-22, commit `56c62a9`)** |
 
-Items 3 and 4 share real synergy (day/night + villager behavior). Cloud
-save is tracked separately in `adr-0003-cloud-save-and-player-accounts.md`.
+All 5 items from this scoping pass are now built (2026-08-22) -- see each
+row's linked GDD in `design/gdd/` and commit for the real implementation,
+tests, and on-device evidence. Items 3 and 4 realized their flagged
+synergy directly: item 4's idle-pause work reused item 3's real-time
+infrastructure precedent (`local_hour()` mirrors `local_day_key()`'s exact
+pure-function shape). Cloud save is tracked separately in
+`adr-0003-cloud-save-and-player-accounts.md` (Proposed, not yet actioned).
 
-None of items 1-4 are approved for implementation yet. Next step per the
-Collaborative Design Principle: the project owner picks which (if any) to
-take from brief to a full 8-section GDD first.
+Each item's own stretch goals (footprint growth, a second gems sink,
+seasonal palette/villager lamp-lighting, villager congregating/decoration-
+lingering/night population thinning) remain open, undecided future work --
+not committed to, not scheduled. The project owner's next move, per the
+Collaborative Design Principle, is picking a new direction entirely (one
+of these stretch goals, the cloud-save ADR, or something not on this list
+at all).

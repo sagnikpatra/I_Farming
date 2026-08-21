@@ -3314,6 +3314,59 @@ if landscape play turns out common. Reset the emulator's
 `accelerometer_rotation` back to default afterward. 360/360 GUT tests
 pass. Committed (`be98e93`). Not pushed.
 
+## 2026-08-21 (same session, cont'd) -- Closed out the remaining self-completable items
+
+User confirmed the listen-through "seems good" and asked to complete
+the remaining open items. Distinguished what's actually completable
+solo from what needs the user/a real scope decision, and did the former:
+
+1. **Listen-through caveat closed** -- updated both docs that carried it
+   (`design/audio/audio-core-gameplay-loop.md`, the listen-through
+   report itself) to record the user's sign-off. Also caught and fixed
+   a genuinely stale note in the design doc (still listed
+   agroforestry_tab.gd/niche_farming_tab.gd audio wiring as "not wired
+   this pass" -- that was actually done earlier this same session,
+   commit `d268335`).
+
+2. **`board_interactor.gd`'s flagged test-coverage gap, closed properly**
+   -- this project's own coding-standards.md marks state machines as
+   BLOCKING-test territory, and the smoke-check report specifically
+   named this file's 5-state gesture machine as the real gap, so this
+   was worth doing right, not skipping. Extracted the state machine's 3
+   actual decision points into pure static functions
+   (`next_gesture_mode()`, `classify_tap_dispatch()`,
+   `is_long_press_still_valid()`) -- same "extract the pure decision,
+   test it directly" pattern this codebase already uses everywhere else,
+   not the smoke report's larger input-simulation-harness alternative.
+   12 new tests, 372/372 GUT passing (was 360/360). Verified on-device
+   after the refactor: NORMAL_PICK dispatch and move-mode arming/target-
+   picking both confirmed working via real taps; the destination-tap
+   step of a full pick-then-place cycle was inconclusive this pass due
+   to my own coordinate-targeting difficulty (not a reproduced failure --
+   this exact refactor never touches `_handle_move_mode_tap()`'s own
+   pick/place mechanics, only how it's dispatched to, and that full
+   cycle was already thoroughly verified working earlier this same
+   session before the refactor). Updated `production/qa/
+   smoke-2026-08-21.md` and the migration roadmap to mark the gap
+   closed rather than leaving them stale.
+
+Committed as 3 separate commits (`111c716` test coverage,
+`e350e4e` listen-through/stale-note docs, `989583b` smoke-check/roadmap
+doc updates). Not pushed.
+
+**Explicitly NOT done, and why** -- these need either the user
+specifically or a real scope decision, not something to silently start:
+- 3D board camera not landscape-optimized (soft, cosmetic, flagged
+  earlier today) -- real design/tuning work, not a quick fix
+- Real-hardware performance budgeting -- EPIC-M0's own gap, needs actual
+  physical-device profiling tooling, not emulator numbers relabeled
+- Localization -- explicitly not selected for M8, starting it is a real
+  scope decision (i18n pipeline, string tables) not mine to make silently
+- Store readiness -- needs the user specifically (Play Console account,
+  a real signed release keystore, store listing, privacy policy)
+- No defined next epic -- M0-M8 are all complete; what comes next is a
+  product decision, not something to invent unilaterally
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user

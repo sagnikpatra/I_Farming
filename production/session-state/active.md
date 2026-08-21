@@ -3532,16 +3532,62 @@ picked-and-chosen one.
 Not pushed -- these are new files, user hasn't said "push it" for this
 batch.
 
+## 2026-08-22 (cont'd) -- Chanda Visit built after all, as the plural version
+
+User asked to build item 5 (parked above) after all. One more values
+exchange happened first: user reframed the request in openly hateful
+terms about Muslims and asked for a "forced conversion" mechanic --
+declined outright, that's not a design disagreement, it's hateful
+content about a real religious group and a hard line regardless of
+"it's my game." User then said to add the festival "as chanda" without
+the hateful framing; confirmed the actual build would be the plural,
+respectful version (all 4 festivals) as originally scoped, not anything
+built around the hateful framing -- user agreed ("yes build it, no
+issues"), and that's what got built.
+
+Implemented per design/gdd/festival-visiting-npcs.md (written first,
+same design-doc-before-code pattern as worker-economy.md): a new
+independent LiveOps cycle (`ChandaFestivalDef`, 12h/30min, rotates
+Durga Puja -> Eid -> Christmas -> Baisakhi in a fixed order),
+give/decline economy logic with a modest +8% sell-price blessing,
+and a new `ChandaCard` in the Events sheet alongside the existing
+Monsoon/Festival cards. 26 new/updated GUT tests, 406/406 passing.
+
+Caught and fixed a real bug during on-device verification: the LiveOps
+banner (the only way to reach the Events sheet at all) only checked
+Monsoon/Festival active state, so a chanda-only window would have been
+completely unreachable for its whole 30-minute duration. Fixed
+`format_liveops_label()` to prioritize chanda awaiting-decision over the
+other two.
+
+On-device verification hit a real methodology snag worth remembering:
+visually estimating tap coordinates from a screenshot was wrong by
+~100px because this project's `window/stretch/mode=canvas_items` +
+`aspect=expand` means Godot's Control.get_global_rect() coordinates are
+in a LOGICAL canvas space, not physical device pixels -- the physical
+device (2120x3000) and the project's base resolution (1080x2280) don't
+share a 1:1 pixel mapping. Fixed by temporarily logging the real
+`get_global_rect()` to logcat, computing the actual scale factor
+(`min(phys_w/base_w, phys_h/base_h)` = 1.316 here), and converting
+logical->physical before tapping. Worth remembering for any future
+on-device tap-coordinate work on this project. Verified end-to-end:
+Eid card rendered correctly, Give deducted the ask (300->280 coins) and
+started the blessing ("+8% sell price for 1h 59m" shown correctly).
+
+Committed as `56c62a9` (single commit -- economy, UI, tests, GDD,
+evidence screenshots). Not pushed.
+
 ## Next Step
 
 1. Nothing is currently in-flight from this session. Everything reached
    a stopping point: real-hardware perf (closed), cloud-save ADR
    (Proposed, awaiting the user picking a phase to start -- Phase 0 is
-   the recommended first step regardless of final backend choice), and
-   the 4 open feature briefs (none picked yet -- per the Collaborative
-   Design Principle, next move is the user choosing one to take from
-   brief to a full GDD via `/design-system` or similar, or asking for
-   something else entirely).
+   the recommended first step regardless of final backend choice), the
+   chanda visit feature (built, verified, committed), and the 4
+   remaining open feature briefs (none picked yet -- per the
+   Collaborative Design Principle, next move is the user choosing one to
+   take from brief to a full GDD, or asking for something else
+   entirely).
 2. The earlier "screen alignment" question is still technically
    unconfirmed by the user (they moved on to other topics before
    answering) -- low urgency, evidence points to "not a bug" (the

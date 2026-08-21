@@ -207,27 +207,24 @@ check as literally the first step.
 
 ---
 
-## 5. Festival Visiting-NPC "Chanda" Events — PARKED
+## 5. Festival Visiting-NPC "Chanda" Events — BUILT (2026-08-22)
 
-**Original concept**: A recurring visiting-NPC micro-event, layered on top
-of the existing crop-demand Festival Pass, where an NPC visits the farm
-during a major festival window asking for a small chanda (community
-donation), across a rotation of real major Indian festivals (Durga
-Puja/Diwali, Eid, Christmas, Baisakhi) from day one — not any single
-festival first, given rural India's real religious plurality.
+**Status: Done.** Implemented as scoped — the full plural version, all
+four festivals (Durga Puja, Eid, Christmas, Baisakhi) rotating in a fixed,
+even order. See `design/gdd/festival-visiting-npcs.md` for the full design
+and commit `56c62a9` for the implementation (economy layer, `ChandaCard`
+in the Events sheet, 26 new/updated GUT tests, on-device verified on the
+project owner's physical device).
 
-**Status (2026-08-22)**: Parked entirely, not implemented in any form.
-During scoping, the project owner asked for a version that excluded Eid
-specifically while keeping the Hindu/Sikh/Christian festivals. That request
-was declined — a feature that includes other communities' festivals but
-specifically carves out Eid isn't a neutral scope cut, it singles out one
-community for exclusion in a game about representing Indian village life.
-The owner then chose to park the whole feature rather than build the plural
-version now. Nothing here is scheduled.
-
-**If revisited in the future**: should be the plural version originally
-scoped (all four festivals, or Eid included alongside the others), not a
-version that includes some communities' festivals and excludes others.
+**History, for the record**: during scoping the project owner initially
+asked for a version that excluded Eid specifically while keeping the other
+three festivals. That was declined — a feature that includes other
+communities' festivals but specifically carves out Eid isn't a neutral
+scope cut, it singles out one community for exclusion in a game about
+representing Indian village life. The request was repeated once more and
+declined again. The owner then briefly parked the whole feature, before
+asking for it to be built as the original plural version, which is what
+shipped here.
 
 ---
 
@@ -239,7 +236,7 @@ version that includes some communities' festivals and excludes others.
 | 2 | Gems via daily tasks | M (grind-only) / L (if real-money purchasable) | Real-money path needs a billing-integration decision first | Open |
 | 3 | Real-world-timezone weather | S/M (cosmetic, recommended) / L (mechanical, not recommended) | New device-timezone read dependency either way | Open |
 | 4 | Richer ambient villager behavior | M (contingent) / L (if new animation sourcing needed) | Verify `Rig_Medium_General.glb` has a usable idle clip first | Open |
-| 5 | Festival chanda visiting-NPCs | L | — | **Parked (2026-08-22)** |
+| 5 | Festival chanda visiting-NPCs | L | — | **Built (2026-08-22, commit `56c62a9`)** |
 
 Items 3 and 4 share real synergy (day/night + villager behavior). Cloud
 save is tracked separately in `adr-0003-cloud-save-and-player-accounts.md`.

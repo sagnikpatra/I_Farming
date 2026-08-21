@@ -4,7 +4,7 @@
 **Status**: Confirmed — all open questions resolved by the user, ready for implementation
 **Source**: Your direct answers to this session's clarifying questions (2026-08-21, quoted inline below); `docs/architecture/godot-migration-roadmap.md`'s EPIC-M7 (Worker Assignment & Wage Economy) — which is otherwise just a name and a size estimate, no prior design material; `design/gdd/crop-economy.md`'s existing plot lifecycle and lazy offline-resolution pattern, which this system extends rather than duplicates; `design/gdd/villagers.md`'s EPIC-M6 roster, which this system reuses per your answer
 **Date**: 2026-08-21
-**Verified By**: User — §3.6's visibility interpretation and all 4 of §5's edge cases confirmed 2026-08-21
+**Verified By**: User — §3.6's visibility interpretation and all 4 of §5's edge cases confirmed 2026-08-21; §4's wage rate balance-checked 2026-08-21 (`/balance-check`), one formula bug found and fixed (see §4's Status column)
 **Implementation Status**: Economy backend implemented and verified (assignment, eligibility, lazy harvest-and-replant automation, wage, and all 3 confirmed edge cases with real economic weight — inventory-full, can't-afford-replant, Electricity-lapsed). Not yet implemented: any player-facing UI to assign/unassign a worker, and the visual "stationed at zone" rendering for an assigned villager (§3.6) — see `docs/architecture/godot-migration-roadmap.md`'s EPIC-M7 section for the exact remaining scope.
 ---
 
@@ -111,13 +111,19 @@ it reads as a genuine trade-off, not a free win.
 
 | Formula | Expression | Purpose | Status |
 |---|---|---|---|
-| Wage per harvest-and-replant cycle | `crop.baseSellPrice × 0.15` (15% of that crop's base sell value), min ₹1 | Ties cost to value delivered; a worker nets the player ~85% of manual-harvest value per cycle instead of 100%, the "convenience tax" | 🔶 Proposed, unbalanced — needs a `/balance-check` pass against the real crop value table before treating as final, per `land-and-structures.md`'s own precedent of flagging this project's large-currency sinks for that skill explicitly |
+| Wage per harvest-and-replant cycle | `crop.baseSellPrice × (0.5 if damaged else 1.0) × 0.15` (15% of that crop's *actually realized* sell value — the same 0.5× damage scaling `sell_crop()` applies — min ₹1) | Ties cost to value delivered; a worker nets the player ~80-81% of manual-harvest net profit per cycle instead of 100%, the "convenience tax" | ✅ Balance-checked 2026-08-21 (see `production/balance/` or the `/balance-check` session) — 15% confirmed proportionally consistent (19–21% of net profit) across 7 of 8 eligible crops. **One real bug found and fixed**: the formula originally ignored damage entirely, charging the full undamaged rate even on a harvest that sold for half (an effective ~30% cut, contradicting §5's own "only charge for value delivered" principle) — now fixed in `game_economy.gd`'s `_worker_wage_for()`, covered by a regression test. Two items noted but left as open designer calls, not blockers: Wheat's cut is 30% of net profit (vs. 19–21% elsewhere) since its 50% seed-cost-to-price ratio is an outlier; stacking a worker onto Polyhouse/Vertical Farm's own recurring sink (UV Film/Electricity) roughly doubles-to-triples that zone's total "tax" (10–11% → 22–26%) |
 | Assignment cost | None proposed (free to assign/un-assign) | Keeps the friction entirely in the recurring wage, not an entry fee, so the player can experiment freely | 🔶 Proposed — an alternative would add a one-time hire cost too; deliberately not proposed here to keep this document's invented-formula surface as small as possible |
 | Worker capacity | 1 worker per zone (matches §3.2's per-zone assignment granularity); no stated cap on how many zones can have a worker simultaneously, bounded naturally by the EPIC-M6 roster size (currently 6 villagers total) | Simplicity — no new cap to invent when the roster size already bounds it | 🔶 Proposed |
 
-**No worked example is given here deliberately** — every number above is
-marked proposed/unbalanced, and a worked example built on an unbalanced
-formula would read as more authoritative than it is.
+**Worked example** (added 2026-08-21, post-balance-check): a Capsicum
+(Polyhouse) harvest — base sell price ₹650 — nets the player ₹650 - ₹150
+seed cost = ₹500 manually, or ₹650 - ₹98 wage - ₹150 seed cost = ₹402 via
+a worker (80.4% of manual net kept, a 19.6% cut). If that same harvest
+arrives damaged (spoiled past Polyhouse's grace window, or, for an
+Open-Field crop, a weather/pest roll), the wage itself now halves to ₹49
+(matching the crop's own halved ₹325 realized sale value) rather than
+staying at ₹98 — see §4's Status column for why that damage-scaling was a
+real bug, now fixed.
 
 ## 5. Edge Cases
 
@@ -181,7 +187,7 @@ already sourced.
 
 | Knob | Safe Range | Affects | Notes |
 |---|---|---|---|
-| Wage rate (% of crop base sell price) | Untested — 15% is a first proposal, not a researched range | How much of a worker's value the player keeps vs. pays out | Needs a `/balance-check` pass against the real crop value table (see §4) before any range can be called "safe" |
+| Wage rate (% of crop base sell price) | 15% confirmed reasonable 2026-08-21 — safe range is roughly 10-20%; below ~10% the automation approaches a "free win" (against the Player Fantasy's explicit "genuine trade-off" goal), above ~20% Wheat's already-thin margin (see §4) starts turning worker-assignment into a net loss | How much of a worker's value the player keeps vs. pays out | Balance-checked against the real crop value table (see §4). Do not tune this rate without re-running `/balance-check` — Wheat is the binding constraint on how high it can safely go |
 | Worker capacity (zones simultaneously staffed) | Bounded by roster size (currently 6) | How much of the game a player can fully automate at once | Not independently tunable yet — a direct function of `villagers.md`'s roster size knob |
 
 ## 8. Acceptance Criteria
@@ -212,12 +218,12 @@ already sourced.
 
 **Definition of Done for this document specifically**: ✅ met. §3.6's
 visibility interpretation and all 4 of §5's edge cases are confirmed by
-the user, not assumed. The wage rate (§4, 15% proposed) remains
-explicitly unbalanced/untested — that's expected to be tuned via
-`/balance-check` after real data exists, not a blocker to starting
-implementation, the same way `land-and-structures.md`'s own formulas
-shipped as "traced to `v2.md`'s research, not yet independently
-balance-checked."
+the user, not assumed. The wage rate (§4, 15%) was balance-checked
+2026-08-21 — confirmed proportionally reasonable, with one real formula
+bug (missing damage scaling) found and fixed in the implementation. Two
+non-blocking designer calls remain open (Wheat's disproportionate net-profit
+cut; worker+structural-sink stacking on Polyhouse/Vertical Farm) — noted in
+§4/§7, not required before this document can be considered done.
 
 ---
 

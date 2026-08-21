@@ -305,19 +305,27 @@ func plant_seed(plot_id: int, crop: int, now: int) -> void:
 	_mark_dirty()
 
 
-func harvest_plot(plot_id: int, now: int) -> void:
+## Returns true if the harvested unit landed in the `damaged` bucket (weather/
+## pest damage, or Polyhouse spoilage past the grace window) -- false both
+## when it landed `normal` AND when no harvest happened at all (invalid plot,
+## not ready, storage full). Existing callers (board_interactor.gd's manual
+## tap, every pre-EPIC-M7 test) predate this return value and simply discard
+## it, same as any other newly-non-void method; only _resolve_worker_cycle()
+## below actually reads it, to correct WORKER_WAGE_RATE's tax base -- see
+## that call site's own comment for why.
+func harvest_plot(plot_id: int, now: int) -> bool:
 	var plot := _find_plot(plot_id)
 	if plot == null:
-		return
+		return false
 	if plot.state.kind != PlotState.Kind.READY_TO_HARVEST:
-		return
+		return false
 	var ready := plot.state
 
 	var capacity := storage_capacity()
 	var current_total := total_inventory_units()
 	if current_total >= capacity:
 		_push_event("📦 Storage full (%d/%d)! Sell crops or upgrade your Farmhouse." % [current_total, capacity])
-		return
+		return false
 
 	var spoiled: bool = false
 	if plot.kind == PlotKind.Kind.POLYHOUSE:
@@ -341,6 +349,7 @@ func harvest_plot(plot_id: int, now: int) -> void:
 		_push_event("🥀 That %s sat too long and spoiled a little." % GameData.crop_def(ready.crop).display_name)
 
 	_mark_dirty()
+	return damaged
 
 
 func sell_crop(crop: int, now: int) -> void:
@@ -573,9 +582,15 @@ func _resolve_worker_cycle(plot: Plot, now: int) -> void:
 
 	var crop: int = plot.state.crop
 	var crop_def := GameData.crop_def(crop)
-	var wage: int = _worker_wage_for(crop_def)
 
-	harvest_plot(plot.id, now)  # plot.state.crop read above; plot is now Empty
+	# Balance fix (2026-08-21 /balance-check pass, design/gdd/worker-economy.md
+	# §4/§7): must be computed from THIS specific harvest's actual outcome,
+	# not assumed undamaged -- harvest_plot() itself is what resolves whether
+	# an Open-Field weather/pest roll or a Polyhouse spoilage grace-window
+	# miss hits this cycle (both apply to worker-eligible zones), so the wage
+	# can only be known correctly after that call returns, not before it.
+	var damaged: bool = harvest_plot(plot.id, now)  # plot.state.crop read above; plot is now Empty
+	var wage: int = _worker_wage_for(crop_def, damaged)
 
 	state.coins = maxi(state.coins - wage, 0)
 	_push_event("A worker harvested %s %s (wage: ₹%d)." % [crop_def.emoji, crop_def.display_name, wage])
@@ -588,8 +603,18 @@ func _resolve_worker_cycle(plot: Plot, now: int) -> void:
 	_mark_dirty()
 
 
-func _worker_wage_for(crop_def: CropDef) -> int:
-	return maxi(roundi(crop_def.base_sell_price * WORKER_WAGE_RATE), 1)
+## Balance fix (2026-08-21 /balance-check pass): a damaged harvest sells for
+## only base_sell_price * GameData.WEATHER_DAMAGE_YIELD_MULTIPLIER (see
+## sell_crop()'s identical damaged-value math) -- charging the undamaged rate
+## here meant a worker's effective cut on a damaged Open-Field cycle was
+## ~30% of what the player actually realized, double the intended
+## WORKER_WAGE_RATE, and a direct contradiction of design/gdd/worker-
+## economy.md §5's own stated principle ("a worker only ever charges a wage
+## for value it actually delivered"). Scaling the tax base the same way the
+## sale value itself is scaled restores that principle exactly.
+func _worker_wage_for(crop_def: CropDef, damaged: bool = false) -> int:
+	var yield_multiplier: float = GameData.WEATHER_DAMAGE_YIELD_MULTIPLIER if damaged else 1.0
+	return maxi(roundi(crop_def.base_sell_price * yield_multiplier * WORKER_WAGE_RATE), 1)
 
 
 ## Deterministic, replayable theft check: same plot+hour always resolves the

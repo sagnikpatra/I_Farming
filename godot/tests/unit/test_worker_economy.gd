@@ -201,6 +201,41 @@ func test_resolve_worker_actions_harvests_but_leaves_plot_empty_when_cant_afford
 	assert_eq(eco.state.coins, 2, "wage (3) should still be charged even though the replant was skipped")
 
 
+func test_resolve_worker_actions_charges_half_wage_on_a_damaged_spoiled_harvest() -> void:
+	# Balance fix regression (2026-08-21 /balance-check pass, design/gdd/
+	# worker-economy.md §4/§7): a worker's wage must scale down the same way
+	# sell_crop()'s realized value does for a damaged harvest -- previously
+	# it always charged the undamaged rate even when the crop itself sold
+	# for half, effectively doubling the worker's real cut on any damaged
+	# cycle (a direct contradiction of §5's "only charge for value actually
+	# delivered" principle). Uses Polyhouse spoilage (deterministic --
+	# harvest past the grace window) rather than the Open-Field weather
+	# roll, which is unseeded/flaky per test standards -- see
+	# test_land_structures.gd's identical substitution for the same reason.
+	eco.buy_polyhouse()
+	var polyhouse_plot: Plot = null
+	for p: Plot in eco.state.plots:
+		if p.kind == PlotKind.Kind.POLYHOUSE:
+			polyhouse_plot = p
+			break
+	eco.plant_seed(polyhouse_plot.id, CropType.Kind.CAPSICUM, NOW_QUIET)
+	eco.resolve_growth_completions(NOW_QUIET + polyhouse_plot.state.effective_grow_seconds * 1000)
+	assert_eq(polyhouse_plot.state.kind, PlotState.Kind.READY_TO_HARVEST)
+	var ready_at: int = polyhouse_plot.state.ready_at_epoch_ms
+	eco.assign_worker(PlotKind.Kind.POLYHOUSE, "ranger")
+	var coins_before := eco.state.coins
+
+	# Base grace is 4h (no Drip Irrigation bought) -- 5h past ready arrives spoiled.
+	eco.resolve_worker_actions(ready_at + 5 * 60 * 60 * 1000)
+
+	var stock: CropStock = eco.state.inventory[CropType.Kind.CAPSICUM]
+	assert_eq(stock.damaged, 1, "sanity check -- this harvest must actually be damaged for the test to mean anything")
+	# Capsicum base_sell_price=650, seed_cost=150. Damaged wage =
+	# round(650 * 0.5 * 0.15) = round(48.75) = 49 -- half of the undamaged
+	# round(650 * 0.15) = 98, not the undamaged rate.
+	assert_eq(coins_before - eco.state.coins, 49 + 150, "wage on a damaged harvest should be ~half the undamaged rate")
+
+
 func test_resolve_worker_actions_pauses_saffron_replant_when_electricity_has_lapsed() -> void:
 	eco.buy_vertical_farm()
 	eco.renew_electricity(NOW_QUIET)

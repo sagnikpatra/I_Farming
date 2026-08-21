@@ -53,6 +53,19 @@ func test_farmhouse_default_anchor_and_footprint_with_no_plots() -> void:
 	assert_true(farmhouse.plots.is_empty())
 
 
+## design/gdd/farmhouse-visual-tiers.md -- model_path must reflect the
+## REAL current farmhouse_level, not a hardcoded value, recomputed fresh
+## on every build() call.
+func test_farmhouse_model_path_reflects_the_current_level() -> void:
+	eco.state.farmhouse_level = 0
+	var fresh_zones := VillageSnapshotMapper.build(eco.state)
+	assert_eq(_zone_by_id(fresh_zones, "farmhouse").model_path, VillageFixtureData.FARMHOUSE_MODEL_TIER_1)
+
+	eco.state.farmhouse_level = 7
+	var upgraded_zones := VillageSnapshotMapper.build(eco.state)
+	assert_eq(_zone_by_id(upgraded_zones, "farmhouse").model_path, VillageFixtureData.FARMHOUSE_MODEL_TIER_5)
+
+
 func test_open_field_default_layout_has_starting_plots_plus_one_ghost() -> void:
 	var zones := VillageSnapshotMapper.build(eco.state)
 	var open_field := _zone_by_id(zones, "open_field")

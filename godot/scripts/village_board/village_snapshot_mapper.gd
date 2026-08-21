@@ -281,10 +281,14 @@ static func _simple_zone_plots(
 	return plots
 
 
+## design/gdd/farmhouse-visual-tiers.md -- the model now depends on
+## state.farmhouse_level (5 visual tiers), computed fresh on every build
+## rather than cached, so any level always resolves to its correct current
+## tier model.
 static func _build_farmhouse(state: GameState) -> ZoneFixture:
 	var anchor := _resolve_anchor(state, ZONE_ID_FARMHOUSE, FARMHOUSE_ANCHOR)
 	return ZoneFixture.new(
-		ZONE_ID_FARMHOUSE, "Farmhouse", VillageFixtureData.FARMHOUSE_MODEL,
+		ZONE_ID_FARMHOUSE, "Farmhouse", VillageFixtureData.farmhouse_model_path(state.farmhouse_level),
 		anchor.x, anchor.y, 2, 2,
 		FARMHOUSE_PLINTH_COLOR,
 		[],

@@ -68,3 +68,47 @@ func test_crops_with_no_reasonable_model_fit_return_empty_string() -> void:
 func test_no_crop_sentinel_returns_empty_string() -> void:
 	assert_eq(VillageFixtureData.crop_stage_model_path(-1, false), "")
 	assert_eq(VillageFixtureData.crop_stage_model_path(-1, true), "")
+
+
+# --- farmhouse_model_path() (design/gdd/farmhouse-visual-tiers.md) --------------
+# 5 tiers matching farmhouse_level_def()'s own emoji boundaries: 🛖 alone at
+# 0, 🏠 spans 1-2, 🏡 spans 3-4, 🏰 spans 5-6, 🏛️ alone at 7.
+
+func test_farmhouse_tier_1_is_level_0_only() -> void:
+	assert_eq(VillageFixtureData.farmhouse_model_path(0), VillageFixtureData.FARMHOUSE_MODEL_TIER_1)
+
+
+func test_farmhouse_tier_2_spans_levels_1_and_2() -> void:
+	assert_eq(VillageFixtureData.farmhouse_model_path(1), VillageFixtureData.FARMHOUSE_MODEL_TIER_2)
+	assert_eq(VillageFixtureData.farmhouse_model_path(2), VillageFixtureData.FARMHOUSE_MODEL_TIER_2)
+
+
+func test_farmhouse_tier_3_spans_levels_3_and_4() -> void:
+	assert_eq(VillageFixtureData.farmhouse_model_path(3), VillageFixtureData.FARMHOUSE_MODEL_TIER_3)
+	assert_eq(VillageFixtureData.farmhouse_model_path(4), VillageFixtureData.FARMHOUSE_MODEL_TIER_3)
+
+
+func test_farmhouse_tier_4_spans_levels_5_and_6() -> void:
+	assert_eq(VillageFixtureData.farmhouse_model_path(5), VillageFixtureData.FARMHOUSE_MODEL_TIER_4)
+	assert_eq(VillageFixtureData.farmhouse_model_path(6), VillageFixtureData.FARMHOUSE_MODEL_TIER_4)
+
+
+func test_farmhouse_tier_5_is_level_7_only() -> void:
+	assert_eq(VillageFixtureData.farmhouse_model_path(7), VillageFixtureData.FARMHOUSE_MODEL_TIER_5)
+
+
+func test_farmhouse_tier_clamps_out_of_range_levels_to_the_last_tier() -> void:
+	assert_eq(VillageFixtureData.farmhouse_model_path(99), VillageFixtureData.FARMHOUSE_MODEL_TIER_5)
+	assert_eq(VillageFixtureData.farmhouse_model_path(-1), VillageFixtureData.FARMHOUSE_MODEL_TIER_1)
+
+
+func test_farmhouse_tiers_are_five_distinct_models() -> void:
+	var tiers: Array[String] = [
+		VillageFixtureData.FARMHOUSE_MODEL_TIER_1, VillageFixtureData.FARMHOUSE_MODEL_TIER_2,
+		VillageFixtureData.FARMHOUSE_MODEL_TIER_3, VillageFixtureData.FARMHOUSE_MODEL_TIER_4,
+		VillageFixtureData.FARMHOUSE_MODEL_TIER_5,
+	]
+	var unique: Dictionary = {}
+	for tier in tiers:
+		unique[tier] = true
+	assert_eq(unique.size(), 5)

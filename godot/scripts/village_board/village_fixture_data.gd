@@ -13,8 +13,40 @@ extends RefCounted
 const FENCE_SIMPLE := "res://assets_3d/nature-kit/OBJ format/fence_simple.obj"
 const FENCE_GATE := "res://assets_3d/nature-kit/OBJ format/fence_gate.obj"
 const CROP_PLOT := "res://assets_3d/nature-kit/OBJ format/crops_dirtSingle.obj"
-const FARMHOUSE_MODEL := "res://assets_3d/city-kit-suburban/OBJ format/building-type-a.obj"
 const MANDI_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/stall-red.obj"
+
+## design/gdd/farmhouse-visual-tiers.md -- 5 tiers matching the boundaries
+## GameData.farmhouse_level_def()'s own emoji sequence already implies
+## (🛖 alone at 0, 🏠 spans 1-2, 🏡 spans 3-4, 🏰 spans 5-6, 🏛️ alone at 7),
+## not a separately-invented tier scheme. All 5 are unmodified CC0 shells
+## from the same city-kit-suburban kit already documented as the
+## Farmhouse's stand-in ("pick one house shell", assets_3d/README.md) --
+## picked by file size as a size/complexity proxy for grandeur, same
+## honest-stand-in precedent as Polyhouse's placeholder box.
+const FARMHOUSE_MODEL_TIER_1 := "res://assets_3d/city-kit-suburban/OBJ format/building-type-h.obj"
+## Kept as the existing model (was the sole FARMHOUSE_MODEL before this
+## tiering) for continuity with every prior screenshot/save.
+const FARMHOUSE_MODEL_TIER_2 := "res://assets_3d/city-kit-suburban/OBJ format/building-type-a.obj"
+const FARMHOUSE_MODEL_TIER_3 := "res://assets_3d/city-kit-suburban/OBJ format/building-type-l.obj"
+const FARMHOUSE_MODEL_TIER_4 := "res://assets_3d/city-kit-suburban/OBJ format/building-type-d.obj"
+const FARMHOUSE_MODEL_TIER_5 := "res://assets_3d/city-kit-suburban/OBJ format/building-type-t.obj"
+
+
+## The Farmhouse model for a given farmhouse_level (0-7) -- see the table in
+## design/gdd/farmhouse-visual-tiers.md §4. Mirrors
+## GameData.farmhouse_level_def()'s own defensive out-of-range clamp
+## (never errors, clamps to the last tier) rather than duplicating a
+## second parallel level table.
+static func farmhouse_model_path(level: int) -> String:
+	if level <= 0:
+		return FARMHOUSE_MODEL_TIER_1
+	if level <= 2:
+		return FARMHOUSE_MODEL_TIER_2
+	if level <= 4:
+		return FARMHOUSE_MODEL_TIER_3
+	if level <= 6:
+		return FARMHOUSE_MODEL_TIER_4
+	return FARMHOUSE_MODEL_TIER_5
 
 ## Track B (design/art/ui-visual-direction-2026-08.md, §3) -- zone-building
 ## variety pass. Per assets_3d/README.md's "Suggested mapping" table:

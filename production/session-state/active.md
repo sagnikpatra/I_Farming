@@ -2832,7 +2832,37 @@ issue, not caused by this pass -- flagged as a separate follow-up). Track B
 flagged the Vertical Farm windmill reads as a thin pole from the default
 top-down camera angle, not a clearly recognizable windmill silhouette.
 
-**Not yet committed to git** as of this note -- about to commit.
+Committed (`61f5589`) and pushed. User then said "please continue" --
+kicked off a second pass covering the 10 UI files Track A had explicitly
+deferred (`niche_farming_tab.gd`, `events_tab.gd`, `open_field_tab.gd`,
+`seed_picker.gd`, `agro_plant_picker.gd`, `decoration_picker.gd`,
+`decoration_info_card.gd`, `growing_info_card.gd`,
+`worker_assignment_row.gd`, `accessibility_sheet.gd`), reusing the
+`UiTheme` helper the first pass built. Same stalling pattern hit 3 more
+times (agent kept ending turns mid-edit) -- resumed each time checking
+real on-disk `git status` progress first, same discipline as before.
+
+**Done**: all 10 files now delegate to `UiTheme`. New disabled-state
+affordability gating added to `niche_farming_tab.gd`'s Excavate Ponds/
+Build Vertical Farm/electricity-renew buttons and `events_tab.gd`'s Premium
+Pass button (previously silent no-ops when unaffordable -- a real bug fix,
+not just visual). `worker_assignment_row.gd` -- specifically named in this
+project's own accessibility-audit history as having unstyled default-Godot
+controls -- now has real chrome. `test_worker_assignment_row.gd` updated to
+check for a descendant rather than an exact tree depth (the new panel
+wrapper added a nesting level -- behavior-preserving, not a coverage cut).
+
+**Independently verified again**: re-ran GUT myself (350/350, 1490 asserts,
+unchanged), and looked directly at `track-a2-worker-assignment-row.png` --
+confirmed the row genuinely sits in a wood-brown themed card with a real
+green Assign button now, not just trusting the agent's description.
+
+**Committed** (`1171c59`) and **pushed**. Both this pass and the original
+Track A/B pass (`61f5589`) are now on `origin/feature/isometric-village-view`.
+
+**Every UI file in `godot/scripts/ui/` now uses `UiTheme`** -- Track A's UI
+chrome restyle is functionally complete across the whole app, not just the
+5 highest-visibility sheets from the first pass.
 
 ## Next Step
 

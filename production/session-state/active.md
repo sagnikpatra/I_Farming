@@ -3222,6 +3222,70 @@ what it needs to cover (2 flagged files + the harvest twig-snaps), not
 replaced it. Everything else from this session's earlier work
 (accessibility audit, audio accessibility re-audit) is fully closed.
 
+## 2026-08-21 (same session, cont'd) -- Found and fixed the long-standing "renders landscape despite portrait setting" bug, root cause and all
+
+User reported "the UI for selection is not good" and shared 3 screenshots
+(after a real back-and-forth to actually locate them --
+`C:\Users\sagni\OneDrive\Pictures\Screenshots 1\`, not where I first
+guessed). The screenshots showed a real, severe bug: a management sheet
+(Agroforestry's, confirmed later) squished into an unusable narrow
+vertical strip on the screen's left edge instead of spanning full width
+at the bottom.
+
+This is the exact bug an earlier Track A pass had flagged but explicitly
+never root-caused: "the app renders landscape on-device despite
+project.godot's portrait setting (a pre-existing Android-export-config
+issue, not caused by this pass -- flagged as a separate follow-up)."
+Root-caused it for real this time, verifying every step against the
+real toolchain rather than guessing:
+1. `adb shell wm size`/`dumpsys window displays` confirmed the physical
+   screen is portrait (1080x2400) but the app's own ActivityRecord has
+   `mRotation=ROTATION_90` -- genuinely displayed landscape.
+2. `aapt2 dump xmltree` on the real exported manifest confirmed
+   `android:screenOrientation=0` (Landscape) on the `GodotApp` activity.
+3. First guess (`export_presets.cfg`'s `screen/orientation=1`) had zero
+   effect -- re-exported, re-dumped, still 0. Wrong key; discarded
+   rather than left in as dead config.
+4. Rather than keep guessing, used WebSearch/WebFetch (per this
+   project's own HIGH-knowledge-risk-version policy) to find the real
+   Godot source's export logic, which reads
+   `display/window/handheld/orientation` directly, no separate export
+   option needed.
+5. Queried the real engine directly (`ProjectSettings.get_property_list()`
+   via a headless script -- same discipline as the earlier
+   AudioEffectLimiter fix) for the ground truth: the setting is declared
+   as an **INT enum** (hint_string confirms Portrait = index 1), but
+   `project.godot` had it stored as the **STRING** `"portrait"`. Godot's
+   export code casts this to `int()` when writing the manifest; a
+   non-numeric string coerces to `0` = Landscape. That's the entire bug
+   -- a single mistyped value (`="portrait"` instead of `=1`), sitting
+   unnoticed in `project.godot` since early in the migration.
+
+Fixed with a 1-line change (`window/handheld/orientation=1`). Verified
+end-to-end, not just theorized: re-exported, `aapt2` dump now shows
+`screenOrientation=1`; installed on-device, confirmed visually -- splash
+screen, HUD, and the same Agroforestry sheet the user's screenshots
+showed all now render correctly in genuine portrait, full-width-at-bottom
+as designed. 360/360 GUT tests pass, unaffected (manifest-only change,
+no GDScript touched -- the HUD/board layout code was already correctly
+written for portrait all along). Committed (`589a8c8`). Not pushed.
+
+**Important caveat for future sessions**: every on-device screenshot
+taken THIS session before this fix landed was of the app in the WRONG
+(landscape-rotated) orientation. Feature/functional conclusions drawn
+from them (button taps registering, move-mode committing, badges
+rendering, etc.) remain valid -- the underlying game logic doesn't care
+about physical rotation. But any purely-visual/layout conclusion drawn
+from those earlier screenshots (spacing, whether something "looked
+squished," gutter margins) was implicitly verified in a rotated context
+and is worth a fresh look now that orientation is actually correct.
+
+Also spent real effort locating the user's screenshots -- they weren't
+in any of the folders I initially checked (Desktop/Downloads/expected
+OneDrive path); found via `C:\Users\sagni\OneDrive\Pictures\Screenshots 1\`
+after the user's own paths came through garbled (likely a dictation/input
+issue on their end) -- worth remembering that path for next time.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user

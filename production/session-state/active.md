@@ -3612,17 +3612,56 @@ a visibly distinct, correctly-scaled building, no crashes. Committed as
 
 ## Next Step
 
+## 2026-08-22 (cont'd) -- Gems & Daily Tasks built (feature-scoping item 2)
+
+User asked for item 2 next. Wrote design/gdd/gems-daily-tasks.md first,
+then implemented: a Gems currency earned by completing 3 daily tasks
+(drawn from a 5-entry pool) anchored to real local midnight -- this
+project's first calendar-day-anchored system (everything else runs on a
+fixed wall-clock cycle). `GameEconomy.local_day_key(now_ms,
+tz_offset_minutes)` is a pure function of explicit inputs, kept
+consistent with this file's existing "every time-dependent formula takes
+`now` explicitly" convention; the one real system-clock read is a single
+thin wrapper, not threaded through 5 existing method signatures (would
+have been a much wider, riskier change). Progress hooks land at the same
+5 action call sites (plant_seed/harvest_plot/sell_crop/sell_all/
+_resolve_worker_cycle) -- gems auto-award on threshold, matching the
+Festival Pass's existing pattern, no new claim-flow. One gem sink this
+pass: Reroll, disabled once any task is fully complete.
+
+Same reachability bug class as the earlier Chanda banner fix, caught
+again: the LiveOps banner is the ONLY way to reach the Events sheet, and
+it only showed during a transient Monsoon/Festival/Chanda window --
+since Daily Tasks is a *permanent* feature, made the banner always
+visible (falls back to "📅 Daily Tasks" when nothing else is active).
+
+25 new/updated GUT tests, 438/438 passing. Physical phone had
+disconnected mid-session (adb showed device not found) -- fell back to
+the emulator (also hit a genuinely broken package-manager-service state
+requiring a full `adb reboot` + poll-until-ready before install would
+work, unrelated to the app itself). On-device verified live: always-
+visible banner opens Events, all 4 cards render with live data, and a
+real tap-driven plant action (Aquaculture Pond Fish) advanced "Plant 5
+seeds" from 0/5 to 1/5 with correct coin deduction. Committed as
+`85a0079`. Not pushed.
+
+## Next Step
+
 1. Nothing is currently in-flight from this session. Everything reached
    a stopping point: real-hardware perf (closed), cloud-save ADR
-   (Proposed, awaiting the user picking a phase to start), the chanda
-   visit feature (built, verified, committed), Farmhouse visual tiers
-   (built, verified, committed), and 3 remaining open feature briefs
-   (gems+daily-tasks, real-timezone weather, richer ambient villagers --
-   none picked yet, per the Collaborative Design Principle the next move
-   is the user choosing one, or asking for something else entirely).
-2. The earlier "screen alignment" question is still technically
+   (Proposed, awaiting the user picking a phase to start), Chanda Visit
+   (built), Farmhouse visual tiers (built), Gems & Daily Tasks (built),
+   and 2 remaining open feature briefs (real-timezone weather, richer
+   ambient villagers -- neither picked yet, per the Collaborative Design
+   Principle the next move is the user choosing one, or asking for
+   something else entirely).
+2. The physical phone disconnected mid-session -- worth reconnecting via
+   USB if the user wants further real-hardware verification; the
+   emulator remains available as a fallback verification target either
+   way.
+3. The earlier "screen alignment" question is still technically
    unconfirmed by the user (they moved on to other topics before
    answering) -- low urgency, evidence points to "not a bug" (the
    intended locked-zone placeholder visual).
-3. Localization, store readiness -- still open, still need the user
+4. Localization, store readiness -- still open, still need the user
    specifically (see entries above).

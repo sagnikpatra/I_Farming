@@ -66,6 +66,12 @@ object Model3DAssets {
         "🛕" to "models3d/decorations/statue/statue_obelisk.obj",
     )
 
+    /** [DecorationType.RANGOLI][com.zonkrik.ifarming.game.DecorationType]'s emoji -- a rangoli gets its own flat ground decal instead of a model/billboard, see [Village3DStage.rebuild]. */
+    const val RANGOLI_EMOJI = "🪷"
+
+    fun isRangoliDecoration(tile: TileSnapshot): Boolean =
+        tile.decorationId != null && tile.spriteKey == RANGOLI_EMOJI
+
     fun assetFor(tile: TileSnapshot): String? {
         if (tile.decorationId != null) return decorationAssets[tile.spriteKey]
         return tile.zoneId?.let { structureAssets[it] }

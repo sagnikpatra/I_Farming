@@ -205,12 +205,15 @@ class Village3DStage {
         groundInstances.clear()
 
         tiles.forEach { tile ->
+            val isRangoli = Model3DAssets.isRangoliDecoration(tile)
             val assetPath = Model3DAssets.assetFor(tile)
-            val instance = if (assetPath != null) {
-                runCatching { ModelInstance(model3DCache.get(assetPath, Model3DAssets.tintFor(tile))) }
+            val instance = when {
+                // A rangoli is a flat ground pattern, not an object standing on the ground -- see
+                // RangoliModelBuilder's doc comment.
+                isRangoli -> ModelInstance(RangoliModelBuilder.get())
+                assetPath != null -> runCatching { ModelInstance(model3DCache.get(assetPath, Model3DAssets.tintFor(tile))) }
                     .getOrElse { billboardInstanceFor(tile, sprites) }
-            } else {
-                billboardInstanceFor(tile, sprites)
+                else -> billboardInstanceFor(tile, sprites)
             } ?: return@forEach
 
             entities += Entity3D(
@@ -219,8 +222,10 @@ class Village3DStage {
                 tileY = tile.tileY,
                 instance = instance,
                 // Owned by the Entity3D itself (not a parallel list here) so it can never drift
-                // out of sync with the entity's own position -- see Entity3D's doc comment.
-                shadowInstance = ModelInstance(ShadowBlobBuilder.get()),
+                // out of sync with the entity's own position -- see Entity3D's doc comment. A
+                // rangoli lies flat already, so a dark ground-shadow underneath would just muddy
+                // its own painted pattern -- give it an invisible one instead.
+                shadowInstance = ModelInstance(if (isRangoli) NoShadowBuilder.get() else ShadowBlobBuilder.get()),
                 draggable = tile.draggable,
                 zoneId = tile.zoneId,
                 decorationId = tile.decorationId,
@@ -304,5 +309,7 @@ class Village3DStage {
         GroundModelBuilder.disposeAll()
         ShadowBlobBuilder.dispose()
         TerrainModelBuilder.dispose()
+        RangoliModelBuilder.dispose()
+        NoShadowBuilder.dispose()
     }
 }

@@ -2864,6 +2864,246 @@ Track A/B pass (`61f5589`) are now on `origin/feature/isometric-village-view`.
 chrome restyle is functionally complete across the whole app, not just the
 5 highest-visibility sheets from the first pass.
 
+## 2026-08-21 (same session, cont'd) -- reconciled stale uncommitted work, then wired the 2 deferred audio tabs
+
+Session resumed via `continue` after a compaction/restart. Before touching
+the "Next Step" list below, cross-checked it against real `git status` --
+found 355 lines of genuine, complete, tested work sitting uncommitted and
+**not** described anywhere in this file's own narrative (last touched
+after `61f5589`, so from a session this file never got updated for):
+
+1. **Docs cross-referencing pass** -- `CLAUDE.md`/`technical-preferences.md`/
+   `tr-registry.yaml` updated to point at the already-committed ADR-0001/
+   ADR-0002/roadmap/5 GDDs (all verified to actually exist on disk before
+   trusting the diff), plus 12 TR entries reverse-documented from those
+   GDDs. Also added `docs/adoption-plan-2026-08-18.md` (untracked, the
+   `/adopt` output this pass works through).
+2. **Godot crop growth-stage models** -- wires the Wheat/Tomato/Capsicum
+   staged models Track B sourced but deliberately left unwired
+   (`design/art/ui-visual-direction-2026-08.md` §3): `PlotState.crop` now
+   flows through `VillageSnapshotMapper` into a new `PlotFixture.crop`
+   field, consumed by `village_board.gd`'s `_build_plot()` via
+   `VillageFixtureData.crop_stage_model_path()`. New test file
+   (`test_village_fixture_data.gd`) plus 3 new cases in
+   `test_village_snapshot_mapper.gd`.
+3. **Rangoli ground decal (pre-migration Kotlin/LibGDX)** -- new
+   `RangoliModelBuilder.kt` (procedural 8-petal pinwheel texture on a flat
+   alpha-blended quad) + `NoShadowBuilder.kt` (transparent shadow stand-in),
+   replacing the old floating-lotus-emoji billboard fallback for
+   `DecorationType.RANGOLI` in `Village3DStage.rebuild()`.
+
+Verified all three myself before committing: ran the full GUT suite
+(`359/359` passing, 1516 asserts) with the diff in place, read every diff
+directly rather than trusting file timestamps alone. Per user's explicit
+choice (asked via `AskUserQuestion` rather than guessed), **committed as 3
+separate commits** -- `9f716d4` (docs), `7847246` (crop-stage models),
+`0899867` (rangoli decal) -- one per logical unit, each independently
+revertable. Not pushed (user didn't ask). Left the unrelated pre-existing
+untracked clutter alone (`Steps/`, `godot_builds/`, `production/qa/
+evidence/*.png`, `.idea/inspectionProfiles/`, `production/review-mode.txt`,
+the deleted `.claude/scheduled_tasks.lock`) -- none of it was part of the
+reviewed work, so no reason to touch it.
+
+**Then did the actual requested task**: item 2 below ("wire the two
+deferred tabs") turned out, on tracing the file's own earlier references
+(line ~2559 above), to mean **audio SFX wiring**, not UI-theme conversion
+-- both files already delegate to `UiTheme` from the earlier Track A pass.
+Added `_play_audio()` to `agroforestry_tab.gd`/`niche_farming_tab.gd`,
+mechanically identical to `polyhouse_tab.gd`'s existing pattern: each
+`buy_*`/`renew_*` call is followed by a `dirty`-gated `_play_audio()` call
+(verified directly in `game_economy.gd` that `dirty` is only set on each
+function's real success path, not on a no-op/insufficient-funds return) --
+`progression_structure_unlock` for the 3 structure builds (Agroforestry,
+Aquaculture, Vertical Farm), `economy_purchase_small` for the 2 recurring/
+incremental payments (Security, Electricity renewal). No new tests added
+(node/button wiring is Visual/Feel per this project's testing standards,
+same as `polyhouse_tab.gd`'s own untested audio wiring). Re-ran GUT after:
+still `359/359`. Committed as `d268335`.
+
+## 2026-08-21 (same session, cont'd) -- On-device audio check, on the emulator
+
+User picked "the emulator" over the physical phone when asked (no device
+was connected at all at the start -- `adb devices` empty). Emulator
+(`Medium_Phone`) crashed on first launch attempt (`qemu-system-x86_64.exe`
+segfaulted, confirmed via `tasklist`, not just assumed from the bash exit
+code) -- retried with `-no-snapshot-load`, which came up clean;
+`emulator-5554` reached `sys.boot_completed=1` before proceeding.
+
+Exported a fresh debug APK (`--export-debug "Android"`, includes today's
+crop-stage-model/rangoli/audio-wiring commits) and installed it
+(`-d`/downgrade flag needed -- the emulator had an older/different
+versionCode already installed from a prior session).
+
+**Real limitation acknowledged up front, not glossed over**: `adb`/logcat
+cannot literally confirm audio is *audible* -- Godot mixes everything
+through a single persistent OpenSL ES output stream (confirmed via
+`dumpsys audio`: one `state:started` player for the app's pid, alive since
+boot), so Android-level tools can't isolate individual SFX firings. Absence
+of decode errors is a weak signal on its own, so instead of stopping there,
+added a **temporary** one-line `print()` at `_play_path_on()` -- the single
+choke point every play path in `audio_manager.gd` funnels through --
+rebuilt, deployed, exercised the real production code paths via real
+`adb input tap` presses on live UI elements (not a synthetic test), and
+grepped logcat for the print. Confirmed via genuine positive evidence, 4
+distinct event categories, all real paths, zero decode errors anywhere in
+the full logcat:
+- `ui_button_tap` -- Sell All press (economy_sell itself correctly did NOT
+  fire since storage was empty at that exact moment -- confirmed this is
+  correct by reading `hud.gd`'s `_on_sell_all_pressed()`, which only plays
+  `economy_sell` per crop type actually sold, gated on `economy.dirty`)
+- `ui_sheet_open` -- tapping an open-field plot tile
+- `economy_plant` (round-robin variant `_02`, proving `pick_variant()` is
+  live too, not just the base path) + `ui_sheet_close` -- both fired
+  together from one tap, selecting a seed in the picker (which plants AND
+  closes the sheet in one action)
+
+Reverted the temporary print immediately after (`git status` confirmed
+`audio_manager.gd` back to zero diff -- never committed), rebuilt the clean
+APK, reinstalled it, relaunched, and re-ran the full GUT suite one more
+time (`359/359`, unchanged) as a final sanity check before calling this
+done.
+
+**Verdict**: the audio pipeline is genuinely live end-to-end on-device --
+engine init, output device, catalogue paths, and the exact real gameplay
+code paths that call `play_sfx()` all confirmed working with zero errors.
+What remains **unverified** (flagged honestly, not claimed as done): actual
+audibility/tonal quality of the 40 sourced files -- that needs a human to
+listen, which no adb-based check can substitute for. The "listen-through
+pass" caveat from the sourcing session is therefore still open.
+
+## 2026-08-21 (same session, cont'd) -- /balance-check on the worker wage rate, one real bug found+fixed
+
+User asked for the wage-rate balance check next (explicitly flagged as
+open in `design/gdd/worker-economy.md` §4/§7 since EPIC-M7's design pass).
+Ran `/balance-check`, scoped to the wage rate. Read the GDD, the full crop
+catalogue (`game_data.gd`), the wage/harvest code (`game_economy.gd`), and
+the Farmhouse/UV-Film/Electricity constants for cross-system comparison.
+
+**Verdict: CONCERNS, not HEALTHY or CRITICAL.** The flat 15%-of-gross
+design is fundamentally sound -- it scales proportionally across all 8
+worker-eligible crops (₹20 Wheat to ₹3,500 Saffron), landing at 19-21% of
+*net* profit for 7 of 8 crops. But found one genuine, code-verified formula
+bug: `_worker_wage_for()` computed wage from `crop_def.base_sell_price`
+unconditionally, never applying the same 0.5x `WEATHER_DAMAGE_YIELD_MULTIPLIER`
+that `sell_crop()` already applies to a damaged harvest's sale value --
+meaning a worker's real cut on a weather-damaged Open-Field cycle (or a
+spoiled Polyhouse one) was silently ~30%, double the intended 15%, and a
+direct contradiction of the GDD's own §5 principle ("a worker only ever
+charges a wage for value it actually delivered"). Also flagged (not fixed,
+left as open designer calls): Wheat's 50% seed-cost-to-price ratio makes
+its worker cut 30% of *net* profit vs. 19-21% for every other crop; and
+assigning a worker onto Polyhouse/Vertical Farm while their own recurring
+structural sink (UV Film/Electricity) is active roughly doubles-to-triples
+that zone's total "tax" (10-11% -> 22-26%) -- not necessarily wrong, but
+possibly not a deliberately-considered interaction.
+
+User picked "fix the HIGH-priority issue now" (of the 3 Phase-6 options).
+Fixed directly: `harvest_plot()` now returns `bool` (damaged or not)
+instead of `void` -- backward compatible, every existing caller (manual
+tap in `board_interactor.gd`, 6 pre-existing tests) already discarded the
+old void return, so this needed no other call-site changes.
+`_resolve_worker_cycle()` reads that return value and passes it to
+`_worker_wage_for(crop_def, damaged)`, which now scales the wage the same
+way the sale value itself scales. New regression test deliberately uses
+Polyhouse spoilage (deterministic -- harvest past the 4h grace window)
+rather than the Open-Field weather roll, which is unseeded/flaky per this
+project's own test standards -- same substitution `test_land_structures.gd`
+already established for testing damage without randomness. Verified:
+**360/360 GUT tests pass** (was 359/359; +1 new regression test), re-run
+twice (once right after the fix, once again after the doc update below, to
+confirm the doc-only edit didn't somehow touch behavior).
+
+User also asked to update the GDD to reflect this pass's outcome (2nd
+`AskUserQuestion`). Updated `design/gdd/worker-economy.md`: §4's wage-rate
+row marked "✅ Balance-checked 2026-08-21" with the bug/fix documented
+inline, a new worked example (Capsicum: ₹500 manual net vs. ₹402 worker net,
+19.6% cut; damaged wage ₹49 vs undamaged ₹98) replacing the old "no worked
+example, formula is unbalanced" placeholder, §7's tuning-knob row given a
+real safe-range estimate (~10-20%, with Wheat as the documented binding
+constraint on the upper end), and §8's Definition of Done paragraph updated
+to no longer describe the wage rate as "unbalanced/untested."
+
+**Committed** (`3278877`, code fix + regression test + GDD update as one
+unit) -- not pushed (user didn't ask this time).
+
+## 2026-08-21 (same session, cont'd) -- 4 accessibility findings fixed + a real test-flakiness regression caught and fixed
+
+User asked for the accessibility findings next. Re-verified all 5 items
+from `production/qa/accessibility/village-board-and-management-sheets-
+audit-2026-08-21.md`'s stale "5 still-open" list against current code
+before touching anything (per this session's now-established discipline)
+-- found WorkerAssignmentRow/OpenFieldTab was already fixed by an earlier
+Track A pass this document never learned about, leaving 4 real HIGH +
+1 real MEDIUM. Asked the user how to scope the remaining 4 (spanning a
+color fix, a new UI control, a multi-file font pass, and a new interaction
+mode) -- user picked "all 4, in severity order."
+
+**Fixed and verified on-device** (booted the `Medium_Phone` emulator
+again -- crashed once with a segfault on first launch, clean on retry
+with `-no-snapshot-load`, same as the earlier audio-check episode):
+1. **SAFFRON_DARK/FIELD_GREEN button contrast** -- darkened both base
+   colors in `ui_theme.gd` directly (confirmed via a full grep that every
+   consumer is a text-bearing button background except one border use),
+   computed via the real WCAG relative-luminance formula, not eyeballed
+   (3.85:1->5.11:1, 3.10:1->4.68:1). Found and fixed a related, closely
+   adjacent defect the Summary Table had dropped even though §1's own
+   detailed table flagged it: the Monsoon-active card's white-on-
+   RIPE_GOLD-lerp text (`events_tab.gd`).
+2. **Pinch-only camera zoom** -- added a +/- button pair to the HUD,
+   reusing `CameraRig.zoom_by()`'s existing 1.1x factor (same as the
+   desktop mouse-wheel path).
+3. **Sub-18px body text** -- every font-size literal below this
+   project's 14px floor raised to 14px, ~2 dozen call sites across 9
+   files (3 successive grep passes needed -- several call sites span
+   multiple lines and were missed by naive single-line regexes).
+4. **Long-press-drag reposition, no tap alternative** -- rather than
+   editing every management sheet, added a universal "Move" toggle
+   (board_interactor.gd's `set_move_mode_active()`/
+   `_handle_move_mode_tap()`, a 2-tap pick-then-place sequence
+   generalizing the existing one-shot `_armed_decoration_type` pattern)
+   that reuses the exact same `try_commit_zone_move()`/
+   `commit_decoration_move()` commit paths long-press-drag already uses.
+
+All 4 independently verified on-device, not just diffed: cropped/zoomed
+screenshots for the contrast fix and the new button glyphs; functionally
+tapped zoom-in 5x and confirmed the board visibly scaled up; opened the
+Farmhouse sheet and confirmed no text overflow from the size bump; armed
+move mode and ran a full pick-then-place cycle on the Farmhouse zone --
+first an intentionally invalid destination (confirmed via logcat the
+existing bounds/overlap validation correctly fired and reverted, matching
+long-press-drag's own behavior on a bad drop) then a valid one (confirmed
+the Farmhouse genuinely relocated). Evidence in
+`production/qa/evidence/a11y-fix*.png`.
+
+**Caught a real regression during routine re-verification, not glossed
+over**: re-running the GUT suite mid-pass (habit from earlier in this
+session) turned up an intermittent failure unrelated to anything just
+touched -- traced it to the EARLIER wage-rate `/balance-check` fix
+(`3278877`): `_worker_wage_for()` now correctly varies by damage, which
+exposed that 2 pre-existing `test_worker_economy.gd` tests asserting
+exact coin totals were never actually insulated from Open-Field's
+genuinely-unseeded weather roll (Wheat's 8% risk) -- before that fix,
+wage was a flat constant regardless of damage, so the roll didn't affect
+those particular assertions; after it, ~8% of runs now land on the
+damaged/half-wage branch. Root-caused rather than dismissed as noise,
+fixed both tests by constructing the plot directly via
+`PlotState.new_ready(crop, false, now)` (bypassing the real roll
+deterministically -- same technique `test_land_structures.gd` already
+established for Polyhouse spoilage), verified via 6 consecutive full
+suite runs, all 360/360. Committed separately (`745f817`) from the
+accessibility work itself, since it's a distinct concern with its own
+clear cause.
+
+**Committed**: `745f817` (test-determinism fix) then `6840dd6`
+(the 4 accessibility fixes + evidence screenshots + updated audit doc
+Remediation Log). Not pushed -- user didn't ask this time.
+
+**Remaining, explicitly non-blocking** (per the audit's own Summary
+Table): §3's LOW host-occupied/ghost color-only signal, §2's
+ADVISORY Quick Nav Bar touch-target size. §7's audio accessibility is
+substantially addressed now that EPIC-M8 added 4 real volume sliders,
+though it hasn't had its own dedicated re-audit pass.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user
@@ -2871,13 +3111,20 @@ selected (security, QA, accessibility, audio) -- code committed and pushed
 (`2dcc4d6`, `36d19fc` on `feature/isometric-village-view`), verified
 running live on the user's own phone with matching save-state to the
 emulator. Localization was explicitly not selected. Reasonable directions,
-one now done this session (audio assets sourced, see above), rest still open:
+three now done this session (audio assets sourced, the 2 deferred tabs'
+audio wiring, then the on-device audio check -- see above), rest still open:
 1. ~~Source/compose the 40 real audio asset files~~ **DONE** this session
-   (2026-08-21) -- still needs: git commit decision, a listen-through pass,
-   and an on-device audio check (all flagged above, none done yet).
-2. Wire the two deferred tabs (`agroforestry_tab.gd`/`niche_farming_tab.gd`)
-   -- small, mechanical, low-risk, explicitly deferred this pass
-3. An on-device AUDIO check specifically once real asset files exist --
+   (2026-08-21) -- the asset files themselves were already committed
+   (`a2963fb`, predates this session). Still open: a human listen-through
+   pass for tonal fit/normalization artifacts (metadata-only selection so
+   far, see the audio-sourcing note above) -- not something an on-device
+   check can substitute for.
+2. ~~Wire the two deferred tabs (`agroforestry_tab.gd`/`niche_farming_tab.gd`)~~
+   **DONE** this session (2026-08-21, commit `d268335`) -- audio SFX wiring,
+   mechanically identical to `polyhouse_tab.gd`'s pattern, see above.
+3. ~~An on-device AUDIO check specifically once real asset files exist~~
+   **DONE** this session (2026-08-21, emulator-5554) -- see above. No code
+   changes (the temporary debug print was reverted, never committed).
    the accessibility gear button/settings sheet/harvest badge and the
    audio system's code path are now confirmed rendering live on a real
    phone, but there's still no actual sound to verify (no asset files yet)

@@ -3188,6 +3188,40 @@ touched. Committed (`a01d054`). Not pushed.
 **Every item from both the 2026-08-21 accessibility audit and its
 deferred audio re-audit is now closed.**
 
+## 2026-08-21 (same session, cont'd) -- Audio "listen-through pass" (technical proxy), found and fixed a real mismatch
+
+User asked for the listen-through pass. Stated the real limitation up
+front rather than silently attempting something and implying otherwise:
+no auditory perception exists, so a genuine "does this sound good" pass
+isn't possible. Did the closest real technical proxy instead --
+objective QC (clipping/DC-offset/artifacts, all 40 files clean),
+spectrogram inspection of 5 representative files, and a full metadata
+plausibility cross-check of every source title against its catalogued
+role (`production/qa/audio/listen-through-pass-2026-08-21.md`).
+
+Found one real, well-evidenced issue: `amb_detail_temple_bell_01.ogg` is
+a Japanese Zen temple bell (Daitoku-ji, Kyoto), not an Indian one --
+confirmed via spectrogram, not just the title: `_01` is a single strike
+with one long sustained decay (a large gong's signature), `_02`
+(explicitly "Hindu Temple Bells" in its own source title) shows 10+
+rapid repeated strikes, matching how Hindu temple bells are actually
+rung. A weaker note on `bird_mynah_02.ogg` (sourced from a turaco, a
+structurally loud/unusual call) was left as-is, not acted on.
+
+User said "apply the temple bell fix." Removed `_01` from
+`AudioCatalogue.AMBIENCE_DETAIL_PATHS` -- `_02` now carries the
+temple-bell detail alone. File left on disk/in CREDITS.md for
+provenance, marked retired rather than deleted (avoids rippling the
+"40 files" count referenced elsewhere for no real benefit). Updated
+`design/audio/audio-core-gameplay-loop.md` and the listen-through report
+to record it. 360/360 GUT tests pass throughout. Committed (`3014242`
+and the report's own earlier commit). Not pushed.
+
+**The genuine human listen-through remains open** -- this pass narrowed
+what it needs to cover (2 flagged files + the harvest twig-snaps), not
+replaced it. Everything else from this session's earlier work
+(accessibility audit, audio accessibility re-audit) is fully closed.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user

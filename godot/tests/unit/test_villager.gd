@@ -85,6 +85,35 @@ func _find_first_mesh_instance(node: Node) -> MeshInstance3D:
 	return null
 
 
+## design/gdd/richer-ambient-villagers.md -- Idle_A/Idle_B, merged in from
+## Rig_Medium_General.glb, must resolve through the same "moves/X" lookup
+## Walking_A etc. already use, for every character (same shared-skeleton
+## guarantee test_every_character_key_wires_the_movement_library_without_error()
+## already checks for the movement clips).
+func test_every_character_key_wires_the_idle_clips_without_error() -> void:
+	for character_key in Villager.CHARACTER_SCENES.keys():
+		var villager := VILLAGER_SCENE.instantiate() as Villager
+		add_child_autofree(villager)
+		villager.setup(character_key)
+
+		var anim_player := villager.get_animation_player()
+		for clip_name in Villager.IDLE_CLIP_NAMES:
+			assert_true(
+				anim_player.has_animation("moves/%s" % clip_name),
+				"character '%s' should have the shared %s clip" % [character_key, clip_name]
+			)
+
+
+func test_play_animation_can_switch_to_an_idle_clip() -> void:
+	var villager := VILLAGER_SCENE.instantiate() as Villager
+	add_child_autofree(villager)
+	villager.setup()
+
+	villager.play_animation("Idle_A")
+
+	assert_eq(String(villager.get_animation_player().current_animation), "moves/Idle_A")
+
+
 func test_play_animation_switches_clip() -> void:
 	var villager := VILLAGER_SCENE.instantiate() as Villager
 	add_child_autofree(villager)

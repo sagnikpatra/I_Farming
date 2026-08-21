@@ -41,9 +41,16 @@ const CHARACTER_SCENES: Dictionary = {
 ## Both animation-library files share the "Rig_Medium" skeleton/bone naming
 ## with every character above (verified 2026-08-21 -- see session state);
 ## MovementBasic is the one with roaming-relevant clips (Walking_A/B/C,
-## Running_A/B, Jump_*, T-Pose). General.glb exists but hasn't been
-## inspected yet -- not wired in here.
+## Running_A/B, Jump_*, T-Pose).
 const MOVEMENT_LIBRARY_PATH := "res://assets_3d/kaykit-adventurers/glTF/Animations/Rig_Medium_MovementBasic.glb"
+## design/gdd/richer-ambient-villagers.md -- General.glb was "sourced but
+## never inspected" per villagers.md's own flagged gap. Direct glTF
+## inspection (2026-08-22) found 15 clips, including real Idle_A/Idle_B
+## clips on the same shared skeleton -- confirmed usable, not assumed. Only
+## the 2 idle clips are pulled in below (not all 15, which are mostly
+## unrelated combat/death/spawn clips with no ambient-villager use).
+const GENERAL_LIBRARY_PATH := "res://assets_3d/kaykit-adventurers/glTF/Animations/Rig_Medium_General.glb"
+const IDLE_CLIP_NAMES: Array[String] = ["Idle_A", "Idle_B"]
 const DEFAULT_ANIMATION := "Walking_A"
 const ANIMATION_LIBRARY_KEY := "moves"
 
@@ -98,6 +105,7 @@ func setup(character_key: String = "ranger") -> void:
 	if library == null:
 		push_error("Villager.setup: could not load movement animation library")
 		return
+	_merge_idle_clips_into(library)
 
 	# Track paths inside the library are relative to the AnimationPlayer's
 	# parent (e.g. "Rig_Medium/Skeleton3D:hips") -- so the AnimationPlayer
@@ -137,6 +145,27 @@ func _load_movement_library() -> AnimationLibrary:
 		library = source_player.get_animation_library("")
 	anim_root.free()
 	return library
+
+
+## Copies IDLE_CLIP_NAMES from Rig_Medium_General.glb into `library` (the
+## movement library, already assigned to the AnimationPlayer under the
+## "moves" key) in place, so play_animation("Idle_A") resolves through the
+## exact same "moves/X" lookup play_animation() already uses -- no change
+## to that method's convention needed. Missing clips are skipped silently
+## (mirrors play_animation()'s own no-op-on-missing-clip guard) rather than
+## erroring, since a missing idle clip should degrade to "never idles," not
+## break character setup entirely.
+func _merge_idle_clips_into(library: AnimationLibrary) -> void:
+	var anim_scene: PackedScene = load(GENERAL_LIBRARY_PATH)
+	var anim_root := anim_scene.instantiate()
+	var source_player := _find_animation_player(anim_root)
+	if source_player != null:
+		var general_library := source_player.get_animation_library("")
+		if general_library != null:
+			for clip_name in IDLE_CLIP_NAMES:
+				if general_library.has_animation(clip_name):
+					library.add_animation(clip_name, general_library.get_animation(clip_name))
+	anim_root.free()
 
 
 func _find_animation_player(node: Node) -> AnimationPlayer:

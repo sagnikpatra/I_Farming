@@ -1,18 +1,31 @@
 class_name VillagerRoamer
 extends Node3D
 ## Drives one Villager (see villager.gd) continuously between random
-## walkable tiles on a WalkableGrid, per design/gdd/villagers.md's Detailed
-## Rules: no idle pauses (§3.4 -- the sourced animation library has no
-## standing-idle clip), no player interaction, no persistence. This class
-## owns movement/facing/target-picking only; it does not know about
-## GameState, spawning/population sizing, or how the walkable grid was
-## built -- see the GDD's "Next Steps" for what's still unwired.
+## walkable tiles on a WalkableGrid, no player interaction, no persistence
+## (design/gdd/villagers.md's Detailed Rules, EPIC-M6). This class owns
+## movement/facing/target-picking only; it does not know about GameState,
+## spawning/population sizing, or how the walkable grid was built -- see
+## the GDD's "Next Steps" for what's still unwired.
+##
+## design/gdd/richer-ambient-villagers.md: villagers.md §3.4's original
+## "no idle pauses (the sourced animation library has no standing-idle
+## clip)" no longer holds -- direct inspection of Rig_Medium_General.glb
+## found real Idle_A/Idle_B clips. Occasionally idle-pauses between walk
+## legs now (see the Idle-Pause state below).
 
 const VILLAGER_SCENE: PackedScene = preload("res://scenes/village_board/villager.tscn")
 
 ## design/gdd/villagers.md §4 Formulas table -- proposed values, not yet
 ## balance-tested on-device (documented there as such).
 const WALK_SPEED_TILES_PER_SEC: float = 1.2
+
+## design/gdd/richer-ambient-villagers.md §4 Formulas.
+const IDLE_PAUSE_CHANCE: float = 0.35
+const IDLE_DURATION_MIN_SEC: float = 2.0
+const IDLE_DURATION_MAX_SEC: float = 5.0
+const IDLE_CLIP_NAMES: Array[String] = ["Idle_A", "Idle_B"]
+
+enum _State { WALKING, IDLE_PAUSE }
 
 var _grid: WalkableGrid
 var _tile_size: float = 1.0
@@ -22,6 +35,8 @@ var _villager: Villager
 var _current_tile: Vector2i
 var _pending_path: Array[Vector2i] = []
 var _rng := RandomNumberGenerator.new()
+var _state: _State = _State.WALKING
+var _idle_timer: float = 0.0
 
 
 ## Must be called once before this node starts processing. `grid` is a
@@ -58,7 +73,29 @@ func _process(delta: float) -> void:
 	if _grid == null:
 		return  # setup() not called yet
 
+	if _state == _State.IDLE_PAUSE:
+		_idle_timer -= delta
+		if _idle_timer <= 0.0:
+			_state = _State.WALKING
+			# Pick the next target immediately rather than just flipping the
+			# state flag -- _pending_path is still empty at this point (it
+			# was never touched while idling), so leaving it empty would
+			# make next frame's `_pending_path.is_empty()` branch below
+			# re-roll should_enter_idle_pause() again against the same
+			# still-empty path, chaining into another idle pause instead of
+			# resuming. The chance should fire once per arrival, not repeat
+			# indefinitely while stuck in the empty-path state.
+			_pick_new_target()
+			if not _pending_path.is_empty():
+				_villager.play_animation(Villager.DEFAULT_ANIMATION)
+		return
+
 	if _pending_path.is_empty():
+		if should_enter_idle_pause(_rng):
+			_state = _State.IDLE_PAUSE
+			_idle_timer = random_idle_duration(_rng)
+			_villager.play_animation(random_idle_clip(_rng))
+			return
 		_pick_new_target()
 		if _pending_path.is_empty():
 			return  # nowhere walkable to go -- degenerate board state
@@ -77,6 +114,23 @@ func _process(delta: float) -> void:
 		var direction := to_target / distance
 		position += direction * step
 		_face_direction(direction)
+
+
+## design/gdd/richer-ambient-villagers.md §8's own acceptance criterion:
+## the idle chance/duration/clip choice must be independently testable as
+## pure logic, not coupled to _process()'s frame-delta accumulation --
+## same "extract the pure decision, test it directly" pattern
+## board_interactor.gd's gesture functions already established.
+static func should_enter_idle_pause(rng: RandomNumberGenerator) -> bool:
+	return rng.randf() < IDLE_PAUSE_CHANCE
+
+
+static func random_idle_duration(rng: RandomNumberGenerator) -> float:
+	return rng.randf_range(IDLE_DURATION_MIN_SEC, IDLE_DURATION_MAX_SEC)
+
+
+static func random_idle_clip(rng: RandomNumberGenerator) -> String:
+	return IDLE_CLIP_NAMES[rng.randi_range(0, IDLE_CLIP_NAMES.size() - 1)]
 
 
 func get_current_tile() -> Vector2i:

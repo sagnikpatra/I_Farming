@@ -471,7 +471,13 @@ measurement**, not asserted facts.
 Sequenced so the highest-uncertainty item is proven first and each phase is
 independently valuable.
 
-**Phase 0 — Foundations (required by every option; safe to start now)**
+**Phase 0 — Foundations (required by every option; safe to start now) --
+Done (2026-08-22)**: `SaveSerializer` (`godot/scripts/economy/
+save_serializer.gd`), `GameState.schema_version`, `CloudSaveProvider`/
+`NullCloudSaveProvider` all built and tested (28 new GUT tests, real
+JSON-transport round-trip proven, hostile-input rejection covered). Phase
+1 onward (picking and spiking an actual backend) remains not started --
+this ADR's overall Status stays Proposed until that choice is made.
 1. Add `SCHEMA_VERSION` to `GameState`; refuse to load a newer schema.
 2. Build `SaveSerializer` (`to_dict`/`from_dict`/`validate`) with strict
    bounds-checking on every enum — the SEC-001 defect class.

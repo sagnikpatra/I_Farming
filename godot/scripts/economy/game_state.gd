@@ -16,6 +16,21 @@
 class_name GameState
 extends Resource
 
+## adr-0003-cloud-save-and-player-accounts.md Phase 0 -- "refuse to load a
+## newer schema" needs a version to compare against. Persisted here (both
+## in the local .tres and in SaveSerializer's dict transport form) so a
+## save always carries the schema it was actually written under. The
+## authoritative "what does THIS client understand" value is
+## SaveSerializer.CURRENT_SCHEMA_VERSION, not this field -- this default is
+## just what a freshly-created GameState claims for itself; kept in sync
+## with that constant by hand, documented on both sides.
+##
+## Enforcement lives specifically in SaveSerializer.from_dict() (the
+## untrusted-transport boundary a downloaded cloud save would cross), not
+## in SaveSystem.load_state()'s local-.tres path -- a local file was
+## already written by this same client, so there's nothing to refuse there.
+@export var schema_version: int = 1
+
 @export var coins: int = 300
 @export var plots: Array[Plot] = []
 ## CropType.Kind ordinal (int) -> CropStock.

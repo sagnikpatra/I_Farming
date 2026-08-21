@@ -15,8 +15,23 @@ Section 4) is unaffected either way.
 
 **Processing**: downloaded preview `.ogg`, trimmed where noted, loudness-
 normalized via `ffmpeg loudnorm` to this project's target LUFS per category
-(SFX/UI -15, celebratory stingers -11, ambience -23), re-encoded to
-44.1kHz OGG Vorbis (`libvorbis -q:a 5`).
+(celebratory stingers -11, ambience -23), re-encoded to 44.1kHz OGG Vorbis
+(`libvorbis -q:a 5`).
+
+**Correction, 2026-08-21** (`production/qa/accessibility/audio-
+accessibility-reaudit-2026-08-21.md`): the original SFX/UI target above
+(-15 LUFS integrated) was independently re-measured and found wrong for
+this content, not just imperfectly hit — nearly every regular SFX/UI file
+is a sub-second transient, and LUFS-integrated measurement (designed for
+continuous/broadcast content) cannot reach -15 for a clip that short
+without either clipping its peak or destructive compression; confirmed
+directly by testing real two-pass `loudnorm`, which could only reach
+-26.45 LUFS on the worst-case file before hitting its own true-peak
+ceiling. The 22 regular SFX/UI files were re-mastered via peak
+normalization instead (-2.0 dBFS target, computed per-file from each
+file's own original peak, -0.8 to +4.0 dB gain needed -- no clipping risk).
+The 4 celebratory-stinger files and all 14 ambience files were independently
+re-measured and confirmed already correctly on-target -- untouched.
 
 **Known approximations** (freesound has no India-specific tag for these):
 generic bird-chirp/call recordings stand in for Bulbul/Myna (species-accurate

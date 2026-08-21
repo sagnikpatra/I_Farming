@@ -103,10 +103,34 @@ amb_detail_cattle_bell_01.ogg / _02
 ```
 
 Format: OGG Vorbis, 44.1kHz. Loudness targets: ambience ~-23 LUFS
-integrated; SFX/UI ~-16 to -14 LUFS short-term; rare celebratory stingers
-(structure-unlock, Farmhouse-upgrade, batch-resolve, festival-tier-reward)
-~-12 to -10 LUFS. Ambience detail one-shots are CENTERED (plain, non-panned
-`AudioStreamPlayer`) — no directional/2D/3D positioning this pass.
+integrated; rare celebratory stingers (structure-unlock, Farmhouse-upgrade,
+batch-resolve, festival-tier-reward) ~-12 to -10 LUFS integrated — both
+verified by direct `ffmpeg loudnorm` measurement of the delivered files
+(`production/qa/accessibility/audio-accessibility-reaudit-2026-08-21.md`),
+not just the sourcing pipeline's own self-report. Ambience detail one-shots
+are CENTERED (plain, non-panned `AudioStreamPlayer`) — no directional/2D/3D
+positioning this pass.
+
+**Regular SFX/UI (the 22 files outside the stinger tier) — corrected target,
+2026-08-21**: the original ~-16 to -14 LUFS *integrated* target was wrong
+for this content and is now abandoned, not just missed. Independent
+re-measurement (the same re-audit above) found nearly every one of these
+files was 3-13 dB under that target despite having healthy peak levels
+(-1.2 to -6.0 dBFS) — because most are sub-second transients, and LUFS-
+integrated measurement is designed for continuous/broadcast content, not
+short one-shot game SFX: raising a 100-300ms click's *integrated* loudness
+to -15 LUFS is mathematically impossible without either clipping its peak
+or applying destructive dynamic-range compression that would change its
+character (confirmed directly — attempting real two-pass `loudnorm` on the
+worst-case file could only reach -26.45 LUFS before hitting its true-peak
+ceiling). **Corrected technique**: peak normalization to a consistent
+-2.0 dBFS target (matching where most of these files already clustered
+naturally), applied directly to the original files — deliberately NOT
+silence-trimmed first, after a trim pass was found to occasionally cut
+into real transient content on files with multiple internal silence gaps
+(a real bug caught by an implausible +25 dB gain result during
+remediation, not shipped). All 22 files re-peak-normalized, durations
+verified unchanged, re-imported cleanly, evidence in the re-audit doc.
 
 **Loop-point note for the 3 ambience-loop files**: Godot's Ogg Vorbis import
 only supports a loop-*begin* offset, not a loop-end trim point. The
@@ -122,7 +146,8 @@ still needs to be authored into the audio file itself by whoever creates it.
 - No audio-only critical information: every gameplay signal audio reinforces (plot ready, batch resolve, rejected action) has an existing visual equivalent (ready badge decal, tint, event message) — audio is supplementary, never the sole channel
 - Ambience detail sounds are CENTERED (plain `AudioStreamPlayer`, no directional/2D/3D panning) so they read identically regardless of camera position
 - No subtitle/caption requirements — this game has no dialogue/narrative audio at all, by genre; nothing to caption
-- No mono-audio option this pass — no stereo panning is used anywhere in this design, so a mono downmix would have no practical effect; revisit only if a future pass introduces directional/panned audio
+- No mono-audio option this pass — no *engine-side* stereo panning is used anywhere in this design (confirmed: every player is a plain non-positional `AudioStreamPlayer`), so a mono downmix would have no practical effect on anything gameplay-critical; revisit only if a future pass introduces directional/panned audio. One caveat added 2026-08-21: the sourced ambience files themselves (real-world field recordings) can carry inherent stereo separation independent of any engine panning — low-stakes since ambience carries no gameplay-critical information (see the point above), but not literally zero effect the way the original reasoning implied
+- A `AudioEffectLimiter` (ceiling -1.0 dBFS, threshold -3.0 dBFS) was added to the Master bus 2026-08-21 as a structural safety net against any individual sound spiking loud — the per-event `max_polyphony` caps and the growth-tick batch-resolve suppression already prevented the *simultaneous-events* loudness-pileup case; this covers the *single mis-mastered or future-added asset* case that caught the regular-SFX/UI loudness bug above in the first place
 
 ## 6. Implementation Status
 

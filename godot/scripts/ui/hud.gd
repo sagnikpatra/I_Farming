@@ -204,19 +204,24 @@ func _refresh_inventory(inventory: Dictionary) -> void:
 		_inventory_row.add_child(_make_inventory_chip(entry["emoji"], entry["count"]))
 
 
+## The banner is now ALWAYS visible (design/gdd/gems-daily-tasks.md): it's
+## the ONLY entry point into the Events sheet at all (that sheet's own
+## header comment: "there is no Events zone on the board"), and Daily Tasks
+## -- unlike Monsoon/Festival/Chanda, all genuinely transient -- is a
+## permanent, always-relevant feature (a gems balance, a daily to-do list).
+## Hiding the banner whenever no transient event happened to be active
+## would make Daily Tasks/gems unreachable most of the time. Same
+## reachability-gap class as the Chanda fix below, just resolved by "always
+## show" instead of "also show for this one more condition" since Daily
+## Tasks has no active/inactive window to key off of in the first place.
 func _refresh_liveops_banner(economy: GameEconomy, now: int) -> void:
 	var monsoon_active := economy.is_monsoon_active(now)
 	var festival_active := economy.is_festival_active(now)
 	# A Chanda Visit (design/gdd/festival-visiting-npcs.md) awaiting a
-	# Give/Decline decision must surface the banner on its own, independent
-	# of Monsoon/Festival -- the Events sheet is the ONLY way to reach it
-	# (events_tab.gd's own header comment: "there is no Events zone on the
-	# board"), so without this a chanda-only active window would be
-	# invisible and unreachable for its entire 30-minute window.
+	# Give/Decline decision takes priority over Monsoon/Festival's purely
+	# informational banners -- it has a hard 30-minute window and needs an
+	# actual decision.
 	var chanda_awaiting := economy.chanda_visit_awaiting_decision(now)
-	if not monsoon_active and not festival_active and not chanda_awaiting:
-		_liveops_banner.visible = false
-		return
 	var festival := economy.current_festival(now)
 	var chanda_festival := economy.current_chanda_festival(now)
 	_liveops_banner.text = format_liveops_label(
@@ -262,7 +267,10 @@ static func format_liveops_label(
 		return "🌧️ Monsoon Season"
 	if festival_active:
 		return "%s %s" % [festival.emoji, festival.display_name]
-	return ""
+	# Fallback, not "nothing to show" -- design/gdd/gems-daily-tasks.md.
+	# Daily Tasks/gems have no active/inactive window of their own, so this
+	# is what the (now-always-visible) banner reads the rest of the time.
+	return "📅 Daily Tasks"
 
 
 # ---------------------------------------------------------------------------

@@ -56,6 +56,7 @@ func _populate() -> void:
 	_body.add_child(_build_monsoon_card(data))
 	_body.add_child(_build_festival_card(data))
 	_body.add_child(_build_chanda_card(data))
+	_body.add_child(_build_daily_tasks_card(data))
 
 
 func _now() -> int:
@@ -97,7 +98,38 @@ static func build_view_data(economy: GameEconomy, now: int) -> Dictionary:
 		"chanda_blessing_active": now < economy.state.chanda_blessing_active_until,
 		"chanda_blessing_remaining_ms": economy.state.chanda_blessing_active_until - now,
 		"can_afford_chanda": economy.state.coins >= economy.chanda_ask_amount(),
+		"gems": economy.state.gems,
+		"daily_tasks": _daily_task_rows(economy, now),
+		"daily_bonus_claimed": economy.daily_tasks_state_preview(now).daily_task_bonus_claimed,
+		"can_reroll": _can_reroll(economy, now),
 	}
+
+
+## One row per today's task -- kind, def, progress, claimed. Built from
+## daily_tasks_state_preview() (never mutates state), same non-mutating
+## read rationale as event_state_preview().
+static func _daily_task_rows(economy: GameEconomy, now: int) -> Array:
+	var preview := economy.daily_tasks_state_preview(now)
+	var rows: Array = []
+	for kind: int in preview.daily_task_kinds:
+		var task_def := GameData.daily_task_def_for_kind(kind)
+		rows.append({
+			"kind": kind,
+			"def": task_def,
+			"progress": mini(int(preview.daily_task_progress.get(kind, 0)), task_def.target),
+			"claimed": preview.daily_task_claimed.get(kind, false),
+		})
+	return rows
+
+
+static func _can_reroll(economy: GameEconomy, now: int) -> bool:
+	var preview := economy.daily_tasks_state_preview(now)
+	if preview.gems < GameData.DAILY_TASK_REROLL_COST:
+		return false
+	for kind: int in preview.daily_task_kinds:
+		if preview.daily_task_claimed.get(kind, false):
+			return false
+	return true
 
 
 ## "XhYm"/"Ym" -- matches EventsUi.kt's formatDuration() (identical logic to
@@ -133,6 +165,12 @@ func _on_give_chanda_pressed() -> void:
 
 func _on_decline_chanda_pressed() -> void:
 	_economy.decline_chanda(_now())
+	_village_board.persist_and_rebuild_if_dirty()
+	_populate()
+
+
+func _on_reroll_daily_tasks_pressed() -> void:
+	_economy.reroll_daily_tasks(_now())
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -301,6 +339,71 @@ func _build_chanda_card(data: Dictionary) -> PanelContainer:
 
 	card.add_child(box)
 	return card
+
+
+## Daily Tasks card (design/gdd/gems-daily-tasks.md) -- 4th card, independent
+## of Monsoon/Festival/Chanda above. Gems auto-award on task completion (no
+## claim button, matching the Festival Pass's own auto-award-on-threshold
+## behavior), so this card is purely a progress readout plus the one Reroll
+## action.
+func _build_daily_tasks_card(data: Dictionary) -> PanelContainer:
+	var card := _make_panel(WOOD_BROWN_LIGHT, 14)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 4)
+
+	box.add_child(_make_title_label("📅 Daily Tasks -- 💎 %d" % data["gems"], 17))
+
+	var rows: Array = data["daily_tasks"]
+	for row: Dictionary in rows:
+		box.add_child(_build_daily_task_row(row))
+
+	if data["daily_bonus_claimed"]:
+		box.add_child(_make_title_label("🎉 All 3 complete -- bonus gems claimed!", 14, RIPE_GOLD))
+
+	box.add_child(_build_reroll_button(data["can_reroll"], data["gems"]))
+
+	card.add_child(box)
+	return card
+
+
+func _build_daily_task_row(row: Dictionary) -> HBoxContainer:
+	var task_def: DailyTaskDef = row["def"]
+	var progress: int = row["progress"]
+	var claimed: bool = row["claimed"]
+
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override("separation", 8)
+
+	var left := _make_title_label(
+		"%s %s %s" % ["✅" if claimed else "▫️", task_def.emoji, task_def.display_name], 14
+	)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.add_child(left)
+
+	hbox.add_child(_make_title_label("%d/%d" % [progress, task_def.target], 14))
+
+	return hbox
+
+
+## §2.4 disabled-button state (same established pattern as
+## _build_premium_pass_button()): gated on both "not yet blocked by
+## progress" (data["can_reroll"] already folds in the completion check) and
+## affordability, with the label itself explaining which.
+func _build_reroll_button(can_reroll: bool, gems: int) -> Button:
+	var can_afford := gems >= GameData.DAILY_TASK_REROLL_COST
+	var label_text: String
+	if not can_afford:
+		label_text = "Reroll -- 💎 %d needed" % GameData.DAILY_TASK_REROLL_COST
+	elif not can_reroll:
+		label_text = "Reroll unavailable -- progress made today"
+	else:
+		label_text = "🔄 Reroll Today's Tasks -- 💎 %d" % GameData.DAILY_TASK_REROLL_COST
+	var button := UiTheme.make_chunky_button(label_text, SAFFRON_DARK, Color.WHITE, can_reroll)
+	if can_reroll:
+		button.pressed.connect(_on_reroll_daily_tasks_pressed)
+	return button
 
 
 func _build_tier_row(

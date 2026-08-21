@@ -299,6 +299,144 @@ func decline_chanda(now: int) -> void:
 	_mark_dirty()
 
 
+# --- Gems & Daily Tasks (design/gdd/gems-daily-tasks.md) --------------------
+# The project's first real-calendar-day-anchored system -- every LiveOps
+# system above runs on a fixed wall-clock cycle with no calendar awareness.
+# Progress hooks live at the 5 existing action call sites below (plant_seed,
+# harvest_plot, sell_crop, sell_all, _resolve_worker_cycle) -- no new
+# gameplay verbs, purely a reward wrapper.
+
+## Pure function of (now, timezone_offset) -- deliberately NOT a hidden
+## Time.get_time_zone_from_system() read inside this function, so it's
+## directly unit-testable with explicit inputs (see this file's own header
+## comment on why every time-dependent formula here takes `now` explicitly).
+## _current_local_day_key() below is the one real (non-pure) call site that
+## supplies the actual system timezone offset.
+static func local_day_key(now_ms: int, timezone_offset_minutes: int) -> int:
+	var shifted_seconds: int = now_ms / 1000 + timezone_offset_minutes * 60
+	var d: Dictionary = Time.get_datetime_dict_from_unix_time(shifted_seconds)
+	return int(d.year) * 10000 + int(d.month) * 100 + int(d.day)
+
+
+## The one real (non-pure) read in this system -- reads the device's actual
+## current timezone offset. Kept to a single tiny wrapper rather than
+## threading a timezone parameter through plant_seed()/harvest_plot()/
+## sell_crop()/sell_all()/resolve_worker_actions()'s existing public
+## signatures (and every test/call site that already calls them), which
+## would be a far wider, riskier change for the same result.
+func _current_local_day_key(now: int) -> int:
+	var tz: Dictionary = Time.get_time_zone_from_system()
+	return local_day_key(now, int(tz.get("bias", 0)))
+
+
+static func _pick_daily_task_kinds(rng: RandomNumberGenerator) -> Array[int]:
+	var pool := GameData.daily_task_pool()
+	var available: Array[int] = []
+	for i in range(pool.size()):
+		available.append(i)
+	var kinds: Array[int] = []
+	for _i in range(GameData.DAILY_TASKS_PER_DAY):
+		var pick_index: int = rng.randi_range(0, available.size() - 1)
+		kinds.append(pool[available[pick_index]].kind)
+		available.remove_at(pick_index)
+	return kinds
+
+
+## Lazy-reset-on-read, same shape as _with_fresh_event_occurrence(): the
+## first economy call of a new local day resets the task set/progress/
+## reroll-availability in place. Seeded by day_key -- same date always
+## produces the same 3 picks (deterministic, no save-scumming).
+func _with_fresh_daily_tasks(now: int) -> void:
+	var day_key: int = _current_local_day_key(now)
+	if state.daily_task_day_key == day_key:
+		return
+	state.daily_task_day_key = day_key
+	var rng := RandomNumberGenerator.new()
+	rng.seed = day_key
+	state.daily_task_kinds = _pick_daily_task_kinds(rng)
+	state.daily_task_progress = {}
+	state.daily_task_claimed = {}
+	state.daily_task_bonus_claimed = false
+
+
+## What the UI should show right now -- a deep-copied preview, never
+## mutates `state`, same rationale as event_state_preview(): opening the
+## Events sheet on a new day shouldn't be what triggers the rollover, only
+## a real gameplay action should.
+func daily_tasks_state_preview(now: int) -> GameState:
+	var preview: GameState = state.duplicate(true)
+	var day_key: int = _current_local_day_key(now)
+	if preview.daily_task_day_key != day_key:
+		preview.daily_task_day_key = day_key
+		var rng := RandomNumberGenerator.new()
+		rng.seed = day_key
+		preview.daily_task_kinds = _pick_daily_task_kinds(rng)
+		preview.daily_task_progress = {}
+		preview.daily_task_claimed = {}
+		preview.daily_task_bonus_claimed = false
+	return preview
+
+
+## Called from the 5 real action hook points below. No-ops for a kind not
+## among today's 3 picks, or a task already claimed (avoids double-award
+## on a repeated over-target action -- e.g. selling again after "Sell
+## crops 3 times" already hit its target).
+func _bump_daily_task_progress(kind: DailyTaskKind.Kind, amount: int, now: int) -> void:
+	if amount <= 0:
+		return
+	_with_fresh_daily_tasks(now)
+	if not state.daily_task_kinds.has(kind):
+		return
+	if state.daily_task_claimed.get(kind, false):
+		return
+	var new_progress: int = int(state.daily_task_progress.get(kind, 0)) + amount
+	state.daily_task_progress[kind] = new_progress
+	var task_def := GameData.daily_task_def_for_kind(kind)
+	if new_progress >= task_def.target:
+		state.daily_task_claimed[kind] = true
+		state.gems += task_def.gem_reward
+		_push_event("%s %s complete! +%d gems" % [task_def.emoji, task_def.display_name, task_def.gem_reward])
+		_maybe_award_daily_bonus()
+	_mark_dirty()
+
+
+func _maybe_award_daily_bonus() -> void:
+	if state.daily_task_bonus_claimed:
+		return
+	for kind: int in state.daily_task_kinds:
+		if not state.daily_task_claimed.get(kind, false):
+			return
+	state.daily_task_bonus_claimed = true
+	state.gems += GameData.DAILY_TASK_ALL_BONUS_GEMS
+	_push_event("🎉 All daily tasks complete! +%d bonus gems" % GameData.DAILY_TASK_ALL_BONUS_GEMS)
+
+
+## Discards today's picks entirely and draws a fresh, genuinely random 3
+## (NOT seeded by day_key -- a seeded reroll would just reproduce the same
+## picks). Only allowed while zero of today's 3 tasks are complete, so a
+## reroll can never discard an already-earned reward -- see this file's
+## header-level design doc for why that's a hard rule, not a soft
+## preference.
+func reroll_daily_tasks(now: int) -> void:
+	_with_fresh_daily_tasks(now)
+	for kind: int in state.daily_task_kinds:
+		if state.daily_task_claimed.get(kind, false):
+			_push_event("Can't reroll -- you've already made progress today.")
+			return
+	if state.gems < GameData.DAILY_TASK_REROLL_COST:
+		_push_event("Need %d gems to reroll." % GameData.DAILY_TASK_REROLL_COST)
+		return
+	state.gems -= GameData.DAILY_TASK_REROLL_COST
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	state.daily_task_kinds = _pick_daily_task_kinds(rng)
+	state.daily_task_progress = {}
+	state.daily_task_claimed = {}
+	state.daily_task_bonus_claimed = false
+	_push_event("🔄 Today's tasks rerolled.")
+	_mark_dirty()
+
+
 # --- The Ancestral Farmhouse: core progression hub ------------------------------
 
 func storage_capacity() -> int:
@@ -373,6 +511,7 @@ func plant_seed(plot_id: int, crop: int, now: int) -> void:
 
 	state.coins -= crop_def.seed_cost
 	plot.state = PlotState.new_growing(crop, now, effective_seconds)
+	_bump_daily_task_progress(DailyTaskKind.Kind.PLANT, 1, now)
 	_mark_dirty()
 
 
@@ -415,6 +554,7 @@ func harvest_plot(plot_id: int, now: int) -> bool:
 
 	plot.state = PlotState.new_empty()
 	state.total_harvests += 1
+	_bump_daily_task_progress(DailyTaskKind.Kind.HARVEST, 1, now)
 
 	if spoiled and not ready.weather_damaged:
 		_push_event("🥀 That %s sat too long and spoiled a little." % GameData.crop_def(ready.crop).display_name)
@@ -439,6 +579,8 @@ func sell_crop(crop: int, now: int) -> void:
 	state.inventory.erase(crop)
 	_push_event("Sold %d %s for ₹%d" % [units_sold, crop_def.display_name, total_value])
 	_register_festival_sale(crop, units_sold, now)
+	_bump_daily_task_progress(DailyTaskKind.Kind.SELL, 1, now)
+	_bump_daily_task_progress(DailyTaskKind.Kind.EARN, total_value, now)
 	_mark_dirty()
 
 
@@ -461,6 +603,8 @@ func sell_all(now: int) -> void:
 	for crop: int in sold_stock.keys():
 		var stock: CropStock = sold_stock[crop]
 		_register_festival_sale(crop, stock.total, now)
+	_bump_daily_task_progress(DailyTaskKind.Kind.SELL, 1, now)
+	_bump_daily_task_progress(DailyTaskKind.Kind.EARN, total_value, now)
 	_mark_dirty()
 
 
@@ -665,6 +809,7 @@ func _resolve_worker_cycle(plot: Plot, now: int) -> void:
 
 	state.coins = maxi(state.coins - wage, 0)
 	_push_event("A worker harvested %s %s (wage: ₹%d)." % [crop_def.emoji, crop_def.display_name, wage])
+	_bump_daily_task_progress(DailyTaskKind.Kind.WORKER, 1, now)
 
 	var can_afford_replant: bool = state.coins >= crop_def.seed_cost
 	var electricity_ok: bool = crop != CropType.Kind.SAFFRON or is_electricity_active(now)

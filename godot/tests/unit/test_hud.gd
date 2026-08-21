@@ -56,9 +56,12 @@ func test_liveops_label_monsoon_and_festival_combined() -> void:
 	assert_eq(Hud.format_liveops_label(true, true, festival), expected)
 
 
-func test_liveops_label_neither_active_returns_empty_string() -> void:
+func test_liveops_label_neither_active_falls_back_to_daily_tasks() -> void:
+	# design/gdd/gems-daily-tasks.md -- the banner is now always visible
+	# (Daily Tasks has no active/inactive window), so this is the fallback
+	# text rather than an empty "hide the banner" signal.
 	var festival := GameData.festival_def(0)
-	assert_eq(Hud.format_liveops_label(false, false, festival), "")
+	assert_eq(Hud.format_liveops_label(false, false, festival), "📅 Daily Tasks")
 
 
 func test_liveops_label_chanda_awaiting_takes_priority_over_monsoon_and_festival() -> void:

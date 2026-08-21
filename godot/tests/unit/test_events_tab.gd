@@ -93,6 +93,35 @@ func test_view_data_reports_cannot_afford_chanda() -> void:
 	assert_false(data["can_afford_chanda"])
 
 
+func test_view_data_daily_tasks_has_3_rows_with_zero_progress_on_a_fresh_day() -> void:
+	var data := EventsTab.build_view_data(eco, NOW_BOTH_ACTIVE)
+	var rows: Array = data["daily_tasks"]
+	assert_eq(rows.size(), GameData.DAILY_TASKS_PER_DAY)
+	for row: Dictionary in rows:
+		assert_eq(row["progress"], 0)
+		assert_false(row["claimed"])
+	assert_eq(data["gems"], 0)
+	assert_false(data["daily_bonus_claimed"])
+
+
+func test_view_data_daily_tasks_does_not_mutate_real_state() -> void:
+	assert_eq(eco.state.daily_task_day_key, -1)
+	EventsTab.build_view_data(eco, NOW_BOTH_ACTIVE)
+	assert_eq(eco.state.daily_task_day_key, -1)
+
+
+func test_view_data_can_reroll_true_on_a_fresh_day_with_enough_gems() -> void:
+	eco.state.gems = GameData.DAILY_TASK_REROLL_COST
+	var data := EventsTab.build_view_data(eco, NOW_BOTH_ACTIVE)
+	assert_true(data["can_reroll"])
+
+
+func test_view_data_can_reroll_false_with_insufficient_gems() -> void:
+	eco.state.gems = GameData.DAILY_TASK_REROLL_COST - 1
+	var data := EventsTab.build_view_data(eco, NOW_BOTH_ACTIVE)
+	assert_false(data["can_reroll"])
+
+
 func test_format_duration_omits_hours_when_zero() -> void:
 	assert_eq(EventsTab.format_duration(5 * 60_000), "5m")
 

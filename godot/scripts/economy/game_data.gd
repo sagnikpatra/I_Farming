@@ -160,6 +160,47 @@ const CHANDA_ASK_PER_LEVEL: int = 15
 const CHANDA_BLESSING_MULTIPLIER: float = 1.08
 const CHANDA_BLESSING_DURATION_MS: int = 2 * 60 * 60 * 1000
 
+# --- Gems & Daily Tasks (design/gdd/gems-daily-tasks.md) --------------------
+# The project's first real-calendar-day-anchored system (every other
+# LiveOps system above runs on a fixed wall-clock cycle with no calendar
+# awareness) -- see GameEconomy.local_day_key() for why day-boundary
+# detection is a pure function of (now, timezone_offset), not a hidden
+# system-clock read.
+
+## Reroll discards today's picks entirely (not seeded) -- only allowed
+## while zero of today's 3 tasks are complete, so it can never discard an
+## already-earned reward.
+const DAILY_TASK_REROLL_COST: int = 6
+## Auto-awarded once, the instant the 3rd task of the day completes.
+const DAILY_TASK_ALL_BONUS_GEMS: int = 5
+## How many of the 5-entry pool are drawn each day.
+const DAILY_TASKS_PER_DAY: int = 3
+
+static var _daily_task_pool: Array[DailyTaskDef] = []
+
+
+static func _ensure_daily_task_pool() -> void:
+	if not _daily_task_pool.is_empty():
+		return
+	_daily_task_pool.append(DailyTaskDef.new(DailyTaskKind.Kind.HARVEST, "Harvest 5 crops", "🌾", 5, 3))
+	_daily_task_pool.append(DailyTaskDef.new(DailyTaskKind.Kind.PLANT, "Plant 5 seeds", "🌱", 5, 3))
+	_daily_task_pool.append(DailyTaskDef.new(DailyTaskKind.Kind.SELL, "Sell crops 3 times", "💰", 3, 4))
+	_daily_task_pool.append(DailyTaskDef.new(DailyTaskKind.Kind.WORKER, "Complete 3 worker actions", "👷", 3, 4))
+	_daily_task_pool.append(DailyTaskDef.new(DailyTaskKind.Kind.EARN, "Earn ₹500", "🪙", 500, 5))
+
+
+static func daily_task_pool() -> Array[DailyTaskDef]:
+	_ensure_daily_task_pool()
+	return _daily_task_pool
+
+
+static func daily_task_def_for_kind(kind: DailyTaskKind.Kind) -> DailyTaskDef:
+	_ensure_daily_task_pool()
+	for task in _daily_task_pool:
+		if task.kind == kind:
+			return task
+	return _daily_task_pool[0]  # defensive fallback, mirrors farmhouse_level_def()'s own clamp style
+
 # --- Land expansion ----------------------------------------------------------
 
 ## Marginal pricing: each new plot costs more than the last, per the design

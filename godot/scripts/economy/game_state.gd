@@ -60,6 +60,24 @@ extends Resource
 ## Epoch ms until the give-chanda sell-price blessing is active. 0 = no
 ## active blessing.
 @export var chanda_blessing_active_until: int = 0
+## Gems &amp; Daily Tasks (design/gdd/gems-daily-tasks.md) -- the project's
+## first real-calendar-day-anchored system. Gems persist indefinitely
+## (never reset daily); only the fields below reset on a local day
+## rollover, via GameEconomy._with_fresh_daily_tasks().
+@export var gems: int = 0
+## year*10000 + month*100 + day (local time) of the day these fields were
+## last generated for. -1 = never initialized.
+@export var daily_task_day_key: int = -1
+## Today's DailyTaskKind.Kind ordinals (DAILY_TASKS_PER_DAY of them).
+@export var daily_task_kinds: Array[int] = []
+## DailyTaskKind.Kind ordinal (int) -> progress count so far today.
+@export var daily_task_progress: Dictionary = {}
+## DailyTaskKind.Kind ordinal (int) -> bool, whether that task's gem
+## reward has already been awarded today (guards against double-award on
+## a repeated over-target action).
+@export var daily_task_claimed: Dictionary = {}
+## Whether today's all-3-complete bonus has already been awarded.
+@export var daily_task_bonus_claimed: bool = false
 ## Custom drag-to-reposition positions for the village board's structure
 ## zones, keyed by zone id (see village_board scripts' zone-id constants).
 ## Missing entries fall back to that zone's default anchor. String zone id ->

@@ -116,6 +116,10 @@ const WATER_TINT_MULTIPLIER := Color(0.55, 0.80, 0.90)
 ## owner, public accessor" pattern as _economy/_accessibility_settings, see
 ## get_audio_manager() and audio_manager.gd's own class doc.
 @onready var _audio_manager: AudioManager = $AudioManager
+## design/gdd/real-time-day-night.md -- the two existing lighting nodes
+## time_of_day.gd's presets get applied to. No new scene nodes needed.
+@onready var _world_environment: WorldEnvironment = $WorldEnvironment
+@onready var _directional_light: DirectionalLight3D = $DirectionalLight3D
 
 ## zone.id -> ZoneFixture. This is the single in-memory source of truth for a
 ## zone's current tile position; try_commit_zone_move() mutates it in place so
@@ -155,6 +159,10 @@ const WORKER_STATION_SCENE: PackedScene = preload("res://scenes/village_board/wo
 ## every growth tick.
 var _last_monsoon_active: bool = false
 var _last_festival_active: bool = false
+## design/gdd/real-time-day-night.md -- -1 = never applied, so _ready()'s
+## first call always applies the correct current phase rather than
+## silently matching an unset default.
+var _last_time_of_day_phase: int = -1
 ## Audio pass: edge-detected colorblind-safe state -- AccessibilitySettings.
 ## settings_changed now also fires on every audio-volume-slider tick (see
 ## _on_accessibility_settings_changed()), so the (expensive) full StaticLayer
@@ -205,6 +213,9 @@ func _ready() -> void:
 	# the relevant layer in over AudioManager.AMBIENCE_CROSSFADE_SECONDS
 	# rather than leaving it silent until the next 3s tick.
 	_sync_adaptive_ambience_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
+	# design/gdd/real-time-day-night.md -- apply the correct real-world
+	# phase immediately, not a flash of Day before the first 3s tick.
+	_apply_time_of_day_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
 
 
 ## Wipes and rebuilds the static layer (ground, boundary, zones+plinths+plots)
@@ -1606,6 +1617,7 @@ func get_camera_rig() -> CameraRig:
 func _on_growth_tick_timeout() -> void:
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_sync_adaptive_ambience_if_needed(now)
+	_apply_time_of_day_if_needed(now)
 
 	# Audio pass batch-resolve hazard fix: snapshot every plot's
 	# state.kind immediately before calling both resolve methods, diff
@@ -1695,6 +1707,28 @@ func _sync_adaptive_ambience_if_needed(now: int) -> void:
 	if festival_active != _last_festival_active:
 		_audio_manager.set_festival_active(festival_active)
 		_last_festival_active = festival_active
+
+
+## design/gdd/real-time-day-night.md -- purely cosmetic, touches only the
+## existing WorldEnvironment/DirectionalLight3D nodes' properties, never
+## gameplay math. Same edge-detection discipline as
+## _sync_adaptive_ambience_if_needed() above: only reassigns properties
+## when the phase has actually changed, not every 3s tick.
+func _apply_time_of_day_if_needed(now: int) -> void:
+	var tz: Dictionary = Time.get_time_zone_from_system()
+	var hour := TimeOfDay.local_hour(now, int(tz.get("bias", 0)))
+	var phase := TimeOfDay.phase_for_hour(hour)
+	if phase == _last_time_of_day_phase:
+		return
+	_last_time_of_day_phase = phase
+
+	var preset := TimeOfDay.preset_for_phase(phase)
+	var env := _world_environment.environment
+	env.background_color = preset["sky_color"]
+	env.ambient_light_color = preset["ambient_color"]
+	env.ambient_light_energy = preset["ambient_energy"]
+	_directional_light.light_color = preset["sun_color"]
+	_directional_light.light_energy = preset["sun_energy"]
 
 
 ## Shared save-if-dirty + re-render pattern, gated on GameEconomy.dirty per

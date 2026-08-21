@@ -3579,15 +3579,47 @@ evidence screenshots). Not pushed.
 
 ## Next Step
 
+## 2026-08-22 (cont'd) -- Farmhouse visual tiers built (feature-scoping item 1)
+
+User asked for item 1 next. Wrote design/gdd/farmhouse-visual-tiers.md
+first (same design-doc-before-code pattern), then implemented: the
+Farmhouse's rendered model now depends on farmhouse_level (0-7), mapped
+to 5 visual tiers reusing the tier boundaries GameData.farmhouse_level_
+def()'s own emoji sequence already implied (🛖/🏠/🏡/🏰/🏛️) rather than
+inventing a new scheme. All 5 are unmodified CC0 city-kit-suburban shells,
+picked by file size as a grandeur proxy; Tier 2 keeps the exact model
+already in use today for continuity. Fixed footprint, model re-skin
+only -- footprint growth stays a deferred stretch per the scoping brief
+(would force resolving land-and-structures.md's open collision-
+validation question).
+
+Real gap caught during implementation, not just theorized: 4 of the 5
+tier models exist in the project's full asset library (root assets_3d/)
+but were never copied into godot/assets_3d/ (the curated subset actually
+inside the Godot project) since nothing had referenced them before --
+first GUT run after wiring them up produced 14 null-mesh crashes in every
+test that builds a real VillageBoard scene. Copied the .obj+.mtl pairs
+in and had to force Godot's asset importer explicitly
+(`--headless --import`) -- a plain filesystem scan doesn't reimport
+genuinely new files on its own, same class of gotcha as the earlier
+ChandaFestivalDef global-class-cache issue this session, but for actual
+resource import rather than script registration.
+
+11 new/updated GUT tests, 414/414 passing. On-device verified across 3
+sampled tiers (level 0/4/7, via save-file field editing) -- each renders
+a visibly distinct, correctly-scaled building, no crashes. Committed as
+`d03eaee`. Phone reset to a clean default install afterward. Not pushed.
+
+## Next Step
+
 1. Nothing is currently in-flight from this session. Everything reached
    a stopping point: real-hardware perf (closed), cloud-save ADR
-   (Proposed, awaiting the user picking a phase to start -- Phase 0 is
-   the recommended first step regardless of final backend choice), the
-   chanda visit feature (built, verified, committed), and the 4
-   remaining open feature briefs (none picked yet -- per the
-   Collaborative Design Principle, next move is the user choosing one to
-   take from brief to a full GDD, or asking for something else
-   entirely).
+   (Proposed, awaiting the user picking a phase to start), the chanda
+   visit feature (built, verified, committed), Farmhouse visual tiers
+   (built, verified, committed), and 3 remaining open feature briefs
+   (gems+daily-tasks, real-timezone weather, richer ambient villagers --
+   none picked yet, per the Collaborative Design Principle the next move
+   is the user choosing one, or asking for something else entirely).
 2. The earlier "screen alignment" question is still technically
    unconfirmed by the user (they moved on to other topics before
    answering) -- low urgency, evidence points to "not a bug" (the

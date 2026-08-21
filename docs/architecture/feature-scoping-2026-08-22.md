@@ -232,7 +232,7 @@ shipped here.
 
 | # | Feature | Complexity | Key dependency / prerequisite | Status |
 |---|---|---|---|---|
-| 1 | Building upgrades change layout | M (Farmhouse-only) / L (footprint growth + all structures) | Resolves `land-and-structures.md`'s open collision-validation question if footprint grows | Open |
+| 1 | Building upgrades change layout | M (Farmhouse-only) / L (footprint growth + all structures) | Resolves `land-and-structures.md`'s open collision-validation question if footprint grows | **Built (2026-08-22, commit `d03eaee`)** -- Farmhouse model re-skin only, fixed footprint; footprint growth and the other 3 structures' sub-upgrades stay open stretch goals |
 | 2 | Gems via daily tasks | M (grind-only) / L (if real-money purchasable) | Real-money path needs a billing-integration decision first | Open |
 | 3 | Real-world-timezone weather | S/M (cosmetic, recommended) / L (mechanical, not recommended) | New device-timezone read dependency either way | Open |
 | 4 | Richer ambient villager behavior | M (contingent) / L (if new animation sourcing needed) | Verify `Rig_Medium_General.glb` has a usable idle clip first | Open |

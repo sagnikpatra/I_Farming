@@ -3722,17 +3722,74 @@ future work, not scheduled.
 1. Nothing is currently in-flight from this session. Every item from
    both this session's scope-discussion passes is now built and
    committed: Chanda Visit, Farmhouse visual tiers, Gems & Daily Tasks,
-   Real-time day/night, and Villager idle pauses (all 2026-08-22). The
-   cloud-save ADR (`adr-0003-cloud-save-and-player-accounts.md`) remains
-   Proposed, not actioned -- Phase 0 (schema versioning + JSON transport)
-   is its own recommended first step whenever the user wants to start
-   it. Real-hardware performance budgeting is closed. Per the
-   Collaborative Design Principle, the next move is the user's: pick a
-   stretch goal from any of the 5 built features, start the cloud-save
-   ADR, or name a new direction entirely.
+   Real-time day/night, and Villager idle pauses (all 2026-08-22). Real-
+   hardware performance budgeting is closed.
 2. The earlier "screen alignment" question is still technically
    unconfirmed by the user (they moved on to other topics before
    answering) -- low urgency, evidence points to "not a bug" (the
    intended locked-zone placeholder visual).
 3. Localization, store readiness -- still open, still need the user
+   specifically (see entries above).
+
+## 2026-08-22 (cont'd) -- Cloud-save Phase 0 built, session paused (user going to sleep)
+
+User asked to continue after the "push it" exchange; picked up
+adr-0003-cloud-save-and-player-accounts.md's Phase 0 (Foundations) --
+the one substantive option offered besides pushing, and the recommended
+first step regardless of which backend gets chosen later.
+
+Built: `GameState.schema_version`; `SaveSerializer`
+(`to_dict`/`from_dict`/`validate`), the actual fix for SEC-003's
+conditional acceptance in the 2026-08-21 security audit (never load a
+downloaded save via ResourceLoader -- plain JSON-safe data only, every
+enum ordinal bounds-checked against its real source enum, any single
+bad field fails the whole parse); `CloudSaveProvider`/
+`NullCloudSaveProvider`, the backend-swap seam. 28 new GUT tests,
+475/475 passing.
+
+Real bug caught while writing tests, not in review: the schema_version
+check used a strict `is int` test, but Godot's JSON parser always
+returns float for JSON numbers -- silently rejecting every genuinely
+JSON-transported payload (only in-memory dicts that never crossed
+JSON.stringify/parse_string happened to pass). Caught specifically
+because one test forced a REAL JSON round trip rather than only testing
+the in-memory Dictionary form directly -- fixed with the same
+float-tolerant `_is_int()` helper every other field already used. Also
+fixed two real test-setup bugs while debugging (a hardcoded expected
+coins value that ignored several purchases spending it down first, and
+an insufficient starting balance silently no-op'ing two of those
+purchases) -- neither was a serializer bug, both were the tests
+asserting the wrong thing.
+
+Committed as `291a268`. Session paused here -- **user is going to sleep,
+asked to "save everything."** Everything through this commit is
+committed but this specific batch (unlike every earlier one tonight)
+has NOT been pushed yet -- no explicit "push it" was given for it. Push
+next time this session resumes, once confirmed with the user, or if
+they ask again.
+
+Phase 1 onward (picking and spiking an actual cloud backend: PGS
+Snapshots was the ADR's recommendation, confirmed acceptable to the user
+back when the ADR was written) remains not started. adr-0003's overall
+Status stays Proposed.
+
+## Next Step
+
+1. **First thing next session**: confirm whether to push commit
+   `291a268` (Phase 0 cloud-save foundations) -- it's sitting local-only
+   per the user's "save everything, will do later" sign-off, not because
+   push was declined.
+2. Nothing else is currently blocking. Every 2026-08-22 feature-scoping
+   item is built and pushed (Chanda Visit, Farmhouse visual tiers, Gems
+   & Daily Tasks, Real-time day/night, Villager idle pauses). Phase 0 of
+   the cloud-save ADR is now also built (not yet pushed, see above).
+   Real-hardware performance budgeting is closed. Per the Collaborative
+   Design Principle, the next real decision is the user's: continue to
+   cloud-save Phase 1 (the PGS de-risking spike), pick a stretch goal
+   from any of the 5 built features, or name a new direction entirely.
+3. The earlier "screen alignment" question is still technically
+   unconfirmed by the user (they moved on to other topics before
+   answering) -- low urgency, evidence points to "not a bug" (the
+   intended locked-zone placeholder visual).
+4. Localization, store readiness -- still open, still need the user
    specifically (see entries above).

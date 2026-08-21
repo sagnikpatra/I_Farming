@@ -110,14 +110,25 @@ func test_resolve_worker_actions_harvests_and_replants_a_ready_plot() -> void:
 func test_resolve_worker_actions_charges_the_wage() -> void:
 	var plot: Plot = eco.state.plots[0]
 	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW_QUIET)
-	eco.resolve_growth_completions(NOW_QUIET + 200 * 1000)
+	# Sets the plot READY directly rather than via resolve_growth_completions()
+	# -- Open-Field's weather roll (effective_weather_risk_percent(), 8% for
+	# Wheat) is genuinely unseeded, so going through it here would make this
+	# test's exact-wage assertion below flaky (~8% of runs would land on the
+	# damaged/half-wage branch _worker_wage_for() now correctly takes -- a
+	# real regression surfaced by that fix, not a pre-existing flake; fixed
+	# here by forcing weather_damaged=false the same way test_land_structures.gd
+	# forces spoilage deterministically). No test standards violation (see
+	# .claude/docs/coding-standards.md: "no random seeds, no time-dependent
+	# assertions").
+	plot.state = PlotState.new_ready(CropType.Kind.WHEAT, false, NOW_QUIET)
 	eco.assign_worker(PlotKind.Kind.OPEN_FIELD, "ranger")
 	var coins_before_cycle := eco.state.coins
 
 	eco.resolve_worker_actions(NOW_QUIET + 200 * 1000)
 
-	# Wheat: base_sell_price=20 -> wage = round(20*0.15) = 3. Replant costs
-	# Wheat's seed_cost=10. Net change = -3 (wage) - 10 (replant) = -13.
+	# Wheat: base_sell_price=20, undamaged -> wage = round(20*0.15) = 3.
+	# Replant costs Wheat's seed_cost=10. Net change = -3 (wage) - 10
+	# (replant) = -13.
 	assert_eq(eco.state.coins, coins_before_cycle - 3 - 10)
 
 
@@ -188,7 +199,11 @@ func test_resolve_worker_actions_skips_when_inventory_full_no_wage_charged() -> 
 func test_resolve_worker_actions_harvests_but_leaves_plot_empty_when_cant_afford_replant() -> void:
 	var plot: Plot = eco.state.plots[0]
 	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW_QUIET)  # costs seed_cost=10 while coins are still high
-	eco.resolve_growth_completions(NOW_QUIET + 200 * 1000)
+	# Forces an undamaged READY plot deterministically -- see
+	# test_resolve_worker_actions_charges_the_wage()'s own comment on why
+	# going through resolve_growth_completions() here would make the wage
+	# assertion below flaky (Wheat's Open-Field weather roll is unseeded).
+	plot.state = PlotState.new_ready(CropType.Kind.WHEAT, false, NOW_QUIET)
 	eco.assign_worker(PlotKind.Kind.OPEN_FIELD, "ranger")
 	# Wage will be 3; leaves 2 coins after the harvest, less than Wheat's
 	# seed_cost=10 -- can't afford the replant.

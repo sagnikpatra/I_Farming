@@ -1,7 +1,7 @@
 # Audio: Core Gameplay Loop
 
-**Status**: Accepted direction, code complete and tested. Real audio asset
-files are NOT yet sourced — see "Implementation Status" below.
+**Status**: Accepted direction, code complete and tested, all 40 real audio
+asset files sourced and in place — see "Implementation Status" below.
 
 ## 1. Overview
 
@@ -135,10 +135,38 @@ codebase (`village_board.gd`, `board_interactor.gd`, `hud.gd`,
 `seed_picker.gd`, `agro_plant_picker.gd`, `decoration_info_card.gd`,
 `farmhouse_tab.gd`, `mandi_tab.gd`, `polyhouse_tab.gd`).
 
-**Zero real audio asset files exist yet.** Every catalogued path is a
-string, checked via `ResourceLoader.exists()` before playback; a missing
-file is a silent no-op by design. Once the 40 `.ogg` files above are
-dropped in at these exact paths, playback works with zero code changes.
+**All 40 real audio asset files are now sourced and in place** at
+`godot/assets/audio/{sfx,ambience}/`, exactly matching this document's
+Section 4 naming list (cross-checked programmatically against every path
+string `audio_catalogue.gd` references — 40/40 match, zero drift). Sourced
+2026-08-21 from freesound.org, filtered to CC0-licensed (public domain)
+results only, downloaded as preview-quality streams (no Freesound account
+was created or used — see the caveat below), then trimmed/loudness-
+normalized/re-encoded to this doc's OGG Vorbis 44.1kHz spec via `ffmpeg`.
+Full per-file source/license/author attribution (not legally required for
+CC0, kept for traceability, matching this project's Kenney-CC0-credits
+convention) is in `godot/assets/audio/CREDITS.md`, including two flagged
+approximations: generic bird-chirp/call recordings stand in for
+Bulbul/Myna specifically (no CC0 India-species-accurate recordings were
+found), and a door-hinge creak stands in for the well-pulley creak (same
+"wooden mechanism under tension" character). All 40 files import cleanly
+into Godot (verified via a headless editor reimport pass, 40/40
+`.import` files generated, zero errors) and the full GUT suite still
+passes unchanged (350/350) since this was a pure asset drop, no code
+touched. `ResourceLoader.exists()` gating is now satisfied for every
+catalogued path — actual playback has NOT yet been verified on-device (no
+emulator/phone audio check has been run since these files landed); that
+remains a real follow-up, not done as part of this pass.
+
+**Caveat carried forward, not fully resolved**: selection was done by
+title/tag/duration metadata only — nobody has actually listened through
+the 40 files for tonal fit, loudness-normalization artifacts, or outright
+mismatches yet. Preview-quality streams (not Freesound's original
+full-quality masters, which require a login this project deliberately
+did not create) were used throughout; likely adequate at this doc's modest
+mobile SFX/ambience LUFS targets, but not verified against the originals.
+A listen-through pass (and an on-device audio check) is the natural next
+step before treating this as fully done.
 
 **Not wired this pass** (explicit follow-up, not implied as covered):
 - `agroforestry_tab.gd` / `niche_farming_tab.gd` — mechanically identical to

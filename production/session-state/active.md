@@ -2629,18 +2629,80 @@ the repository at all (pure device/adb operations), so there was nothing
 new to commit code-wise. Updated this state file with the full episode for
 continuity, since that IS worth persisting even though no source changed.
 
+## 2026-08-21 (new session) -- Sourced all 40 real audio asset files
+
+User picked "source real audio assets" as the next step (of the 7 listed
+below) via `AskUserQuestion`. Done directly (not delegated) -- discovered
+freesound.org's CC0-filtered search results are server-rendered HTML
+(`data-mp3`/`data-ogg`/`data-title`/`data-duration`/`data-username`
+attributes right in the page), so the whole pipeline runs via `curl` +
+`ffmpeg`, no login/account creation (prohibited action) and no browser
+automation needed. Got explicit user permission first (`AskUserQuestion`)
+before downloading, per this session's action-category rules.
+
+**Pipeline**: for each of the 40 catalogued events, queried freesound.org
+filtered to `license:"Creative Commons 0"`, picked a candidate by
+title/tag/duration metadata (not by listening -- flagged as a real
+limitation), downloaded the preview-quality `.ogg` (no Freesound login used,
+so only preview-quality streams were available, not original masters),
+then via `ffmpeg`: trimmed where needed, `loudnorm`-normalized to this
+project's target LUFS per category (SFX/UI -15, celebratory stingers -11,
+ambience -23 -- matching `audio-core-gameplay-loop.md` Section 4 exactly),
+re-encoded to 44.1kHz OGG Vorbis. One deliberate trick: `sfx_ui_sheet_close_01.ogg`
+is `sfx_ui_sheet_open_01.ogg`'s source file time-reversed (`areverse`) for a
+matched open/close pair rather than an unrelated third search.
+
+**Two flagged approximations** (no CC0 India-species-accurate source found):
+generic bird-chirp/call recordings stand in for Bulbul/Myna specifically; a
+door-hinge creak stands in for the well-pulley creak (same "wooden mechanism
+under tension" character). Both noted in the new `godot/assets/audio/CREDITS.md`.
+
+**Verified independently, not just assumed**:
+- Programmatic path cross-check: extracted every `res://assets/audio/...`
+  string `audio_catalogue.gd` references and diffed against the 40 files
+  actually placed -- **40/40 exact match**, zero drift from the design doc's
+  Section 4 naming list.
+- Godot import: ran a headless editor pass (`--headless --editor
+  --quit-after 25`) -- all 40 files reimported cleanly, **40/40
+  `.ogg.import` sidecar files generated, zero errors**. Confirmed this
+  project's existing convention already tracks `.import` sidecars in git
+  (55 pre-existing ones under `assets_3d/`), so no new gitignore work needed.
+- Full GUT suite re-run: **350/350 still passing, 1490 asserts** -- unchanged,
+  as expected for a pure asset-drop with zero code changes.
+
+**Written**: `godot/assets/audio/{sfx,ambience}/*.ogg` (40 files) +
+`*.ogg.import` sidecars (40, Godot-generated), `godot/assets/audio/CREDITS.md`
+(new -- per-file Freesound ID/title/author/license/processing-notes table).
+Updated `design/audio/audio-core-gameplay-loop.md`'s Implementation Status
+section with full sourcing detail and the caveats below.
+
+**Real, explicitly-flagged caveats, not swept under the rug**:
+1. Selection was by metadata only -- **nobody has listened through the 40
+   files yet** for tonal fit or normalization artifacts. A listen-through
+   pass is a natural next step, not done this round.
+2. Preview-quality streams only (not Freesound's original masters, which
+   need a login this session deliberately did not create) -- likely fine at
+   this doc's modest mobile LUFS targets, but unverified against originals.
+3. **No on-device audio check yet** -- `ResourceLoader.exists()` gating is
+   now satisfied for every path (files exist), so playback should fire, but
+   this hasn't been confirmed live on the emulator/phone since the files
+   landed.
+
+**Not committed to git yet** -- new files sit untracked (`godot/assets/`)
+plus one modified doc, awaiting the user's go-ahead per this project's
+"no commits without user instruction" rule.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user
 selected (security, QA, accessibility, audio) -- code committed and pushed
 (`2dcc4d6`, `36d19fc` on `feature/isometric-village-view`), verified
 running live on the user's own phone with matching save-state to the
-emulator. Localization was explicitly not selected. Session paused here at
-the user's request. Reasonable directions for next time, none decided:
-1. Source/compose the 40 real audio asset files per `design/audio/
-   audio-core-gameplay-loop.md`'s naming list and drop them at the
-   documented `res://assets/audio/{sfx,ambience}/` paths -- the code is
-   ready to receive them with zero further changes
+emulator. Localization was explicitly not selected. Reasonable directions,
+one now done this session (audio assets sourced, see above), rest still open:
+1. ~~Source/compose the 40 real audio asset files~~ **DONE** this session
+   (2026-08-21) -- still needs: git commit decision, a listen-through pass,
+   and an on-device audio check (all flagged above, none done yet).
 2. Wire the two deferred tabs (`agroforestry_tab.gd`/`niche_farming_tab.gd`)
    -- small, mechanical, low-risk, explicitly deferred this pass
 3. An on-device AUDIO check specifically once real asset files exist --

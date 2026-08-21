@@ -207,13 +207,14 @@ structurally different from `_02` (single long-decay strike vs. `_02`'s
 10+ rapid repeated strikes — how Hindu temple bells, `_02`'s own source
 description, are actually rung) — retired from `AudioCatalogue.
 AMBIENCE_DETAIL_PATHS`, `_02` carries the temple-bell detail alone now.
-The genuine human listen-through remains open — this pass narrows what it
-needs to cover, not replaces it.
+**Update, 2026-08-21 (closed)**: the user did the genuine human
+listen-through this note called for (files staged in `godot_builds/
+listen-tonight/`) and confirmed it sounds good. Caveat closed.
 
 **Not wired this pass** (explicit follow-up, not implied as covered):
-- `agroforestry_tab.gd` / `niche_farming_tab.gd` — mechanically identical to
-  the already-done `polyhouse_tab.gd` (`progression_structure_unlock` +
-  `economy_purchase_small`), deferred for time, not difficulty.
+- ~~`agroforestry_tab.gd` / `niche_farming_tab.gd`~~ — **done** 2026-08-21
+  (commit `d268335`), mechanically identical to `polyhouse_tab.gd` as
+  described below.
 - `ui_action_rejected` — no reliable trigger exists yet. `GameEvent`'s
   `pending_events` carries no success/rejection discriminant and isn't
   drained by any UI code today; needs its own small design decision first.

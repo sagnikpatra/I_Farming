@@ -83,3 +83,12 @@ docs for no real benefit. `bird_mynah_02.ogg`'s weaker approximation and
 the harvest twig-snaps were left as-is per this report's own confidence
 levels (worth a human's ear, not clear-cut enough to act on unilaterally).
 360/360 GUT tests pass, unaffected.
+
+## Closed, 2026-08-21
+
+User did the actual human listen-through (files staged in
+`godot_builds/listen-tonight/`, see this doc's own Remediation Log for
+what was prepared) and confirmed it sounds good, no further changes
+requested. The genuine listen this whole document exists to substitute
+for has now happened -- this caveat, open since the original
+audio-sourcing session, is closed.

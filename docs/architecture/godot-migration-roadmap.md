@@ -73,10 +73,13 @@ stays the owner's regardless of how much of this list gets done.
       sprints/`/story-file structure — scoped to "the whole godot/
       project post EPIC-M0-M7" instead). **328/328 GUT tests passing.**
       Found and closed a real coverage gap (`open_field_tab.gd` had no
-      test file, unlike every sibling tab); found and flagged one open
-      gap for a future session (`board_interactor.gd`'s gesture state
-      machine has no dedicated test file). All manual smoke-check
-      batches confirmed clean. Report: `production/qa/smoke-2026-08-21.md`.
+      test file, unlike every sibling tab); found a second gap
+      (`board_interactor.gd`'s gesture state machine had no dedicated
+      test file), initially flagged for a future session and **closed
+      later the same day** by extracting its 3 real decision points
+      into pure functions and covering them with 12 new tests. All
+      manual smoke-check batches confirmed clean. Report:
+      `production/qa/smoke-2026-08-21.md`.
       `/qa-plan` itself wasn't run in its literal form — its Phase 1
       scope resolution assumes story files this project doesn't have;
       noted as a process gap in the smoke-check report rather than

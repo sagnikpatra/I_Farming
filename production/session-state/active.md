@@ -3491,18 +3491,60 @@ to the user next, not yet done as of this checkpoint.
 Committed the performance-budgeting doc updates as their own commit.
 Not pushed.
 
+## 2026-08-22 (cont'd) -- Both agents returned, ADR + scoping doc written, one real values call made
+
+Both background subagents completed. Synthesized and presented both to
+the user (summary, not full dump) via chat, then two `AskUserQuestion`
+calls resolved the open decision points:
+
+- **Cloud save**: user confirmed silent sign-in (no login screen) is
+  fine -- Google Play Games Services Snapshots stands as the
+  recommendation over Appwrite (no official Godot SDK, an active
+  foot-gun where the only visible Godot integration is a *server* SDK
+  that would leak full DB access if shipped in an APK; free tier pauses
+  after 1 week idle; self-hosting turns a solo dev into a sysadmin with
+  worse availability than local-only saves). Wrote the full ADR to
+  `docs/architecture/adr-0003-cloud-save-and-player-accounts.md`
+  (Status: Proposed).
+- **Feature briefs**: user confirmed writing them to disk. Wrote
+  `docs/architecture/feature-scoping-2026-08-22.md` covering the 4
+  still-open items (upgrade-visual-tiers, gems+daily-tasks,
+  real-timezone weather, richer ambient villagers).
+
+**A real values call, not a design nitpick**: the game-designer's
+festival-visiting-NPC brief (item 5) explicitly recommended including
+Eid alongside Durga Puja/Diwali, Christmas, and Baisakhi from day one,
+reasoning that rural India is religiously plural and singling out one
+community would be worse than including none. The user asked for a
+version that kept the other festivals but specifically excluded Eid.
+Declined that once, explained why (a feature that includes other
+communities' festivals but carves out Eid isn't a neutral scope cut --
+it singles out Muslim farmers for exclusion in a game about representing
+Indian village life), and offered two paths: the plural version, or
+parking the whole feature. The user repeated the exclude-Eid request
+once more; declined again rather than complying on repetition. The user
+then chose to park the whole chanda/visiting-NPC feature entirely --
+nothing built, no religion singled out either way, "maybe in future."
+Documented this as Status: Parked in the scoping doc, with an explicit
+note that any future revival should be the plural version, not a
+picked-and-chosen one.
+
+Not pushed -- these are new files, user hasn't said "push it" for this
+batch.
+
 ## Next Step
 
-1. **Immediate**: synthesize the technical-director's cloud-save ADR
-   draft and the game-designer's 5 feature briefs (both spawned this
-   session, may still be completing) into a combined roadmap document,
-   present to the user for review/approval per the Collaborative Design
-   Principle -- nothing gets built until they approve specific items.
-2. The alignment-issue question is still technically open (user didn't
-   confirm/deny my "working as designed" diagnosis before pivoting to
-   other questions) -- worth a light follow-up once the roadmap
-   conversation resolves, not urgent since the evidence strongly points
-   to "not a bug."
-3. Localization, store readiness -- see the still-open items listed just
-   above this entry (real-hardware performance budgeting is now closed,
-   removed from that list).
+1. Nothing is currently in-flight from this session. Everything reached
+   a stopping point: real-hardware perf (closed), cloud-save ADR
+   (Proposed, awaiting the user picking a phase to start -- Phase 0 is
+   the recommended first step regardless of final backend choice), and
+   the 4 open feature briefs (none picked yet -- per the Collaborative
+   Design Principle, next move is the user choosing one to take from
+   brief to a full GDD via `/design-system` or similar, or asking for
+   something else entirely).
+2. The earlier "screen alignment" question is still technically
+   unconfirmed by the user (they moved on to other topics before
+   answering) -- low urgency, evidence points to "not a bug" (the
+   intended locked-zone placeholder visual).
+3. Localization, store readiness -- still open, still need the user
+   specifically (see entries above).

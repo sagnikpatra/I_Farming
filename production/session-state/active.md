@@ -3286,6 +3286,34 @@ OneDrive path); found via `C:\Users\sagni\OneDrive\Pictures\Screenshots 1\`
 after the user's own paths came through garbled (likely a dictation/input
 issue on their end) -- worth remembering that path for next time.
 
+## 2026-08-21 (same session, cont'd) -- Landscape support added (Sensor orientation), tested for real
+
+User asked why the app couldn't support landscape too, after the
+portrait-lock fix. Asked back whether they wanted genuine landscape
+support (needing real testing) vs. staying portrait-only -- user chose
+landscape support.
+
+Changed `window/handheld/orientation` from `1` (Portrait) to `6`
+(Sensor -- free rotation, confirmed via the earlier engine-query enum:
+`Landscape,Portrait,Reverse Landscape,Reverse Portrait,Sensor Landscape,
+Sensor Portrait,Sensor`). Verified the exported manifest via `aapt2`
+(`screenOrientation=13`, Android's `FULL_USER`), then actually tested
+landscape on-device rather than trusting the config change alone:
+rotated the emulator, confirmed the HUD's corner-anchored elements all
+repositioned correctly (the existing `_fit_and_place()` code is already
+viewport-size-aware, no changes needed), and confirmed real touch input
+correctly maps to the rotated view by opening the Accessibility sheet --
+renders full-width-at-bottom in landscape exactly like portrait, and
+since it's the same shared `BottomSheet` every management sheet uses,
+this generalizes rather than being one-sheet-specific.
+
+One soft, non-blocking note: the 3D board's camera framing doesn't use
+the extra landscape width as fully as it could (empty space either
+side) -- not broken, just not landscape-optimized, worth a look later
+if landscape play turns out common. Reset the emulator's
+`accelerometer_rotation` back to default afterward. 360/360 GUT tests
+pass. Committed (`be98e93`). Not pushed.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user

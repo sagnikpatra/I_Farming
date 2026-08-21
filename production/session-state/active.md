@@ -3104,6 +3104,41 @@ ADVISORY Quick Nav Bar touch-target size. §7's audio accessibility is
 substantially addressed now that EPIC-M8 added 4 real volume sliders,
 though it hasn't had its own dedicated re-audit pass.
 
+## 2026-08-21 (same session, cont'd) -- the last 2 accessibility findings (LOW + ADVISORY), audit now fully closed
+
+User asked for the LOW/ADVISORY items too, after "WorkerAssignmentRow
+styling" turned out to already be done (re-verified, reported honestly,
+no work needed). Re-checked both remaining rows against current code
+first, per this session's now-standard discipline -- found the ADVISORY
+row (Quick Nav Bar touch-target size) was *also* already fixed by the
+same earlier Track A pass: `hud.gd`'s `_build_nav_chip()` already uses
+`UiTheme.make_circular_emoji_button()` at 56px. Only §3's LOW finding
+(host-occupied/ghost color-only signal) was genuinely open.
+
+**Fixed**: extended the exact same runtime-texture-paint badge-decal
+technique the earlier READY_TO_HARVEST checkmark fix established --
+a filled diamond for host-occupied Agroforestry cells
+(`_build_host_badge_decal()`), a hollow ring for GHOST placeholder tiles
+(`_build_ghost_badge_decal()`), both in `village_board.gd`, wired into
+`_build_plot()`'s existing badge call site with precedence mirroring
+`_plot_tint_color()`'s own host-then-ghost-then-lifecycle order.
+
+**Verified on-device, partially**: found a genuine ghost tile in the
+player's save and confirmed the ring decal renders correctly (screenshot
+in `production/qa/evidence/a11y-fix5-ghost-badge-ring-confirmed.png`).
+Could not locate a host-occupied Agroforestry cell in this particular
+save (would have needed to build Agroforestry + plant a host from
+scratch) -- flagged honestly as unverified-on-device rather than
+claimed, though confidence is reasonably high since it's the identical
+rendering pipeline confirmed working twice already, differing only in
+its rasterization math. 360/360 GUT tests pass.
+
+**Committed** (`16b39c5`). Not pushed.
+
+**Every finding in the 2026-08-21 accessibility audit is now closed** --
+either fixed and verified, or the one deliberate DEFER (§7, audio
+substantially addressed via EPIC-M8's sliders but not re-audited).
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user

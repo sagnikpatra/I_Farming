@@ -3367,38 +3367,70 @@ specifically or a real scope decision, not something to silently start:
 - No defined next epic -- M0-M8 are all complete; what comes next is a
   product decision, not something to invent unilaterally
 
+## 2026-08-22 -- 3D board landscape camera framing fixed
+
+Picked up the one item explicitly left open from the prior entry ("3D
+board camera not landscape-optimized"). Root-caused it precisely:
+`CameraRig._compute_default_distance()` always framed to
+`max(depth-fit, width-fit)` distance -- correct for portrait (width is
+the binding constraint there), but past aspect ~1.0 depth becomes the
+binding axis instead (`distance_for_width` shrinks with aspect,
+`distance_for_depth` doesn't), so the camera backed out further than
+width needed and the wide viewport's surplus horizontal FOV showed up
+as empty space on both sides of the board.
+
+This was a real design tradeoff, not a pure bugfix, so asked the user
+via `AskUserQuestion` first. Chose: **fill width, pan for depth
+extremes** (over "tighten margin only" and "extend visible scenery").
+Landscape (aspect > 1.0) now frames to the width-fit distance directly;
+the board's top/bottom depth extremes land just outside the initial
+view but are reachable via the pan system, which already computes
+correct non-zero slack for whichever axis isn't fully visible. Portrait
+keeps the original EPIC-M1 zero-pan-on-load guarantee untouched.
+
+Extracted the math into a pure `compute_framing_distance()` (same
+"extract the pure decision, test it directly" pattern as
+`board_interactor.gd`), 7 new GUT tests, 379/379 passing.
+
+On-device verified -- and caught a real methodology trap along the way:
+`frame_bounds()` only runs once at `_ready()`, so rotating an
+*already-running* app (via `adb shell settings put system
+user_rotation`) never re-triggers it and produces misleading evidence
+(the OLD portrait-computed distance viewed through a wider aspect,
+which looks *even worse* than the real bug). Had to force-stop and
+relaunch fresh after each rotation to get valid evidence, and even the
+rotation itself needed `adb emu rotate` (real sensor-level rotation) --
+`settings put system user_rotation` alone didn't move this
+Sensor-orientation app's actual `mRotation` on this emulator. Confirmed:
+landscape now fills width edge-to-edge (was ~20% of viewport width with
+huge empty gutters), a swipe-pan reaches the previously-cropped
+farmhouse with no invalid space revealed, and portrait is unchanged
+(regression check passed).
+
+Committed (`aae0921`, includes 4 evidence screenshots). Not pushed --
+user hasn't said "push it" for this batch yet.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user
-selected (security, QA, accessibility, audio) -- code committed and pushed
-(`2dcc4d6`, `36d19fc` on `feature/isometric-village-view`), verified
-running live on the user's own phone with matching save-state to the
-emulator. Localization was explicitly not selected. Reasonable directions,
-three now done this session (audio assets sourced, the 2 deferred tabs'
-audio wiring, then the on-device audio check -- see above), rest still open:
-1. ~~Source/compose the 40 real audio asset files~~ **DONE** this session
-   (2026-08-21) -- the asset files themselves were already committed
-   (`a2963fb`, predates this session). Still open: a human listen-through
-   pass for tonal fit/normalization artifacts (metadata-only selection so
-   far, see the audio-sourcing note above) -- not something an on-device
-   check can substitute for.
-2. ~~Wire the two deferred tabs (`agroforestry_tab.gd`/`niche_farming_tab.gd`)~~
-   **DONE** this session (2026-08-21, commit `d268335`) -- audio SFX wiring,
-   mechanically identical to `polyhouse_tab.gd`'s pattern, see above.
-3. ~~An on-device AUDIO check specifically once real asset files exist~~
-   **DONE** this session (2026-08-21, emulator-5554) -- see above. No code
-   changes (the temporary debug print was reverted, never committed).
-   the accessibility gear button/settings sheet/harvest badge and the
-   audio system's code path are now confirmed rendering live on a real
-   phone, but there's still no actual sound to verify (no asset files yet)
-4. Style `WorkerAssignmentRow`/`open_field_tab.gd` to match this
-   project's established ChunkyButton/StyleBoxFlat visual language --
-   explicitly flagged as deferred polish, not done this session
-5. Balance the wage rate (15%, still explicitly unbalanced/proposed) via
-   a real `/balance-check` pass
-6. The 5 still-open accessibility findings (HIGH: SAFFRON_DARK/FIELD_GREEN
-   button contrast, pinch-only zoom with no single-pointer alt, sub-18px
-   body text floors, WorkerAssignmentRow's unstyled controls; MEDIUM:
-   long-press-drag reposition with no tap alternative)
-7. A wholly new epic or direction, per user request -- M0 through M8 (all
-   4 selected items) are now complete for this session's scope
+selected (security, QA, accessibility, audio) -- code committed and
+pushed as of the prior session entries. Localization was explicitly not
+selected. Every item that was open as of the last "Next Step" list
+(WorkerAssignmentRow/open_field_tab.gd styling, the wage-rate balance
+check, and all 5 accessibility findings) was closed earlier this same
+session -- see the entries above dated "4 accessibility findings fixed",
+"the last 2 accessibility findings", and "/balance-check on the worker
+wage rate". The landscape camera framing item is now closed too (see
+just above). What's left is only the items that need the user
+specifically, not something to invent unilaterally:
+1. Real-hardware performance budgeting -- EPIC-M0's own gap, needs
+   actual physical-device profiling tooling, not emulator numbers
+   relabeled
+2. Localization -- explicitly not selected for M8, starting it is a
+   real scope decision (i18n pipeline, string tables) not mine to make
+   silently
+3. Store readiness -- needs the user specifically (Play Console
+   account, a real signed release keystore, store listing, privacy
+   policy)
+4. No defined next epic -- M0-M8 are all complete; what comes next is a
+   product decision, not something to invent unilaterally

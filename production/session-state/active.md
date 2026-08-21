@@ -3645,16 +3645,42 @@ real tap-driven plant action (Aquaculture Pond Fish) advanced "Plant 5
 seeds" from 0/5 to 1/5 with correct coin deduction. Committed as
 `85a0079`. Not pushed.
 
+## 2026-08-22 (cont'd) -- Real-time day/night built (feature-scoping item 3)
+
+User said "continue" -- picked up item 3 next in sequence (no explicit
+push requested, so not pushed). Wrote design/gdd/real-time-day-night.md
+first, scoping to Option A from the brief (cosmetic day/night only, not
+the seasonal-palette Option B or the not-recommended mechanical Option
+C) -- consistent with how every other item this session defaulted to the
+smaller/recommended scope with the larger version flagged as stretch.
+
+New `TimeOfDay` class (Presentation layer -- village_board-specific, no
+economy-state involvement, so deliberately not in game_economy.gd).
+`local_hour()` mirrors `local_day_key()`'s exact pure-function shape.
+4 phases (Dawn/Day/Dusk/Night) map to sky/ambient/sun-light presets;
+Day's preset is copied verbatim from the scene's existing defaults, so
+daytime play sees zero visual change. Applied at `_ready()` and every 3s
+growth tick (same cadence as the existing Monsoon/Festival audio sync),
+only reassigning properties when the phase actually changed.
+
+9 new GUT tests, 447/447 passing. On-device verified on the emulator --
+and this one had a genuinely lucky natural data point: the emulator's
+clock is synced to the host machine (both read 03:17 IST), so Night's
+phase rendered for real, zero override needed -- confirmed a real deep-
+blue, cool-toned board. Day's phase verified via a temporary forced-hour
+override (instrument-then-delete, reverted before commit), confirmed
+pixel-identical to the existing look. Committed as `81a0d3c`. Not pushed.
+
 ## Next Step
 
 1. Nothing is currently in-flight from this session. Everything reached
    a stopping point: real-hardware perf (closed), cloud-save ADR
    (Proposed, awaiting the user picking a phase to start), Chanda Visit
    (built), Farmhouse visual tiers (built), Gems & Daily Tasks (built),
-   and 2 remaining open feature briefs (real-timezone weather, richer
-   ambient villagers -- neither picked yet, per the Collaborative Design
-   Principle the next move is the user choosing one, or asking for
-   something else entirely).
+   Real-time day/night (built), and 1 remaining open feature brief
+   (richer ambient villager behavior -- gated on checking whether the
+   sourced character rig has a usable idle animation clip first, per
+   the brief's own note; not picked yet).
 2. The physical phone disconnected mid-session -- worth reconnecting via
    USB if the user wants further real-hardware verification; the
    emulator remains available as a fallback verification target either

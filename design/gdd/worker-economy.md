@@ -111,7 +111,7 @@ it reads as a genuine trade-off, not a free win.
 
 | Formula | Expression | Purpose | Status |
 |---|---|---|---|
-| Wage per harvest-and-replant cycle | `crop.baseSellPrice × (0.5 if damaged else 1.0) × 0.15` (15% of that crop's *actually realized* sell value — the same 0.5× damage scaling `sell_crop()` applies — min ₹1) | Ties cost to value delivered; a worker nets the player ~80-81% of manual-harvest net profit per cycle instead of 100%, the "convenience tax" | ✅ Balance-checked 2026-08-21 (see `production/balance/` or the `/balance-check` session) — 15% confirmed proportionally consistent (19–21% of net profit) across 7 of 8 eligible crops. **One real bug found and fixed**: the formula originally ignored damage entirely, charging the full undamaged rate even on a harvest that sold for half (an effective ~30% cut, contradicting §5's own "only charge for value delivered" principle) — now fixed in `game_economy.gd`'s `_worker_wage_for()`, covered by a regression test. Two items noted but left as open designer calls, not blockers: Wheat's cut is 30% of net profit (vs. 19–21% elsewhere) since its 50% seed-cost-to-price ratio is an outlier; stacking a worker onto Polyhouse/Vertical Farm's own recurring sink (UV Film/Electricity) roughly doubles-to-triples that zone's total "tax" (10–11% → 22–26%) |
+| Wage per harvest-and-replant cycle | `crop.baseSellPrice × (0.5 if damaged else 1.0) × 0.15` (15% of that crop's *actually realized* sell value — the same 0.5× damage scaling `sell_crop()` applies — min ₹1) | Ties cost to value delivered; a worker nets the player ~80-81% of manual-harvest net profit per cycle for 6 of the 8 eligible crops instead of 100%, the "convenience tax" | ✅ Balance-checked 2026-08-21, extended to all 8 eligible crops the same day after a follow-up pass (see `production/balance/` or the `/balance-check` session) — 15% confirmed proportionally consistent (18.8–20.8% of net profit) across 6 of 8 crops. **One real bug found and fixed**: the formula originally ignored damage entirely, charging the full undamaged rate even on a harvest that sold for half (an effective ~30% cut, contradicting §5's own "only charge for value delivered" principle) — now fixed in `game_economy.gd`'s `_worker_wage_for()`, covered by a regression test. **Two crops, not one, sit outside that band**: cut% = 15% ÷ (1 − seedCost/baseSellPrice) is an exact function of a crop's own seed-cost-to-price ratio, so any crop with an unusually high ratio pays a disproportionate net cut regardless of the flat 15% rate being "fair" in gross terms — Wheat (50% ratio) at 30.0% and **Paddy (37.5% ratio) at 24.0%** both breach the ~20% ceiling the other 6 crops stay under (see the full 8-crop table in the balance-check session). Left as an open designer call, not a blocker — the flat-15%-of-gross design itself isn't wrong, but neither Open-Field starter crop is priced to fit it comfortably. Also noted, also left open: stacking a worker onto Polyhouse/Vertical Farm's own recurring sink (UV Film/Electricity) roughly doubles-to-triples that zone's total "tax" (10–11% → 22–26%) |
 | Assignment cost | None proposed (free to assign/un-assign) | Keeps the friction entirely in the recurring wage, not an entry fee, so the player can experiment freely | 🔶 Proposed — an alternative would add a one-time hire cost too; deliberately not proposed here to keep this document's invented-formula surface as small as possible |
 | Worker capacity | 1 worker per zone (matches §3.2's per-zone assignment granularity); no stated cap on how many zones can have a worker simultaneously, bounded naturally by the EPIC-M6 roster size (currently 6 villagers total) | Simplicity — no new cap to invent when the roster size already bounds it | 🔶 Proposed |
 
@@ -124,6 +124,16 @@ Open-Field crop, a weather/pest roll), the wage itself now halves to ₹49
 (matching the crop's own halved ₹325 realized sale value) rather than
 staying at ₹98 — see §4's Status column for why that damage-scaling was a
 real bug, now fixed.
+
+**Worked example, the two outliers** (added 2026-08-21, follow-up pass):
+Wheat — base sell price ₹20, seed cost ₹10 — nets ₹10 manually vs. ₹7 via
+a worker (a 30% cut). Paddy — base sell price ₹80, seed cost ₹30 — nets
+₹50 manually vs. ₹38 via a worker (a 24% cut). Both are Open-Field starter
+crops with an unusually high seed-cost-to-price ratio (50% and 37.5%
+respectively, vs. 20–28% for the other 6 eligible crops) — the flat 15% of
+*gross* value lands as a much larger bite out of *net* profit precisely
+because seed cost already consumes so much of the gross value before the
+wage is even subtracted.
 
 ## 5. Edge Cases
 
@@ -187,7 +197,7 @@ already sourced.
 
 | Knob | Safe Range | Affects | Notes |
 |---|---|---|---|
-| Wage rate (% of crop base sell price) | 15% confirmed reasonable 2026-08-21 — safe range is roughly 10-20%; below ~10% the automation approaches a "free win" (against the Player Fantasy's explicit "genuine trade-off" goal), above ~20% Wheat's already-thin margin (see §4) starts turning worker-assignment into a net loss | How much of a worker's value the player keeps vs. pays out | Balance-checked against the real crop value table (see §4). Do not tune this rate without re-running `/balance-check` — Wheat is the binding constraint on how high it can safely go |
+| Wage rate (% of crop base sell price) | 15% confirmed reasonable 2026-08-21, extended to all 8 crops the same day — safe range is roughly 10-20%; below ~10% the automation approaches a "free win" (against the Player Fantasy's explicit "genuine trade-off" goal), above ~20% Wheat's and Paddy's already-thin margins (see §4) start turning worker-assignment into a net loss for those two zones specifically | How much of a worker's value the player keeps vs. pays out | Balance-checked against the real crop value table (see §4). Do not tune this rate without re-running `/balance-check` — Wheat (50% seed-cost-to-price ratio) and Paddy (37.5%) are BOTH binding constraints on how high it can safely go, not just Wheat |
 | Worker capacity (zones simultaneously staffed) | Bounded by roster size (currently 6) | How much of the game a player can fully automate at once | Not independently tunable yet — a direct function of `villagers.md`'s roster size knob |
 
 ## 8. Acceptance Criteria
@@ -219,11 +229,12 @@ already sourced.
 **Definition of Done for this document specifically**: ✅ met. §3.6's
 visibility interpretation and all 4 of §5's edge cases are confirmed by
 the user, not assumed. The wage rate (§4, 15%) was balance-checked
-2026-08-21 — confirmed proportionally reasonable, with one real formula
-bug (missing damage scaling) found and fixed in the implementation. Two
-non-blocking designer calls remain open (Wheat's disproportionate net-profit
-cut; worker+structural-sink stacking on Polyhouse/Vertical Farm) — noted in
-§4/§7, not required before this document can be considered done.
+2026-08-21 against all 8 eligible crops — confirmed proportionally
+reasonable, with one real formula bug (missing damage scaling) found and
+fixed in the implementation. Two non-blocking designer calls remain open
+(Wheat's *and Paddy's* disproportionate net-profit cut; worker+structural-
+sink stacking on Polyhouse/Vertical Farm) — noted in §4/§7, not required
+before this document can be considered done.
 
 ---
 

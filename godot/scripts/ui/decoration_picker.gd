@@ -16,13 +16,13 @@
 class_name DecorationPicker
 extends VBoxContainer
 
-# Palette -- ported verbatim from app/src/main/java/com/zonkrik/ifarming/
-# ui/theme/Color.kt, same values seed_picker.gd already uses.
-const SOIL_BROWN_DARK := Color("#3E2412")
-const WOOD_BROWN_LIGHT := Color("#8A5A34")
-const GOLD_LIGHT := Color("#FFE082")
-const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
-const UNAFFORDABLE_ALPHA: float = 0.4
+# Palette -- now sourced from ui_theme.gd (Track A consolidation, see that
+# file's class doc); kept as local aliases so no call site below changed.
+const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
+const WOOD_BROWN_LIGHT := UiTheme.WOOD_BROWN_MID
+const GOLD_LIGHT := UiTheme.GOLD_LIGHT
+const TEXT_SHADOW_COLOR := UiTheme.TEXT_SHADOW_COLOR
+const UNAFFORDABLE_ALPHA: float = UiTheme.UNAFFORDABLE_ALPHA
 
 @onready var _title_label: Label = $Title
 @onready var _rows_container: VBoxContainer = $Scroll/Rows
@@ -142,11 +142,8 @@ func _on_row_pressed(type: int) -> void:
 	_bottom_sheet.close()
 
 
+# Track A consolidation: delegates to ui_theme.gd (see that file's class
+# doc) -- the row-building code above stays local, same rationale as
+# seed_picker.gd's own equivalent comment.
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
-	var settings := LabelSettings.new()
-	settings.font_size = font_size
-	settings.font_color = color
-	settings.shadow_size = 4
-	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
-	return settings
+	return UiTheme.make_label_settings(font_size, color)

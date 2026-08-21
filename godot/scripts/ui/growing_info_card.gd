@@ -19,12 +19,14 @@
 class_name GrowingInfoCard
 extends VBoxContainer
 
-const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
+# Palette -- now sourced from ui_theme.gd (Track A consolidation, see that
+# file's class doc); kept as local aliases so no call site below changed.
+const TEXT_SHADOW_COLOR := UiTheme.TEXT_SHADOW_COLOR
 # A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1): this
 # whole card is added straight to the BottomSheet's cream body with no
 # _make_panel() wrapper, so Color.WHITE (safe only on colored panels) is
 # unreadable here -- measured ~1.06:1 contrast.
-const SOIL_BROWN_DARK := Color("#3E2412")
+const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
 
 
 func configure(crop: int) -> void:
@@ -59,11 +61,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+# Track A consolidation: delegates to ui_theme.gd (see that file's class
+# doc) -- call sites unchanged.
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
-	var settings := LabelSettings.new()
-	settings.font_size = font_size
-	settings.font_color = color
-	settings.shadow_size = 4
-	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
-	return settings
+	return UiTheme.make_label_settings(font_size, color)

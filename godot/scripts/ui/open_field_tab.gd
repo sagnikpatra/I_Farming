@@ -6,6 +6,15 @@
 ## This sheet exists solely to host worker-assignment UI (see
 ## worker_assignment_row.gd), the first thing Open Field has ever needed a
 ## zone-level sheet for.
+##
+## Track A note: this file has no locally-duplicated _make_panel()/
+## _make_chunky_button()-style helpers to consolidate -- it builds no
+## panels or buttons of its own (WorkerAssignmentRow owns all of that). Its
+## one visible element, the header, WAS a bare default-styled `Label.new()`
+## (no LabelSettings at all) -- inconsistent with every sibling sheet's
+## SOIL_BROWN_DARK/drop-shadow header text and jarring next to
+## worker_assignment_row.gd's own now-restyled content directly below it.
+## Fixed cheaply via UiTheme now that this file is already being touched.
 class_name OpenFieldTab
 extends VBoxContainer
 
@@ -32,10 +41,7 @@ func _populate() -> void:
 	for child in _body.get_children():
 		child.queue_free()
 
-	var header := Label.new()
-	header.text = "🌾 Open Field"
-	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_body.add_child(header)
+	_body.add_child(UiTheme.make_title_label("🌾 Open Field", 18, UiTheme.SOIL_BROWN_DARK))
 
 	var row := WorkerAssignmentRow.new()
 	row.configure(_economy, _village_board, PlotKind.Kind.OPEN_FIELD)

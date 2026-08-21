@@ -17,6 +17,21 @@ func _make_row(board: VillageBoard, plot_kind: PlotKind.Kind) -> WorkerAssignmen
 	return row
 
 
+## Recursive descendant search -- Track A wrapped this row's content in a
+## UiTheme card (PanelContainer > VBoxContainer > ...), one level deeper
+## than the fixed child/grandchild nesting these tests originally assumed.
+## Searching the whole subtree keeps these tests robust to that kind of
+## presentational restructuring rather than re-coupling them to an exact
+## depth again.
+func _has_descendant(root: Node, predicate: Callable) -> bool:
+	for child in root.get_children():
+		if predicate.call(child):
+			return true
+		if _has_descendant(child, predicate):
+			return true
+	return false
+
+
 func test_unassigned_zone_shows_an_option_button_and_assign_button() -> void:
 	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
 	add_child_autofree(board)
@@ -24,14 +39,10 @@ func test_unassigned_zone_shows_an_option_button_and_assign_button() -> void:
 
 	var row := _make_row(board, PlotKind.Kind.OPEN_FIELD)
 
-	var found_option_button := false
-	var found_assign_button := false
-	for child in row.get_children():
-		for grandchild in child.get_children():
-			if grandchild is OptionButton:
-				found_option_button = true
-			if grandchild is Button and grandchild.text == "Assign":
-				found_assign_button = true
+	var found_option_button := _has_descendant(row, func(n: Node) -> bool: return n is OptionButton)
+	var found_assign_button := _has_descendant(
+		row, func(n: Node) -> bool: return n is Button and n.text == "Assign"
+	)
 	assert_true(found_option_button)
 	assert_true(found_assign_button)
 
@@ -56,14 +67,12 @@ func test_assigned_zone_shows_a_status_label_and_unassign_button() -> void:
 
 	var row := _make_row(board, PlotKind.Kind.OPEN_FIELD)
 
-	var found_status_label := false
-	var found_unassign_button := false
-	for child in row.get_children():
-		for grandchild in child.get_children():
-			if grandchild is Label and grandchild.text.contains("Ranger"):
-				found_status_label = true
-			if grandchild is Button and grandchild.text == "Unassign":
-				found_unassign_button = true
+	var found_status_label := _has_descendant(
+		row, func(n: Node) -> bool: return n is Label and n.text.contains("Ranger")
+	)
+	var found_unassign_button := _has_descendant(
+		row, func(n: Node) -> bool: return n is Button and n.text == "Unassign"
+	)
 	assert_true(found_status_label)
 	assert_true(found_unassign_button)
 

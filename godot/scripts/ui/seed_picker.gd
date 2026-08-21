@@ -23,15 +23,15 @@
 class_name SeedPicker
 extends VBoxContainer
 
-# Palette -- ported verbatim from app/src/main/java/com/zonkrik/ifarming/
-# ui/theme/Color.kt, same values hud.gd already uses.
-const SOIL_BROWN_DARK := Color("#3E2412")
-const WOOD_BROWN_LIGHT := Color("#8A5A34")
-const GOLD_LIGHT := Color("#FFE082")
-const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
+# Palette -- now sourced from ui_theme.gd (Track A consolidation, see that
+# file's class doc); kept as local aliases so no call site below changed.
+const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
+const WOOD_BROWN_LIGHT := UiTheme.WOOD_BROWN_MID
+const GOLD_LIGHT := UiTheme.GOLD_LIGHT
+const TEXT_SHADOW_COLOR := UiTheme.TEXT_SHADOW_COLOR
 ## Matches ChunkyTile's `.copy(alpha = 0.4f)` dimming for unaffordable rows
 ## in the Kotlin original.
-const UNAFFORDABLE_ALPHA: float = 0.4
+const UNAFFORDABLE_ALPHA: float = UiTheme.UNAFFORDABLE_ALPHA
 
 @onready var _title_label: Label = $Title
 @onready var _rows_container: VBoxContainer = $Scroll/Rows
@@ -179,11 +179,11 @@ func _on_row_pressed(crop: int) -> void:
 	_village_board.persist_and_rebuild_if_dirty()
 
 
+# Track A consolidation: delegates to ui_theme.gd (see that file's class
+# doc) -- call sites throughout this file unchanged. The row-building code
+# above stays local (not a make_panel()/make_chunky_button()-style helper --
+# a bespoke list-row layout duplicated across seed_picker.gd/
+# agro_plant_picker.gd/decoration_picker.gd; consolidating that shape into
+# ui_theme.gd is out of this round's scope).
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
-	var settings := LabelSettings.new()
-	settings.font_size = font_size
-	settings.font_color = color
-	settings.shadow_size = 4
-	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
-	return settings
+	return UiTheme.make_label_settings(font_size, color)

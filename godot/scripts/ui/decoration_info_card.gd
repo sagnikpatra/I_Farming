@@ -20,9 +20,11 @@
 class_name DecorationInfoCard
 extends VBoxContainer
 
-const SOIL_BROWN_DARK := Color("#3E2412")
-const WOOD_BROWN_LIGHT := Color("#8A5A34")
-const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
+# Palette -- now sourced from ui_theme.gd (Track A consolidation, see that
+# file's class doc); kept as local aliases so no call site below changed.
+const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
+const WOOD_BROWN_LIGHT := UiTheme.WOOD_BROWN_MID
+const TEXT_SHADOW_COLOR := UiTheme.TEXT_SHADOW_COLOR
 
 var _type: int = 0
 var _decoration_id: int = -1
@@ -114,42 +116,25 @@ func _play_audio(event_key: StringName) -> void:
 		audio.play_sfx(event_key)
 
 
-func _make_icon_button(icon: String, color: Color, on_pressed: Callable) -> Button:
-	var button := _make_text_button(icon, color, on_pressed)
-	button.custom_minimum_size = Vector2(48, 48)
-	button.add_theme_font_size_override("font_size", 18)
+# Track A consolidation: Rotate/Flip previously used a bespoke square
+# StyleBoxFlat button for a single glyph -- now routed through
+# UiTheme.make_circular_emoji_button(), the same circular-glyph chrome
+# hud.gd's Quick Nav Bar chips use for its own icon-less pictographs (↻/⇋
+# have no sourced icon-kit equivalent, same rationale as hud.gd's own
+# _build_nav_chip() comment). Remove now delegates to
+# UiTheme.make_chunky_button() -- the same Kenney 9-slice chrome every
+# other ported sheet's text buttons use.
+func _make_icon_button(glyph: String, color: Color, on_pressed: Callable) -> Button:
+	var button := UiTheme.make_circular_emoji_button(glyph, color, 48)
+	button.pressed.connect(on_pressed)
 	return button
 
 
 func _make_text_button(label_text: String, color: Color, on_pressed: Callable) -> Button:
-	var button := Button.new()
-	button.text = label_text
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.focus_mode = Control.FOCUS_NONE
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(10)
-	style.set_border_width_all(2)
-	style.border_color = SOIL_BROWN_DARK
-	style.shadow_size = 3
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		button.add_theme_stylebox_override(state_name, style)
-	button.add_theme_color_override("font_color", Color.WHITE)
-	button.add_theme_font_size_override("font_size", 13)
+	var button := UiTheme.make_chunky_button(label_text, color)
 	button.pressed.connect(on_pressed)
 	return button
 
 
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
-	var settings := LabelSettings.new()
-	settings.font_size = font_size
-	settings.font_color = color
-	settings.shadow_size = 4
-	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
-	return settings
+	return UiTheme.make_label_settings(font_size, color)

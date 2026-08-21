@@ -25,9 +25,107 @@
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
 version: 1
-last_updated: ""
+last_updated: "2026-08-18"
 
-requirements: []
+requirements:
+  - id: TR-crop-001
+    system: crop-economy
+    gdd: design/gdd/crop-economy.md
+    requirement: "Effective grow time = growSeconds x (FanPad&Polyhouse&FilmActive? 0.5:1) x farmhouseGrowthMultiplier x (Monsoon&OpenField? 0.8:1), rounded, min 1s, snapshotted at planting time"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-crop-002
+    system: crop-economy
+    gdd: design/gdd/crop-economy.md
+    requirement: "Open-field weather/pest damage risk is per-crop (8-15%); Polyhouse risk is 0% with active UV Film else 10%; Agroforestry/Aquaculture/Vertical Farm are always 0%"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-crop-003
+    system: crop-economy
+    gdd: design/gdd/crop-economy.md
+    requirement: "Direct sale value = qty_normal x basePrice x sellMultiplier + qty_damaged x basePrice x 0.5 x sellMultiplier"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-crop-004
+    system: crop-economy
+    gdd: design/gdd/crop-economy.md
+    requirement: "Growth resolution is lazy (resolved on state-read against wall-clock time), not a live ticking timer -- must work correctly across arbitrary offline gaps"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-land-001
+    system: land-and-structures
+    gdd: design/gdd/land-and-structures.md
+    requirement: "Land expansion cost = 150 x 1.55^(openFieldCount-3), rounded, capped at MAX_PLOTS=16"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-land-002
+    system: land-and-structures
+    gdd: design/gdd/land-and-structures.md
+    requirement: "Polyhouse cost is 17,500 if subsidy unlocked (totalHarvests >= 25) else 35,000; Fan&Pad halves grow time and negates weather risk only while UV Film is active; Drip Irrigation extends spoilage grace 4h->24h"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-land-003
+    system: land-and-structures
+    gdd: design/gdd/land-and-structures.md
+    requirement: "Sandalwood requires an orthogonally-adjacent host plant in the fixed 3x3 Agroforestry grid; theft is an independent per-plot-per-hour deterministic-seeded Bernoulli roll (0.00085 unprotected / 0.00006 secured)"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-land-004
+    system: land-and-structures
+    gdd: design/gdd/land-and-structures.md
+    requirement: "Vertical Farm's Saffron requires an active Electricity credit to START a new grow; an already-growing crop is unaffected if electricity later lapses"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-farmhouse-001
+    system: farmhouse-progression
+    gdd: design/gdd/farmhouse-progression.md
+    requirement: "8-tier strictly-sequential Farmhouse ladder (levels 0-7), each tier granting storage capacity + growthSpeedBonusPercent + sellPriceBonusPercent, no skips/downgrades"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-farmhouse-002
+    system: farmhouse-progression
+    gdd: design/gdd/farmhouse-progression.md
+    requirement: "growthSpeedMultiplier = 1.0 - growthSpeedBonusPercent/100; sellPriceMultiplier = 1.0 + sellPriceBonusPercent/100; both farm-wide and consumed by crop-economy, land-and-structures, mandi-trading"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-mandi-001
+    system: mandi-trading
+    gdd: design/gdd/mandi-trading.md
+    requirement: "Mandi price multiplier = clamp(1.0 + demand% + gradeBonus% - glut, 0.6, 1.6); demand% is a deterministic function of (crop, cycleIndex) needing no persisted state"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-mandi-002
+    system: mandi-trading
+    gdd: design/gdd/mandi-trading.md
+    requirement: "Glut decays as storedGlut x e^(-0.231 x hoursElapsed) and accrues +0.02 per unit sold through the Mandi, per crop independently"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-liveops-001
+    system: liveops-events
+    gdd: design/gdd/liveops-events.md
+    requirement: "Monsoon is a recurring 6h-cycle/90min-active wall-clock window; while active, open-field crops get 0.8x grow time and a 10% flood-loss chance replacing the normal weather roll, with Polyhouse owners structurally immune"
+    created: 2026-08-18
+    revised: ""
+    status: active
+  - id: TR-liveops-002
+    system: liveops-events
+    gdd: design/gdd/liveops-events.md
+    requirement: "Festival is a recurring 8h-cycle/60min-active wall-clock window rotating through 3 fixed festivals by cycleIndex%3, each with one target crop; selling that crop through either sale channel earns 2 points/unit toward 3 fixed tier thresholds (50/150/300) with free+premium coin rewards"
+    created: 2026-08-18
+    revised: ""
+    status: active
 
 # --- EXAMPLE ENTRIES (remove when first real entries are added) ---
 #

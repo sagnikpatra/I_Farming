@@ -24,12 +24,12 @@ extends VBoxContainer
 
 # Palette -- ported verbatim from app/src/main/java/com/zonkrik/ifarming/
 # ui/theme/Color.kt, same values every other ported sheet already uses.
-const SOIL_BROWN_DARK := Color("#3E2412")
-const WOOD_BROWN_LIGHT := Color("#8A5A34")
-const GOLD_LIGHT := Color("#FFE082")
-const RIPE_GOLD := Color("#FFC107")
-const FIELD_GREEN := Color("#4CAF50")
-const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
+const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
+const WOOD_BROWN_LIGHT := UiTheme.WOOD_BROWN_MID
+const GOLD_LIGHT := UiTheme.GOLD_LIGHT
+const RIPE_GOLD := UiTheme.RIPE_GOLD
+const FIELD_GREEN := UiTheme.FIELD_GREEN
+const TEXT_SHADOW_COLOR := UiTheme.TEXT_SHADOW_COLOR
 
 @onready var _body: VBoxContainer = $Scroll/Body
 
@@ -139,8 +139,11 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(blurb_label)
 
-	var build_button := _make_chunky_button("Clear Land for ₹%d" % data["cost"], FIELD_GREEN)
-	build_button.pressed.connect(_on_build_pressed)
+	# §2.4 disabled-button state.
+	var can_afford_build: bool = _economy.state.coins >= int(data["cost"])
+	var build_button := _make_chunky_button("Clear Land for ₹%d" % data["cost"], FIELD_GREEN, Color.WHITE, can_afford_build)
+	if can_afford_build:
+		build_button.pressed.connect(_on_build_pressed)
 	box.add_child(build_button)
 
 	return box
@@ -148,30 +151,19 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 
 func _build_security_chip(data: Dictionary) -> Button:
 	var active: bool = data["has_security"]
-	var chip := Button.new()
-	chip.text = "Security (Fencing + CCTV) ✓" if active else "Security ₹%d" % data["security_cost"]
-	chip.mouse_filter = Control.MOUSE_FILTER_STOP
-	chip.focus_mode = Control.FOCUS_NONE
-	var style := StyleBoxFlat.new()
-	style.bg_color = RIPE_GOLD if active else WOOD_BROWN_LIGHT
-	style.set_corner_radius_all(20)
-	style.set_border_width_all(2)
-	style.border_color = GOLD_LIGHT
-	style.shadow_size = 3
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		chip.add_theme_stylebox_override(state_name, style)
-	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
-	# Color.WHITE on the active RIPE_GOLD background measured ~1.63:1 contrast
-	# -- unreadable. Only the inactive WOOD_BROWN_LIGHT state is dark enough
-	# for white text.
-	chip.add_theme_color_override("font_color", SOIL_BROWN_DARK if active else Color.WHITE)
-	chip.add_theme_font_size_override("font_size", 13)
-	chip.pressed.connect(_on_security_pressed)
+	var can_afford: bool = active or _economy.state.coins >= int(data["security_cost"])
+	var chip := _make_chunky_button(
+		"Security (Fencing + CCTV) ✓" if active else "Security ₹%d" % data["security_cost"],
+		RIPE_GOLD if active else WOOD_BROWN_LIGHT,
+		# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
+		# Color.WHITE on the active RIPE_GOLD background measured ~1.63:1
+		# contrast -- unreadable. Only the inactive WOOD_BROWN_LIGHT state is
+		# dark enough for white text.
+		SOIL_BROWN_DARK if active else Color.WHITE,
+		can_afford
+	)
+	if not active and can_afford:
+		chip.pressed.connect(_on_security_pressed)
 	return chip
 
 
@@ -184,43 +176,15 @@ func _build_hint_label() -> Label:
 	return label
 
 
-func _make_chunky_button(label_text: String, color: Color) -> Button:
-	var button := Button.new()
-	button.text = label_text
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.focus_mode = Control.FOCUS_NONE
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(20)
-	style.set_border_width_all(2)
-	style.border_color = SOIL_BROWN_DARK
-	style.shadow_size = 4
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		button.add_theme_stylebox_override(state_name, style)
-	for color_slot in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		button.add_theme_color_override(color_slot, Color.WHITE)
-	button.add_theme_font_size_override("font_size", 14)
-	return button
+# Track A consolidation: every helper below now delegates to ui_theme.gd
+# (see that file's class doc) -- call sites throughout this file unchanged.
+func _make_chunky_button(label_text: String, color: Color, font_color: Color = Color.WHITE, enabled: bool = true) -> Button:
+	return UiTheme.make_chunky_button(label_text, color, font_color, enabled)
 
 
 func _make_title_label(text: String, font_size: int, color: Color = Color.WHITE) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.label_settings = _make_label_settings(font_size, color)
-	return label
+	return UiTheme.make_title_label(text, font_size, color)
 
 
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
-	var settings := LabelSettings.new()
-	settings.font_size = font_size
-	settings.font_color = color
-	settings.shadow_size = 4
-	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
-	return settings
+	return UiTheme.make_label_settings(font_size, color)

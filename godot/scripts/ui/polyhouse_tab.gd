@@ -35,13 +35,13 @@ extends VBoxContainer
 # Palette -- ported verbatim from app/src/main/java/com/zonkrik/ifarming/
 # ui/theme/Color.kt, same values hud.gd/seed_picker.gd/farmhouse_tab.gd/
 # mandi_tab.gd already use.
-const SOIL_BROWN_DARK := Color("#3E2412")
-const WOOD_BROWN_LIGHT := Color("#8A5A34")
-const GOLD_LIGHT := Color("#FFE082")
-const RIPE_GOLD := Color("#FFC107")
-const SAFFRON_DARK := Color("#C56A00")
-const FIELD_GREEN := Color("#4CAF50")
-const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
+const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
+const WOOD_BROWN_LIGHT := UiTheme.WOOD_BROWN_MID
+const GOLD_LIGHT := UiTheme.GOLD_LIGHT
+const RIPE_GOLD := UiTheme.RIPE_GOLD
+const SAFFRON_DARK := UiTheme.SAFFRON_DARK
+const FIELD_GREEN := UiTheme.FIELD_GREEN
+const TEXT_SHADOW_COLOR := UiTheme.TEXT_SHADOW_COLOR
 
 @onready var _body: VBoxContainer = $Scroll/Body
 
@@ -292,61 +292,19 @@ func _build_chip(label_text: String, active: bool, on_pressed: Callable) -> Butt
 	return chip
 
 
-func _make_chunky_button(label_text: String, color: Color) -> Button:
-	var button := Button.new()
-	button.text = label_text
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.focus_mode = Control.FOCUS_NONE
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(20)
-	style.set_border_width_all(2)
-	style.border_color = SOIL_BROWN_DARK
-	style.shadow_size = 4
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		button.add_theme_stylebox_override(state_name, style)
-	for color_slot in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		button.add_theme_color_override(color_slot, Color.WHITE)
-	button.add_theme_font_size_override("font_size", 14)
-	return button
+# Track A consolidation: every helper below now delegates to ui_theme.gd
+# (see that file's class doc) -- call sites throughout this file unchanged.
+func _make_chunky_button(label_text: String, color: Color, font_color: Color = Color.WHITE, enabled: bool = true) -> Button:
+	return UiTheme.make_chunky_button(label_text, color, font_color, enabled)
 
 
-func _make_panel(bg_color: Color, corner_radius: int, border_color: Color = GOLD_LIGHT) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg_color
-	style.set_corner_radius_all(corner_radius)
-	style.set_border_width_all(2)
-	style.border_color = border_color
-	style.shadow_size = 4
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	panel.add_theme_stylebox_override("panel", style)
-	return panel
+func _make_panel(bg_color: Color, corner_radius: int = 16, border_color: Color = GOLD_LIGHT) -> PanelContainer:
+	return UiTheme.make_panel(bg_color)
 
 
 func _make_title_label(text: String, font_size: int, color: Color = Color.WHITE) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.label_settings = _make_label_settings(font_size, color)
-	return label
+	return UiTheme.make_title_label(text, font_size, color)
 
 
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
-	var settings := LabelSettings.new()
-	settings.font_size = font_size
-	settings.font_color = color
-	settings.shadow_size = 4
-	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
-	return settings
+	return UiTheme.make_label_settings(font_size, color)

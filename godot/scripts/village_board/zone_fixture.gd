@@ -27,6 +27,18 @@ var is_unlocked: bool = true
 ## building/plinth, just attached plots, and is therefore never draggable
 ## (no PickArea gets created for it -- see village_board.gd's _build_zone()).
 var has_building: bool = true
+## Track B (design/art/ui-visual-direction-2026-08.md, §3): true only for
+## Polyhouse. No sourced Kenney kit has a greenhouse shape (confirmed,
+## assets_3d/README.md's "Still missing" section), so Polyhouse always
+## falls into village_board.gd's "unlocked but no sourced model yet"
+## placeholder-box branch (model_path == "") -- this flag switches that
+## branch's material from opaque to translucent (StandardMaterial3D.
+## transparency + the existing toon shading) so it reads as "glass
+## structure" instead of a solid tinted box. Has no effect on a zone with a
+## real model_path (Aquaculture/Vertical Farm/Agroforestry/Farmhouse/Mandi)
+## or on a locked zone (which always uses LOCKED_ZONE_PLACEHOLDER_COLOR,
+## already translucent, regardless of this flag).
+var use_translucent_placeholder: bool = false
 
 func _init(
 	p_id: String,
@@ -39,7 +51,8 @@ func _init(
 	p_plinth_color: Color,
 	p_plots: Array[PlotFixture] = [],
 	p_is_unlocked: bool = true,
-	p_has_building: bool = true
+	p_has_building: bool = true,
+	p_use_translucent_placeholder: bool = false
 ) -> void:
 	id = p_id
 	display_name = p_display_name
@@ -52,6 +65,7 @@ func _init(
 	plots = p_plots
 	is_unlocked = p_is_unlocked
 	has_building = p_has_building
+	use_translucent_placeholder = p_use_translucent_placeholder
 
 ## Every (col, row) tile this zone's building footprint occupies.
 func occupied_tiles() -> Array[Vector2i]:

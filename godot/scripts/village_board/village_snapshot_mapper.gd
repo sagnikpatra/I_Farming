@@ -326,6 +326,10 @@ static func _build_open_field(state: GameState) -> ZoneFixture:
 	)
 
 
+## model_path is deliberately "" -- see ZoneFixture.use_translucent_placeholder's
+## doc comment for why Polyhouse has no sourced model in any curated kit and
+## instead renders via village_board.gd's placeholder-box branch with
+## use_translucent_placeholder=true (glass-structure read).
 static func _build_polyhouse(state: GameState) -> ZoneFixture:
 	var anchor := _resolve_anchor(state, ZONE_ID_POLYHOUSE, POLYHOUSE_ANCHOR)
 	var plots: Array[PlotFixture] = []
@@ -336,7 +340,8 @@ static func _build_polyhouse(state: GameState) -> ZoneFixture:
 		anchor.x, anchor.y, 2, 2,
 		POLYHOUSE_PLINTH_COLOR,
 		plots,
-		state.has_polyhouse, true
+		state.has_polyhouse, true,
+		true
 	)
 
 
@@ -371,7 +376,7 @@ static func _build_agroforestry(state: GameState) -> ZoneFixture:
 			fixture.kind = PlotKind.Kind.AGROFORESTRY
 			plots.append(fixture)
 	return ZoneFixture.new(
-		ZONE_ID_AGROFORESTRY, "Agroforestry", "",
+		ZONE_ID_AGROFORESTRY, "Agroforestry", VillageFixtureData.AGROFORESTRY_MODEL,
 		anchor.x, anchor.y, 2, 2,
 		AGROFORESTRY_PLINTH_COLOR,
 		plots,
@@ -385,7 +390,7 @@ static func _build_aquaculture(state: GameState) -> ZoneFixture:
 	if state.has_aquaculture:
 		plots = _simple_zone_plots(state, PlotKind.Kind.AQUACULTURE, anchor, 3, 2, true)
 	return ZoneFixture.new(
-		ZONE_ID_AQUACULTURE, "Aquaculture", "",
+		ZONE_ID_AQUACULTURE, "Aquaculture", VillageFixtureData.AQUACULTURE_MODEL,
 		anchor.x, anchor.y, 2, 2,
 		AQUACULTURE_PLINTH_COLOR,
 		plots,
@@ -399,7 +404,7 @@ static func _build_vertical_farm(state: GameState) -> ZoneFixture:
 	if state.has_vertical_farm:
 		plots = _simple_zone_plots(state, PlotKind.Kind.VERTICAL_FARM, anchor, 2, 2, false)
 	return ZoneFixture.new(
-		ZONE_ID_VERTICAL_FARM, "Vertical Farm", "",
+		ZONE_ID_VERTICAL_FARM, "Vertical Farm", VillageFixtureData.VERTICAL_FARM_MODEL,
 		anchor.x, anchor.y, 2, 2,
 		VERTICAL_FARM_PLINTH_COLOR,
 		plots,

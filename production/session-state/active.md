@@ -2692,6 +2692,148 @@ section with full sourcing detail and the caveats below.
 plus one modified doc, awaiting the user's go-ahead per this project's
 "no commits without user instruction" rule.
 
+## 2026-08-21 (same session, cont'd) -- UI/3D visual direction doc approved
+
+User supplied 3 inspiration images (`Inspiration/*.jpg` -- Township-style
+lush farm art + a separate game's carved-wood/gold-inlay UI chrome) and said
+the current design "doesn't look good at all." Scoped via `AskUserQuestion`
+to **both** tracks (UI chrome restyle + further 3D board art push), then
+spawned `art-director` to produce a grounded direction doc before any
+code/asset changes (per this project's Question -> Options -> Decision ->
+Draft -> Approval protocol) -- not implemented blind.
+
+**art-director's draft** (thorough, cited specific code/screenshots, not
+generic): diagnosed exactly why the current bottom sheets read flat (corner
+radius present in code but imperceptible at full-bleed scale, no gutters so
+panels can't show depth, single flat-brown for every card role, 2px borders
+read as hairlines, single emoji + no bundled font). Flagged the single
+highest-leverage decision (StyleBoxFlat refinement vs. importing a CC0
+Kenney texture-based UI kit) rather than deciding it silently.
+
+**User decided all 3 top questions, picking every recommended option** (via
+`AskUserQuestion`): (1) **Kenney CC0 texture kit** (Fantasy UI Borders +
+a matching button pack) over StyleBoxFlat-only -- real integration work,
+but the only path that actually delivers image 3's carved-wood look; (2)
+**bundle a free OFL font** (Baloo 2 or Fredoka), reversing EPIC-M0's earlier
+no-bundled-fonts call -- flagged to double check that wasn't APK-size/
+licensing-driven before treating as settled; (3) **replace emoji with a
+designed icon set**.
+
+**Caught and corrected a real error in the subagent's draft, not just
+trusted it**: the draft claimed a 627-documented-vs-12-on-disk asset
+discrepancy in `assets_3d/` and used it to block Track B. Verified directly
+myself (`find assets_3d -iname '*.obj' | wc -l`) -- **all 627 files
+genuinely exist** (40+167+91+329, exact README match); the agent's `Glob`
+search had missed nested `OBJ format/` subfolders. What's actually true
+(and was already documented in this file's own EPIC-M1 notes) is that only
+a small hand-picked subset (12 models) was ever *copied* into
+`godot/assets_3d/` for the early M1 fixture pass. Corrected the doc in
+place -- Track B is a curate-and-copy task from an already-sourced local
+library, not a from-the-internet re-sourcing pass. Meaningfully unblocks
+and de-risks Track B versus the original draft.
+
+**Written**: `design/art/ui-visual-direction-2026-08.md` (full direction
+doc, decisions baked in, asset-count correction applied). Not yet committed
+to git.
+
+**Sequencing** (per the doc): Track A (UI chrome -- self-contained, touches
+only `godot/scripts/ui/*.gd` + the Kenney texture import, highest
+visual-impact-per-effort since 9 sheets share the same
+`_make_panel()`/`_make_chunky_button()`-style helpers) first; Track B (3D
+board density/variety push, curate-and-copy from `assets_3d/`) second.
+**Neither track has started implementation yet** -- this session produced
+direction only, per protocol.
+
+Two open questions remain genuinely undecided (not blocking): whether any
+sheet should gain internal pill-tabs (image 3's 资源/工具/任务 pattern has no
+current counterpart), and whether a disabled-button-state fix rides along
+with this visual pass or gets tracked separately.
+
+## 2026-08-21 (same session, cont'd) -- Track A + Track B implemented, verified, in progress toward commit
+
+User said "please don't ask me. DO it. just do it" -- proceeded straight to
+implementation of both tracks from `design/art/ui-visual-direction-2026-08.md`,
+without further check-ins, per that explicit instruction.
+
+**Sourced first** (orchestrating session, not delegated -- neither
+`godot-specialist` nor `technical-artist` has WebFetch/WebSearch):
+downloaded 4 real CC0 Kenney kits via browser automation (found the actual
+zip URLs by clicking through the donate-or-skip modal, not guessed) into
+`assets_ui/` at repo root, mirroring `assets_3d/`'s "full kit at repo root"
+convention: `fantasy-ui-borders` (140 files, the carved-wood/gold panel
+source), `ui-pack-rpg-expansion` (85), `ui-pack-adventure` (130, has
+matching circular icon-frame elements), `game-icons` (105, generic
+house/gear/cart/lock/audio glyphs -- confirmed no Kenney kit has
+farm-specific coin/crop icons, checked `board-game-icons` too, wrong fit).
+Also sourced the **Fredoka variable font** (OFL, via the google/fonts GitHub
+mirror, not the broken fonts.google.com/download endpoint) to
+`godot/assets/fonts/fredoka/`. `assets_ui/README.md` documents all of this.
+
+**Both implementation agents (godot-specialist for Track A, technical-artist
+for Track B) stalled repeatedly** -- ended 3-4 consecutive turns each on
+mid-task planning/editing notes instead of a final report (same failure
+mode as EPIC-M8's audio gameplay-programmer pass earlier this project).
+Resumed each via `SendMessage` with increasingly directive pushes,
+**verifying real on-disk progress via `git status` between resumes rather
+than trusting silence or guessing** -- both were doing genuine work each
+time, just not wrapping their turns.
+
+**Track A (UI chrome) -- done, independently verified**:
+new `godot/scripts/ui/ui_theme.gd` (`class_name UiTheme`) consolidates the
+`_make_panel()`/`_make_chunky_button()`/`_make_title_label()`/
+`_make_label_settings()` copies that were previously hand-duplicated
+identically across `hud.gd`/`farmhouse_tab.gd`/etc (the exact cleanup the
+direction doc's §4 called out). Curated Kenney textures into
+`godot/assets/ui/{panels,buttons,icons}/` (137KB from 7.3MB source kits).
+Fredoka wired via `FontVariation` (`wght` axis). Real disabled-button state
+added and wired to Farmhouse Upgrade/Mandi Terminal+Sell/Agroforestry Clear
+Land+Security. `bottom_sheet.tscn`'s `ContentSlot` margin 16->20px --
+one shared edit that gives every sheet real gutters at once. Restyled:
+`hud.gd`, `farmhouse_tab.gd`, `mandi_tab.gd`, `polyhouse_tab.gd`,
+`agroforestry_tab.gd`. **Explicitly deferred, not silently skipped**: 10
+files (`niche_farming_tab.gd`, `events_tab.gd`, `open_field_tab.gd`,
+`seed_picker.gd`, `agro_plant_picker.gd`, `decoration_picker.gd`,
+`decoration_info_card.gd`, `growing_info_card.gd`,
+`worker_assignment_row.gd`, `accessibility_sheet.gd`) still use the old
+inline styling -- unconverted but not broken, no half-state.
+
+**Track B (3D board) -- done, independently verified**: copied real models
+from the already-fully-sourced `assets_3d/` into `godot/assets_3d/` --
+watermill (Aquaculture), windmill (Vertical Farm), hedge-large
+(Agroforestry), a tree ring around the boundary fence, extra
+flower/bush/rock decoration variety. Polyhouse (no greenhouse model in any
+sourced kit) switched from opaque to translucent tinted box -- reads as
+"glass structure." Procedural furrow/soil-speckle ground texture via the
+same runtime-`Image`/`ImageTexture` technique as the rangoli/ready-badge
+decals. Default gate-to-Farmhouse dirt path via the existing
+`WalkableGrid.find_path()` (same BFS EPIC-M6 villagers use). Corn/wheat/
+leafs crop-stage models copied and import clean but **deliberately not
+wired** -- needs an economy-crop-to-stage-model mapping decision, flagged
+as clean follow-up.
+
+**Independently verified myself, not just trusted** (both agents'
+reports, especially given the stalling pattern above): re-ran the full GUT
+suite personally after each track landed -- **350/350 passing, 1490
+asserts, both times**, confirming no collision between the two agents
+editing the same working tree concurrently (Track A: `scripts/ui/`+
+`scenes/ui/`+`assets/`; Track B: `scripts/village_board/`+`assets_3d/` --
+no overlap). Also personally cropped/zoomed the screenshot evidence
+(`production/qa/evidence/track-a-*.png`, `track-b-*.png`) at pixel level
+rather than trusting the agents' written descriptions at face value -- the
+gutter margin and button bevel texture were real but subtle enough at full
+screenshot scale that a first glance looked unchanged; a 4x crop confirmed
+they're genuinely there (rivets/bevel on `Sell All`, corner brackets on the
+coin badge panel, cream margin visible left of the Farmhouse sheet's cards).
+
+**Two honest caveats surfaced by the agents themselves, not glossed over**:
+Track A found the app renders landscape on-device despite
+`project.godot`'s portrait setting (a pre-existing Android-export-config
+issue, not caused by this pass -- flagged as a separate follow-up). Track B
+flagged the Vertical Farm windmill reads as a thin pole from the default
+top-down camera angle, not a clearly recognizable windmill silhouette.
+
+**Not yet committed to git** as of this note -- about to commit.
+
 ## Next Step
 
 EPIC-M8 (Post-Migration Hardening) is done for all 4 items the user

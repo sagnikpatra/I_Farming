@@ -83,22 +83,25 @@ const TOP_SAFE_AREA_OFFSET: int = 40
 ## Android's gesture/nav bar for both bottom-anchored HUD groups.
 const BOTTOM_MARGIN: int = 100
 
-# Palette -- ported verbatim from app/src/main/java/com/zonkrik/ifarming/
-# ui/theme/Color.kt so the Godot HUD reads as the same warm Indian-farm
-# palette as the Kotlin original, not a re-invented one.
-const SOIL_BROWN_DARK := Color("#3E2412")
-const WOOD_BROWN_LIGHT := Color("#8A5A34")
-const GOLD_LIGHT := Color("#FFE082")
-const RIPE_GOLD := Color("#FFC107")
-const SAFFRON_DARK := Color("#C56A00")
-const LEVEL_BADGE_BLUE := Color("#1976D2")
+# Palette -- now sourced from ui_theme.gd (see that file's class doc for the
+# Track A consolidation rationale); kept as local aliases so every existing
+# reference to e.g. `SOIL_BROWN_DARK` elsewhere in this file needed zero
+# changes. WOOD_BROWN_LIGHT resolves to UiTheme's NEW #A9713F bevel tone
+# (renamed from the old #8A5A34, now WOOD_BROWN_MID) -- see ui_theme.gd's
+# own doc comment on that rename's visible consequence.
+const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
+const WOOD_BROWN_LIGHT := UiTheme.WOOD_BROWN_MID
+const GOLD_LIGHT := UiTheme.GOLD_LIGHT
+const RIPE_GOLD := UiTheme.RIPE_GOLD
+const SAFFRON_DARK := UiTheme.SAFFRON_DARK
+const LEVEL_BADGE_BLUE := UiTheme.LEVEL_BADGE_BLUE
 ## Ported verbatim, same value polyhouse_tab.gd's own copy already uses.
-const FIELD_GREEN := Color("#4CAF50")
+const FIELD_GREEN := UiTheme.FIELD_GREEN
 ## Matches OutlinedTitle's `Color.Black.copy(alpha = 0.7f)` exactly -- see
 ## FarmScreen.kt. OutlinedTitle is actually implemented as a text drop
 ## shadow, not a true stroke outline, despite the name -- mirrored here via
 ## LabelSettings.shadow_* rather than outline_*.
-const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
+const TEXT_SHADOW_COLOR := UiTheme.TEXT_SHADOW_COLOR
 
 @onready var _village_board: VillageBoard = get_node("../VillageBoard") as VillageBoard
 @onready var _bottom_sheet: BottomSheet = $BottomSheet
@@ -476,21 +479,13 @@ func _build_bottom_right_shop() -> void:
 	_bottom_right_shop.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(_bottom_right_shop)
 
-	_shop_button = Button.new()
-	_shop_button.text = "🎨"
-	_shop_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_shop_button.focus_mode = Control.FOCUS_NONE
-	_shop_button.custom_minimum_size = Vector2(64, 64)
-	var style := StyleBoxFlat.new()
-	style.bg_color = WOOD_BROWN_LIGHT
-	style.set_corner_radius_all(32)
-	style.set_border_width_all(2)
-	style.border_color = GOLD_LIGHT
-	style.shadow_size = 4
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		_shop_button.add_theme_stylebox_override(state_name, style)
-	_shop_button.add_theme_font_size_override("font_size", 28)
+	# Icon replacement (design/art/ui-visual-direction-2026-08.md §2.5): the
+	# old 🎨 emoji is replaced with game-icons' shoppingCart glyph -- "cart"
+	# is a closer semantic match for "open the shop" than "palette" ever
+	# was, and it's one of the icons that kit directly covers (see
+	# assets_ui/README.md). 64px diameter unchanged (already at the spec's
+	# upper bound).
+	_shop_button = UiTheme.make_icon_button(UiTheme.ICON_CART, WOOD_BROWN_LIGHT, 64)
 	_shop_button.pressed.connect(_on_shop_pressed)
 	_bottom_right_shop.add_child(_shop_button)
 
@@ -529,25 +524,18 @@ func _build_bottom_center_nav() -> void:
 		_bottom_center_nav.add_child(_build_nav_chip(target[0], target[1]))
 
 
+## Kept as emoji, deliberately, not swapped for a sourced icon texture: each
+## chip is a distinct farm-zone pictograph (🏠/🌾/🏚️/🌳/🪷/🌸/🏛️) and no CC0
+## kit sourced for this pass has farm-specific iconography (see
+## assets_ui/README.md's explicit note: "No Kenney kit has farm-specific
+## icons (coin, wheat/crop glyph)"). Replacing ONE of the seven (🏠 -> a
+## generic "home" icon IS covered by game-icons) while leaving the other
+## six as emoji would read as more inconsistent than the current uniform
+## emoji row, not less -- see design/art/ui-visual-direction-2026-08.md §2.5
+## ("check first whether the chosen kit already bundles a matching set");
+## here it doesn't, for six of the seven, so the row stays uniform.
 func _build_nav_chip(emoji: String, zone_id: String) -> Button:
-	var chip := Button.new()
-	chip.text = emoji
-	chip.mouse_filter = Control.MOUSE_FILTER_STOP
-	chip.focus_mode = Control.FOCUS_NONE
-	var style := StyleBoxFlat.new()
-	style.bg_color = WOOD_BROWN_LIGHT
-	style.set_corner_radius_all(50)
-	style.set_border_width_all(2)
-	style.border_color = SAFFRON_DARK
-	style.shadow_size = 3
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		chip.add_theme_stylebox_override(state_name, style)
-	chip.add_theme_font_size_override("font_size", 18)
+	var chip := UiTheme.make_circular_emoji_button(emoji, WOOD_BROWN_LIGHT, 56)
 	chip.pressed.connect(_on_nav_chip_pressed.bind(zone_id))
 	return chip
 
@@ -584,116 +572,54 @@ func _make_inventory_chip(emoji: String, count: int) -> PanelContainer:
 ## SOIL_BROWN_DARK explicitly -- white-on-RIPE_GOLD measured ~1.63:1
 ## contrast, the same unreadable pairing already fixed in polyhouse_tab.gd/
 ## agroforestry_tab.gd/niche_farming_tab.gd's chip builders.
-func _make_chunky_button(label_text: String, color: Color, font_color: Color = Color.WHITE) -> Button:
-	var button := Button.new()
-	button.text = label_text
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.focus_mode = Control.FOCUS_NONE
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(20)
-	style.set_border_width_all(2)
-	style.border_color = SOIL_BROWN_DARK
-	style.shadow_size = 4
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		button.add_theme_stylebox_override(state_name, style)
-	for color_slot in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		button.add_theme_color_override(color_slot, font_color)
-	button.add_theme_font_size_override("font_size", 14)
-	return button
+## Track A consolidation: body now delegates to ui_theme.gd (see that file's
+## class doc). `color` becomes UiTheme.make_chunky_button()'s `role_color`
+## (tinted-texture chrome replaces the StyleBoxFlat fill entirely -- §2.2).
+func _make_chunky_button(label_text: String, color: Color, font_color: Color = Color.WHITE, enabled: bool = true) -> Button:
+	return UiTheme.make_chunky_button(label_text, color, font_color, enabled)
 
 
-func _make_panel(bg_color: Color, corner_radius: int, border_color: Color = GOLD_LIGHT) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg_color
-	style.set_corner_radius_all(corner_radius)
-	style.set_border_width_all(2)
-	style.border_color = border_color
-	style.shadow_size = 4
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	panel.add_theme_stylebox_override("panel", style)
-	return panel
+func _make_panel(bg_color: Color, corner_radius: int = 16, border_color: Color = GOLD_LIGHT) -> PanelContainer:
+	return UiTheme.make_panel(bg_color)
 
 
-## Approximate circle: a fixed square custom_minimum_size + corner_radius =
-## half that size. Not pixel-perfect circular clipping (StyleBoxFlat corner
-## rounding on a PanelContainer, not a true circle mask) -- adequate for this
-## round's "flat StyleBoxFlat styling is the bar" scope (see class doc).
-func _make_circular_panel(bg_color: Color, diameter: int, border_color: Color) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.custom_minimum_size = Vector2(diameter, diameter)
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg_color
-	style.set_corner_radius_all(diameter / 2)
-	style.set_border_width_all(2)
-	style.border_color = border_color
-	style.shadow_size = 4
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.set_content_margin_all(0)
-	panel.add_theme_stylebox_override("panel", style)
-	return panel
+## Approximate circle -- now the real Kenney circular button texture
+## (tinted), not a StyleBoxFlat corner-radius approximation.
+func _make_circular_panel(bg_color: Color, diameter: int, border_color: Color = GOLD_LIGHT) -> PanelContainer:
+	return UiTheme.make_circular_panel(bg_color, diameter)
 
 
 ## A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §0/§2):
-## a real tappable Button (unlike _make_circular_panel()'s decorative
-## PanelContainer), sized 44x44 -- comfortably above the ADVISORY touch-
-## target note the same audit raised about the Quick Nav Bar's chips (§2),
-## which this new button deliberately does not repeat.
+## a real tappable Button, now 56px (bumped from 44px per
+## design/art/ui-visual-direction-2026-08.md §2.5's "bump the smaller ones
+## ... up to at least 56px for visual consistency"). Icon replacement: the
+## old ⚙ emoji is now game-icons' gear.png (a direct match -- see
+## assets_ui/README.md).
 func _make_accessibility_button() -> Button:
-	var button := Button.new()
-	button.text = "⚙"
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(44, 44)
-	var style := StyleBoxFlat.new()
-	style.bg_color = WOOD_BROWN_LIGHT
-	style.set_corner_radius_all(22)
-	style.set_border_width_all(2)
-	style.border_color = GOLD_LIGHT
-	style.shadow_size = 3
-	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.set_content_margin_all(0)
-	for state_name in ["normal", "hover", "pressed", "focus"]:
-		button.add_theme_stylebox_override(state_name, style)
-	button.add_theme_color_override("font_color", Color.WHITE)
-	button.add_theme_font_size_override("font_size", 20)
-	return button
+	return UiTheme.make_icon_button(UiTheme.ICON_GEAR, WOOD_BROWN_LIGHT, 56)
 
 
-## OutlinedTitle equivalent -- see TEXT_SHADOW_COLOR's doc comment on why
-## this is a drop shadow, not a stroke outline. True bold weight would need a
-## bundled font resource (this project's fonts are default-OS-fallback only,
-## per EPIC-M0's emoji-rendering decision -- see the task's explicit
-## out-of-scope note on font bundling); size + shadow carry the emphasis
-## instead for this round.
+## OutlinedTitle equivalent -- now delegates to ui_theme.gd, which applies a
+## genuine Fredoka Bold FontVariation (§2.7) rather than carrying emphasis
+## via size+shadow alone.
 func _make_title_label(text: String, font_size: int, color: Color = Color.WHITE) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.label_settings = _make_label_settings(font_size, color)
-	return label
+	return UiTheme.make_title_label(text, font_size, color, true, _accessibility_scale())
 
 
 func _make_label_settings(font_size: int, color: Color) -> LabelSettings:
-	var settings := LabelSettings.new()
-	settings.font_size = _scaled_font_size(font_size)
-	settings.font_color = color
-	settings.shadow_size = 4
-	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
-	return settings
+	return UiTheme.make_label_settings(font_size, color, true, _accessibility_scale())
+
+
+## Extracted from the old _scaled_font_size() so UiTheme's shared
+## make_label_settings() can take a scale factor as a plain float param
+## instead of needing its own VillageBoard/AccessibilitySettings coupling.
+func _accessibility_scale() -> float:
+	if _village_board == null:
+		return 1.0
+	var settings := _village_board.get_accessibility_settings()
+	if settings == null:
+		return 1.0
+	return settings.text_scale
 
 
 ## A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §0/§5):

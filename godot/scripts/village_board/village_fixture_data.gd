@@ -16,6 +16,24 @@ const CROP_PLOT := "res://assets_3d/nature-kit/OBJ format/crops_dirtSingle.obj"
 const FARMHOUSE_MODEL := "res://assets_3d/city-kit-suburban/OBJ format/building-type-a.obj"
 const MANDI_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/stall-red.obj"
 
+## Track B (design/art/ui-visual-direction-2026-08.md, §3) -- zone-building
+## variety pass. Per assets_3d/README.md's "Suggested mapping" table:
+## watermill for Aquaculture (waterwheel reads as pond infrastructure),
+## windmill for Vertical Farm (distinct tall silhouette from the other
+## zones), hedge-large for Agroforestry (reads as a hedge/grove enclosure --
+## picked over the smaller `hedge.obj` since it fills a 2x2 footprint less
+## sparsely once scaled by _footprint_scale_factor()). Polyhouse has no
+## greenhouse shape in any sourced kit (confirmed, see README's "Still
+## missing" section) -- deliberately left with no model_path here; it keeps
+## rendering via village_board.gd's placeholder-box branch, now switched to
+## a translucent material for Polyhouse specifically (see
+## ZoneFixture.use_translucent_placeholder / VillageSnapshotMapper's
+## Polyhouse builder) so it reads as "glass structure" rather than a solid
+## opaque box.
+const AQUACULTURE_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/watermill.obj"
+const VERTICAL_FARM_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/windmill.obj"
+const AGROFORESTRY_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/hedge-large.obj"
+
 ## Curated decoration models (EPIC-M5 parity pass) -- replaces the flat
 ## placeholder boxes _decoration_tint_color()/_build_decoration() used
 ## since EPIC-M4 slice 3. Sourced per assets_3d/README.md's "Suggested
@@ -35,3 +53,30 @@ const DECORATION_LANTERN_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/l
 const DECORATION_FOUNTAIN_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/fountain-round.obj"
 const DECORATION_STATUE_MODEL := "res://assets_3d/nature-kit/OBJ format/statue_obelisk.obj"
 const DECORATION_DIRT_PATH_MODEL := "res://assets_3d/nature-kit/OBJ format/ground_pathTile.obj"
+
+## Track B decoration-density pass. Only `flower_yellowA` (above) was ever
+## curated for the purchasable Sunflower decoration; B/C add cheap visual
+## variety when several Sunflowers are placed (see village_board.gd's
+## _decoration_model_path(), which now round-robins the three by
+## decoration.id) -- no new DecorationType.Kind, still one purchasable
+## "Sunflower" entry, just a varied look.
+const DECORATION_SUNFLOWER_MODEL_B := "res://assets_3d/nature-kit/OBJ format/flower_yellowB.obj"
+const DECORATION_SUNFLOWER_MODEL_C := "res://assets_3d/nature-kit/OBJ format/flower_yellowC.obj"
+
+## Ambient, non-interactive dressing -- never a purchasable DecorationType,
+## placed automatically by village_board.gd's _build_tree_ring()/
+## _build_ambient_clutter() (see those functions' doc comments). Three tree
+## variants for a mixed-canopy edge ring (echoes inspiration image 1's tree
+## border, direction doc §3); bush/rock pairs for ambient ground clutter
+## scattered across unreserved margin tiles.
+const TREE_RING_MODELS: Array[String] = [
+	"res://assets_3d/nature-kit/OBJ format/tree_default.obj",
+	"res://assets_3d/nature-kit/OBJ format/tree_fat.obj",
+	"res://assets_3d/nature-kit/OBJ format/tree_oak.obj",
+]
+const AMBIENT_CLUTTER_MODELS: Array[String] = [
+	"res://assets_3d/nature-kit/OBJ format/plant_bush.obj",
+	"res://assets_3d/nature-kit/OBJ format/plant_bushSmall.obj",
+	"res://assets_3d/nature-kit/OBJ format/rock_smallA.obj",
+	"res://assets_3d/nature-kit/OBJ format/rock_smallB.obj",
+]

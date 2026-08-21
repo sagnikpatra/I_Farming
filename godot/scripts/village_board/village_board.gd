@@ -72,6 +72,12 @@ const GROUND_COLOR := Color(0.32, 0.42, 0.10)
 # that's not yet unlocked, regardless of whether it has a sourced model (a
 # locked zone always renders as this placeholder, never its real model).
 const LOCKED_ZONE_PLACEHOLDER_COLOR := Color(0.97, 0.93, 0.84, 0.30)
+# Track B: Polyhouse's translucent-glass placeholder alpha (see
+# _build_zone_structure()'s use_translucent_placeholder branch). Higher than
+# LOCKED_ZONE_PLACEHOLDER_COLOR's 0.30 -- an unlocked, built Polyhouse should
+# read as "solid glass structure you can see into," not as faint/ghostly as a
+# not-yet-unlocked zone.
+const POLYHOUSE_GLASS_ALPHA: float = 0.55
 
 # Plot lifecycle/water/host tints (see _plot_tint_color()). Flat-color +
 # toon-shading language only, no new meshes/sprites.
@@ -228,12 +234,43 @@ func rebuild(zones: Array[ZoneFixture], preserve_camera: bool = false) -> void:
 	_static_layer.add_child(boundary)
 	_build_boundary(boundary)
 
+	# Track B (design/art/ui-visual-direction-2026-08.md, §3): a mixed-canopy
+	# tree ring just outside the fence, echoing inspiration image 1's tree
+	# border. Purely decorative -- no PickArea, not part of any occupancy/
+	# walkable-tile system, since it sits entirely outside the GRID_COLS x
+	# GRID_ROWS play area those systems reason about.
+	var tree_ring := Node3D.new()
+	tree_ring.name = "TreeRing"
+	_static_layer.add_child(tree_ring)
+	_build_tree_ring(tree_ring)
+
 	var zones_node := Node3D.new()
 	zones_node.name = "Zones"
 	_static_layer.add_child(zones_node)
 	for zone in zones:
 		_zones_by_id[zone.id] = zone
 		_zone_nodes_by_id[zone.id] = _build_zone(zone, zones_node)
+
+	# Track B: default gate->Farmhouse dirt path + ambient ground clutter,
+	# both built from the SAME walkable-tile reservation EPIC-M6's villager
+	# roaming already relies on (VillageSnapshotMapper.build_walkable_grid()),
+	# so neither can ever land on a zone/plot footprint (current OR future --
+	# see max_reserved_tiles()'s conservative reservation policy) regardless
+	# of layout drags or unlock order.
+	var walkable_grid := VillageSnapshotMapper.build_walkable_grid(_economy.state, GRID_COLS, GRID_ROWS)
+
+	var paths_node := Node3D.new()
+	paths_node.name = "Paths"
+	_static_layer.add_child(paths_node)
+	var path_tiles := _build_default_path(paths_node, walkable_grid)
+	var path_tile_set: Dictionary = {}
+	for tile in path_tiles:
+		path_tile_set[tile] = true
+
+	var clutter_node := Node3D.new()
+	clutter_node.name = "Clutter"
+	_static_layer.add_child(clutter_node)
+	_build_ambient_clutter(clutter_node, walkable_grid, path_tile_set)
 
 	var decorations_node := Node3D.new()
 	decorations_node.name = "Decorations"
@@ -347,6 +384,17 @@ func _zone_fits(zone: ZoneFixture, target_col: int, target_row: int) -> bool:
 	return true
 
 
+## Track B (design/art/ui-visual-direction-2026-08.md, §3): the ground used
+## to be a single flat StandardMaterial3D.albedo_color with no texture at
+## all. Now multiplies GROUND_COLOR by a procedurally-generated furrow/
+## soil-speckle texture (_build_terrain_texture(), same runtime Image/
+## ImageTexture technique as _build_rangoli_texture()/
+## _build_ready_badge_texture() below -- GLES3-safe by construction, no new
+## binary asset) tiled uv1_scale times across the plane so the pattern reads
+## at roughly "one repeat per couple of tiles," not stretched across the
+## whole board as one giant blurry image.
+const _TERRAIN_TEXTURE_TILE_REPEAT := Vector3(4.0, 5.0, 1.0)
+
 func _build_ground() -> MeshInstance3D:
 	var ground := MeshInstance3D.new()
 	ground.name = "Ground"
@@ -355,10 +403,53 @@ func _build_ground() -> MeshInstance3D:
 	ground.mesh = plane
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = GROUND_COLOR
+	mat.albedo_texture = _build_terrain_texture()
+	mat.uv1_scale = _TERRAIN_TEXTURE_TILE_REPEAT
 	ground.material_override = mat
 	ground.position = _grid_to_world(float(GRID_COLS - 1) / 2.0, float(GRID_ROWS - 1) / 2.0)
 	_apply_toon_shading(ground)
 	return ground
+
+
+## Procedural soil texture: near-white/grey furrow stripes + speckle noise,
+## MULTIPLIED onto GROUND_COLOR by _build_ground()'s material (same
+## "preserve base hue, vary lightness only" language _build_plot()'s
+## lifecycle tint already uses for the exact same reason -- a pure-white
+## texture pixel is a no-op multiply, so this can only darken/vary, never
+## shift the ground's actual color away from the tuned olive tone). Furrow
+## stripes use an integer-periodod sin wave over image height so the texture
+## tiles seamlessly in the Y direction when repeated via uv1_scale; the
+## per-pixel speckle hash has no visible seam at typical tile density (fine
+## noise, not a smooth gradient) so needs no special periodicity handling.
+const _TERRAIN_TEXTURE_SIZE: int = 128
+const _TERRAIN_FURROW_COUNT: int = 8
+
+func _build_terrain_texture() -> ImageTexture:
+	var size := _TERRAIN_TEXTURE_SIZE
+	var image := Image.create(size, size, false, Image.FORMAT_RGB8)
+	for y in range(size):
+		var y_norm := float(y) / size
+		var furrow_wave := sin(y_norm * TAU * _TERRAIN_FURROW_COUNT)
+		# Thin, soft-edged dark furrow line at each wave trough/crest.
+		var furrow_shade := 1.0 - smoothstep(0.75, 0.95, absf(furrow_wave)) * 0.22
+		for x in range(size):
+			var speckle := _terrain_speckle_hash(x, y)
+			# Subtle +/-6% brightness speckle on top of the furrow shade,
+			# clamped so the multiply against GROUND_COLOR never blows out.
+			var brightness := clampf(furrow_shade * (0.94 + speckle * 0.12), 0.0, 1.2)
+			image.set_pixel(x, y, Color(brightness, brightness, brightness))
+	return ImageTexture.create_from_image(image)
+
+
+## Classic GLSL-style deterministic pseudo-random hash (sin/fract), not
+## RandomNumberGenerator -- this texture is rebuilt every StaticLayer
+## rebuild() (every 3s growth tick), and per this project's testing-standards
+## determinism rule ("no random seeds, no time-dependent assertions"), the
+## ground should never visibly flicker/reshuffle its speckle pattern between
+## rebuilds the way a freshly-seeded RNG per call would.
+func _terrain_speckle_hash(x: int, y: int) -> float:
+	var n := sin(float(x) * 12.9898 + float(y) * 78.233) * 43758.5453
+	return n - floor(n)
 
 
 func _build_boundary(parent: Node3D) -> void:
@@ -397,6 +488,123 @@ func _place_boundary_piece(parent: Node3D, model_path: String, col: int, row: in
 	instance.rotation_degrees.y = rotation_deg
 	_apply_toon_shading(instance)
 	parent.add_child(instance)
+
+
+# ---------------------------------------------------------------------------
+# Track B (design/art/ui-visual-direction-2026-08.md, §3): tree-ring border,
+# default gate->Farmhouse dirt path, and ambient ground clutter. All three
+# are purely visual dressing -- no PickArea, no economy/save interaction,
+# not tracked in _zone_nodes_by_id/_decoration_nodes_by_id -- rebuilt fresh
+# every rebuild() the same way Boundary/Ground already are.
+# ---------------------------------------------------------------------------
+
+const _TREE_RING_SPACING: int = 2
+const _TREE_RING_OFFSET: int = 2  # tiles beyond the fence line
+
+## Mixed-canopy tree ring one ring-width beyond the boundary fence (which
+## itself sits at col/row -1 and GRID_COLS/GRID_ROWS -- see _build_boundary()),
+## echoing inspiration image 1's tree border. Skips the 3 columns centered on
+## GATE_COL on the south (entrance) edge only, so the gate's sightline into
+## the board stays clear.
+func _build_tree_ring(parent: Node3D) -> void:
+	var col := -_TREE_RING_OFFSET
+	while col <= GRID_COLS - 1 + _TREE_RING_OFFSET:
+		_place_ring_tree(parent, col, -_TREE_RING_OFFSET)
+		var near_gate := col >= GATE_COL - 1 and col <= GATE_COL + 1
+		if not near_gate:
+			_place_ring_tree(parent, col, GRID_ROWS - 1 + _TREE_RING_OFFSET)
+		col += _TREE_RING_SPACING
+	var row := -_TREE_RING_OFFSET
+	while row <= GRID_ROWS - 1 + _TREE_RING_OFFSET:
+		_place_ring_tree(parent, -_TREE_RING_OFFSET, row)
+		_place_ring_tree(parent, GRID_COLS - 1 + _TREE_RING_OFFSET, row)
+		row += _TREE_RING_SPACING
+
+
+func _place_ring_tree(parent: Node3D, col: int, row: int) -> void:
+	var hash_val := _deterministic_hash(col, row)
+	var models := VillageFixtureData.TREE_RING_MODELS
+	var raw_mesh: Mesh = load(models[hash_val % models.size()])
+	var instance := MeshInstance3D.new()
+	instance.mesh = raw_mesh
+	var scale_factor := _footprint_scale_factor(raw_mesh, TILE_SIZE * 1.1)
+	instance.scale = Vector3.ONE * scale_factor
+	instance.rotation_degrees.y = float(hash_val % 360)
+	instance.position = _grid_to_world(float(col), float(row))
+	_apply_toon_shading(instance)
+	parent.add_child(instance)
+
+
+## Default gate->Farmhouse path (see rebuild()'s own comment on why this
+## reuses WalkableGrid.find_path() -- the exact same BFS EPIC-M6's villagers
+## already use to navigate this board, guaranteeing the path can never cross
+## a zone/plot's current OR future footprint). `start` is the gate's
+## just-inside-the-board tile; `goal` is the tile just south of Farmhouse's
+## door (Farmhouse anchor (0,0), 2x2 footprint -- see
+## VillageSnapshotMapper's ZONE LAYOUT table). Returns the path's tiles (or
+## an empty array if either endpoint isn't walkable, e.g. a save with an
+## unusual dragged layout) so rebuild() can exclude them from
+## _build_ambient_clutter()'s scatter.
+func _build_default_path(parent: Node3D, walkable_grid: WalkableGrid) -> Array[Vector2i]:
+	var start := Vector2i(GATE_COL, GRID_ROWS - 1)
+	var goal := Vector2i(0, 2)
+	if not walkable_grid.is_walkable(start) or not walkable_grid.is_walkable(goal):
+		return []
+	var path := walkable_grid.find_path(start, goal)
+	var raw_mesh: Mesh = load(VillageFixtureData.DECORATION_DIRT_PATH_MODEL)
+	var scale_factor := _footprint_scale_factor(raw_mesh, TILE_SIZE * FILL_RATIO)
+	for tile in path:
+		var instance := MeshInstance3D.new()
+		instance.mesh = raw_mesh
+		instance.scale = Vector3.ONE * scale_factor
+		# Tiny y-offset above the ground plane (not PLINTH_HEIGHT -- this is a
+		# flush ground decal, not a plinth'd structure) to avoid z-fighting
+		# with the terrain texture below.
+		instance.position = _grid_to_world(float(tile.x), float(tile.y)) + Vector3(0.0, 0.01, 0.0)
+		_apply_toon_shading(instance)
+		parent.add_child(instance)
+	return path
+
+
+const _AMBIENT_CLUTTER_MAX: int = 20
+const _AMBIENT_CLUTTER_DENSITY: int = 5  # roughly 1 in 5 eligible tiles
+
+## Sparse bush/rock clutter scattered across whatever tiles are walkable
+## (i.e. not reserved by any zone's current-or-future footprint, and not a
+## placed decoration -- see VillageSnapshotMapper.build_walkable_grid()) and
+## not part of the just-built default path (`exclude_tiles`). Deterministic
+## hash-based selection (see _deterministic_hash()'s own doc comment on
+## _build_terrain_texture() for the same "no RNG flicker between rebuilds"
+## rationale), capped at _AMBIENT_CLUTTER_MAX so a mostly-unlocked, mostly-
+## empty board doesn't get overwhelmed with clutter meshes.
+func _build_ambient_clutter(parent: Node3D, walkable_grid: WalkableGrid, exclude_tiles: Dictionary) -> void:
+	var models := VillageFixtureData.AMBIENT_CLUTTER_MODELS
+	var placed := 0
+	for tile in walkable_grid.get_walkable_tiles():
+		if placed >= _AMBIENT_CLUTTER_MAX:
+			break
+		if exclude_tiles.has(tile):
+			continue
+		var hash_val := _deterministic_hash(tile.x, tile.y)
+		if hash_val % _AMBIENT_CLUTTER_DENSITY != 0:
+			continue
+		var raw_mesh: Mesh = load(models[(hash_val / _AMBIENT_CLUTTER_DENSITY) % models.size()])
+		var instance := MeshInstance3D.new()
+		instance.mesh = raw_mesh
+		var scale_factor := _footprint_scale_factor(raw_mesh, TILE_SIZE * 0.4)
+		instance.scale = Vector3.ONE * scale_factor
+		instance.rotation_degrees.y = float(hash_val % 360)
+		instance.position = _grid_to_world(float(tile.x), float(tile.y))
+		_apply_toon_shading(instance)
+		parent.add_child(instance)
+		placed += 1
+
+
+## Shared deterministic pseudo-random int hash for tile-position-keyed
+## visual variety (tree/clutter model choice + rotation) -- same "no RNG,
+## reproducible between rebuilds" rationale as _terrain_speckle_hash().
+func _deterministic_hash(a: int, b: int) -> int:
+	return absi(a * 928371 + b * 68917)
 
 
 ## Renders one placed decoration using its curated Kenney model (EPIC-M5
@@ -450,7 +658,7 @@ func _build_decoration(decoration: Decoration) -> Node3D:
 	root.name = "Decoration_%d" % decoration.id
 	root.position = world_pos
 
-	var instance := _build_decoration_visual(decoration.type)
+	var instance := _build_decoration_visual(decoration.type, decoration.id)
 	instance.rotation_degrees.y = float(decoration.rotation_degrees)
 	instance.scale.x *= -1.0 if decoration.flipped_x else 1.0
 	_apply_toon_shading(instance)
@@ -484,12 +692,14 @@ const _DECORATION_OBJECT_FILL_RATIO: float = 0.5
 
 ## Loads and scale-normalizes the curated model for `type`, or builds the
 ## procedural Rangoli decal -- see this function's callers' doc comments.
-func _build_decoration_visual(type: int) -> MeshInstance3D:
+## `decoration_id` is only used for Sunflower's Track B model-variety
+## round-robin (see _decoration_model_path()) -- every other type ignores it.
+func _build_decoration_visual(type: int, decoration_id: int) -> MeshInstance3D:
 	if type == DecorationType.Kind.RANGOLI:
 		return _build_rangoli_decal()
 
 	var instance := MeshInstance3D.new()
-	var raw_mesh: Mesh = load(_decoration_model_path(type))
+	var raw_mesh: Mesh = load(_decoration_model_path(type, decoration_id))
 	instance.mesh = raw_mesh
 	var fill_ratio := FILL_RATIO if type == DecorationType.Kind.DIRT_PATH else _DECORATION_OBJECT_FILL_RATIO
 	var scale_factor := _footprint_scale_factor(raw_mesh, TILE_SIZE * fill_ratio)
@@ -497,12 +707,23 @@ func _build_decoration_visual(type: int) -> MeshInstance3D:
 	return instance
 
 
-func _decoration_model_path(type: int) -> String:
+## Track B (design/art/ui-visual-direction-2026-08.md, §3): Sunflower now
+## round-robins between 3 curated `flower_yellow{A,B,C}` models by
+## decoration_id, instead of always the same `flower_yellowA` -- cheap
+## visual variety when a player places several Sunflowers, with no new
+## DecorationType.Kind and no economy-layer change (GameEconomy/save data
+## still only knows "one Sunflower kind"; this is a render-layer-only pick).
+func _decoration_model_path(type: int, decoration_id: int) -> String:
 	match type:
 		DecorationType.Kind.POTTED_PLANT:
 			return VillageFixtureData.DECORATION_POTTED_PLANT_MODEL
 		DecorationType.Kind.SUNFLOWER:
-			return VillageFixtureData.DECORATION_SUNFLOWER_MODEL
+			var sunflower_models := [
+				VillageFixtureData.DECORATION_SUNFLOWER_MODEL,
+				VillageFixtureData.DECORATION_SUNFLOWER_MODEL_B,
+				VillageFixtureData.DECORATION_SUNFLOWER_MODEL_C,
+			]
+			return sunflower_models[decoration_id % sunflower_models.size()]
 		DecorationType.Kind.BAMBOO:
 			return VillageFixtureData.DECORATION_BAMBOO_MODEL
 		DecorationType.Kind.LANTERN:
@@ -738,16 +959,26 @@ func _build_zone_structure(zone: ZoneFixture, zone_node: Node3D) -> void:
 		building.set_meta("base_y", PLINTH_HEIGHT + building_height / 2.0)
 	elif zone.model_path.is_empty():
 		# Unlocked but no sourced model yet: same box geometry as the locked
-		# placeholder, but opaque and tinted with this zone's own
-		# plinth_color, so it reads as a solid built structure rather than a
-		# locked ghost (Agroforestry/Aquaculture/Vertical Farm each read as a
-		# distinct solid structure once unlocked).
+		# placeholder. Opaque and tinted with this zone's own plinth_color by
+		# default, so it reads as a solid built structure rather than a locked
+		# ghost. Track B (design/art/ui-visual-direction-2026-08.md, §3):
+		# Polyhouse specifically (use_translucent_placeholder=true -- see
+		# ZoneFixture's own doc comment; no kit has a greenhouse shape) instead
+		# gets an alpha-blended version of the same tint, so it reads as "glass
+		# structure" rather than a solid box. This branch is now effectively
+		# Polyhouse-only (Aquaculture/Vertical Farm/Agroforestry all got real
+		# model_paths below), but stays generic rather than hardcoding "polyhouse"
+		# by id, in case a future zone loses its sourced model.
 		var box := BoxMesh.new()
 		var box_footprint := minf(footprint.x, footprint.y) * FILL_RATIO
 		box.size = Vector3(box_footprint, box_footprint * 0.9, box_footprint)
 		building.mesh = box
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(zone.plinth_color.r, zone.plinth_color.g, zone.plinth_color.b, 1.0)
+		if zone.use_translucent_placeholder:
+			mat.albedo_color = Color(zone.plinth_color.r, zone.plinth_color.g, zone.plinth_color.b, POLYHOUSE_GLASS_ALPHA)
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		else:
+			mat.albedo_color = Color(zone.plinth_color.r, zone.plinth_color.g, zone.plinth_color.b, 1.0)
 		building.material_override = mat
 		building_height = box.size.y
 		building.set_meta("base_y", PLINTH_HEIGHT + building_height / 2.0)

@@ -58,7 +58,14 @@
 - **Draw Calls**: Not measured (village board renders full-rebuild-per-GameState-change, not diffed -- acceptable at current tile counts, unverified at scale)
 - **Memory Ceiling**: Not measured
 
-**Target (Godot)**: To be established as EPIC-M0's baseline-measurement deliverable (frame time on the Medium_Phone AVD, memory ceiling, APK size delta vs. the current LibGDX APK, cold-load time) -- see `docs/architecture/godot-migration-roadmap.md`. Do not invent numbers here before that measurement exists.
+**Target (Godot)**: Raw measurements now exist (both AVD and real hardware -- see `docs/architecture/godot-migration-roadmap.md`'s EPIC-M6 section, "Real-hardware performance pass," 2026-08-22), but no formal numeric budget has been adopted yet:
+- **Target Framerate**: Measured 49-51 FPS steady on a real device (OnePlus OPD2403, Android 16) at both zero and max-population saves -- population is not the bottleneck; the device's own ~50Hz refresh-rate lock is (that device natively supports up to 144Hz). No formal target adopted -- this is raw data, not a pass/fail gate.
+- **Frame Budget**: Script/process time (`Performance.TIME_PROCESS`) measured 33-49ms on real hardware; no formal budget line adopted yet.
+- **Memory Ceiling**: Static memory measured ~59-59.3MB on real hardware at both population extremes; no formal ceiling adopted yet.
+- **Cold-load time**: 468ms Activity-first-frame on a fresh install (real device, `adb shell am start -W`).
+- **APK size**: ~31.0MB (debug-signed). No prior LibGDX baseline was ever recorded (per ADR-0001's own Performance Implications table), so this is reported standalone, not as a delta.
+
+Adopting an explicit numeric budget (e.g. "≥30 FPS, ≤X MB" as a release gate) is a product decision still open -- the measurement gap that blocked it is closed.
 
 ## Testing
 

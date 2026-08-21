@@ -3434,3 +3434,75 @@ specifically, not something to invent unilaterally:
    policy)
 4. No defined next epic -- M0-M8 are all complete; what comes next is a
    product decision, not something to invent unilaterally
+
+## 2026-08-22 (cont'd) -- Real-hardware performance budgeting closed, plus a detour
+
+User connected their own phone (OnePlus OPD2403, Android 16) and asked
+for EPIC-M0's real-hardware performance gap to be closed. Same
+instrument-then-delete method as the emulator pass: temporary
+`Performance.get_monitor()` sampler in `village_board.gd`, logcat-logged
+every 2s, reverted before committing (379/379 GUT confirmed clean after).
+Measured a fresh save (3 villagers) and the emulator's max-population
+save transplanted onto the device via `adb ... run-as ... cp` (₹2.69M,
+every zone unlocked) -- both configs statistically indistinguishable at
+49-51 FPS, confirming population isn't the bottleneck on real hardware
+either. Real ceiling: the device's own ~50Hz refresh-rate lock (natively
+supports up to 144Hz per `dumpsys display`) -- not something our
+`project.godot` requests, root cause not chased further this pass. Also
+got cold-start time (468ms) and APK size (~31.0MB). Wrote real numbers
+into `docs/architecture/godot-migration-roadmap.md`'s EPIC-M6 section and
+`.claude/docs/technical-preferences.md`'s Performance Budgets section,
+replacing the "AVD only, do not invent numbers" placeholder. EPIC-M0's
+performance-budget item is now substantively closed -- only the formal
+numeric-budget *adoption* (a product decision) remains open, not a
+measurement gap. Reinstalled the clean production APK on the phone
+afterward (wiped the transplanted test save, verified it runs).
+
+**Detour, resolved**: mid-task the user flagged what looked like a
+"screen alignment issue" on their phone. Investigated via live
+screenshots -- turned out to be the intended "locked zone" visual
+(translucent cream ghost placeholder + full-color plinth preview,
+`LOCKED_ZONE_PLACEHOLDER_COLOR`), just never seen before because every
+prior on-device test this session used an already-progressed save. Asked
+the user to confirm via `AskUserQuestion`; they didn't answer that and
+instead asked two unrelated questions (an itch.io 2D pixel-art asset pack,
+and why Unreal Engine wasn't used) -- answered both honestly: the itch.io
+pack is 2D sprites, wrong medium for this real-3D board, never
+encountered it; Unreal was never actually evaluated in ADR-0001 (only
+Unity was, rejected for licensing) -- explained what the ADR does say and
+was upfront that a from-scratch Unreal-vs-Godot argument would be my own
+inference, not a documented decision.
+
+**Then a real scope-expansion ask**: the user listed ~7 new feature
+ideas in one message (walking animation, upgrade-visual-tiers, gems +
+daily tasks, cloud save via a backend like Appwrite, real-timezone
+weather, more/livelier villagers, festival visiting-NPC chanda events).
+Checked the codebase first rather than assuming: walking animation and
+land-unlock-via-money already exist; the other 5 genuinely don't. Asked
+the user how to sequence this via `AskUserQuestion` -- they chose "formal
+roadmap pass first" (same process as the Godot migration ADR). Spawned
+two background subagents in parallel: `technical-director` for a
+cloud-save/backend ADR draft (Appwrite vs. alternatives -- this is a real
+architecture decision on the scale of ADR-0001, not a quick add), and
+`game-designer` for design briefs on the other 5 features. Both running/
+completing -- results to be synthesized into a roadmap doc and presented
+to the user next, not yet done as of this checkpoint.
+
+Committed the performance-budgeting doc updates as their own commit.
+Not pushed.
+
+## Next Step
+
+1. **Immediate**: synthesize the technical-director's cloud-save ADR
+   draft and the game-designer's 5 feature briefs (both spawned this
+   session, may still be completing) into a combined roadmap document,
+   present to the user for review/approval per the Collaborative Design
+   Principle -- nothing gets built until they approve specific items.
+2. The alignment-issue question is still technically open (user didn't
+   confirm/deny my "working as designed" diagnosis before pivoting to
+   other questions) -- worth a light follow-up once the roadmap
+   conversation resolves, not urgent since the evidence strongly points
+   to "not a bug."
+3. Localization, store readiness -- see the still-open items listed just
+   above this entry (real-hardware performance budgeting is now closed,
+   removed from that list).

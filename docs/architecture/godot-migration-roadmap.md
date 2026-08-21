@@ -473,6 +473,61 @@ EPIC-M0's long-standing project-wide gap, and the villager GDD's one
 still-open design question (`should count ever reach 0 early-game`) is a
 genuine product decision, not an engineering task.
 
+**Real-hardware performance pass — done (2026-08-22)**: the emulator-only
+caveat above is now closed. Same instrument-then-delete method (a
+temporary `Performance.get_monitor()` sampler in `village_board.gd`,
+logged to logcat every 2s, reverted before committing — 379/379 GUT
+confirmed clean after revert), this time run on a real physical device
+connected via `adb`, not the AVD:
+
+| Field | Value |
+|---|---|
+| Device | OnePlus OPD2403 ("5bc7f547"), Android 16 (SDK 36), Snapdragon (qcom), 2120×3000 @420dpi, ~12GB RAM |
+| Config A — fresh save (3 ambient villagers, default zones) | 49–51 FPS steady, one 58–60 FPS blip; frame_ms (script/process time only) 33–49ms; static memory ~59.0MB |
+| Config B — emulator's max-population save transplanted onto the device (2 assigned workers + ambient villagers, ₹2.69M, every zone unlocked) | 49–51 FPS steady, one 58–60 FPS blip; frame_ms 33–49ms; static memory ~59.0–59.3MB |
+| Cold-start (Activity first-frame, `adb shell am start -W`) | `TotalTime=468ms` (fresh install, `LaunchState: COLD`) |
+| APK size | ~31.0 MB (debug-signed, current build) |
+
+**Finding: population is not the FPS ceiling on real hardware either** —
+fresh-save and max-population-save numbers are statistically
+indistinguishable, consistent with the emulator's own villager-cost
+finding above. **The real ceiling is a fixed ~50Hz display-refresh lock**:
+`dumpsys display` confirms this device natively supports up to 144Hz
+(`supportedRefreshRates` includes 90/120/144) but negotiated down to
+exactly `renderFrameRate 50.0` for this app specifically — with no
+`max_fps`/`vsync` override anywhere in `project.godot`, this is the
+device's own adaptive-refresh-rate policy choosing a conservative fixed
+mode, not something this project's code is requesting. Not chased further
+this pass — flagged as a real open question (below), not silently
+attributed to either side.
+
+**Caveats, stated honestly, not glossed over**:
+- Single device, single session — this establishes "works acceptably on
+  one real Android 16 phone," not a device-spread baseline. No formal
+  frame-time/memory *budget* has still ever been adopted for this project
+  to grade these numbers against (same caveat as the emulator pass) —
+  these remain raw data with a direct answer to the specific questions
+  asked (does population cost FPS on real hardware; does the game even
+  run acceptably off the emulator), not a pass/fail verdict.
+  Battery at 50%, USB-charging, screen on throughout — a cold/unplugged/
+  adaptive-brightness real play session could measure differently.
+- The ~50Hz refresh lock's root cause is unconfirmed (device power policy
+  vs. something reachable from our end) — worth a closer look if this
+  project ever cares about matching this device's full 144Hz ceiling, but
+  50 FPS steady is well above any frame-time budget concern for a farming
+  sim, so not treated as a blocker.
+- APK size has no prior LibGDX baseline on record to diff against (ADR-0001's
+  own Performance Implications table already noted this gap at migration
+  time) — reported standalone, not as a delta.
+
+**EPIC-M0's performance-budget item is now substantively closed**: both
+the emulator and real-hardware questions this item existed to answer
+("does this run acceptably, does population scale cost anything") have
+real evidence-based answers. What's still open is only the *formal
+numeric budget adoption* itself (an explicit target like "≥30 FPS, ≤X MB"
+signed off as a gate) — a product decision about what threshold to hold
+the game to, not a measurement gap.
+
 ---
 
 ## EPIC-M7 — Worker Assignment & Wage Economy

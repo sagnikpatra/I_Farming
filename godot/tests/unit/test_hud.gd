@@ -59,3 +59,16 @@ func test_liveops_label_monsoon_and_festival_combined() -> void:
 func test_liveops_label_neither_active_returns_empty_string() -> void:
 	var festival := GameData.festival_def(0)
 	assert_eq(Hud.format_liveops_label(false, false, festival), "")
+
+
+func test_liveops_label_chanda_awaiting_takes_priority_over_monsoon_and_festival() -> void:
+	var festival := GameData.festival_def(0)
+	var chanda := GameData.chanda_festival_def(0)
+	var expected := "%s %s chanda visitor" % [chanda.emoji, chanda.display_name]
+	assert_eq(Hud.format_liveops_label(true, true, festival, true, chanda), expected)
+
+
+func test_liveops_label_chanda_not_awaiting_falls_back_to_monsoon_and_festival() -> void:
+	var festival := GameData.festival_def(0)
+	var expected := "🌧️ Monsoon · %s %s" % [festival.emoji, festival.display_name]
+	assert_eq(Hud.format_liveops_label(true, true, festival, false, null), expected)

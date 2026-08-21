@@ -65,6 +65,34 @@ func test_view_data_reflects_premium_pass_purchase() -> void:
 	assert_true(data["has_premium"])
 
 
+func test_view_data_reports_chanda_awaiting_decision_at_cycle_start() -> void:
+	# NOW_BOTH_ACTIVE=0 also falls inside Chanda's own 30m active window
+	# (12h cycle) -- verified independently of Monsoon/Festival's windows.
+	var data := EventsTab.build_view_data(eco, NOW_BOTH_ACTIVE)
+	assert_true(data["chanda_awaiting_decision"])
+	assert_eq(data["chanda_festival"].display_name, "Durga Puja")
+	assert_true(data["can_afford_chanda"])
+
+
+func test_view_data_reports_chanda_not_awaiting_mid_cycle() -> void:
+	var data := EventsTab.build_view_data(eco, NOW_BOTH_QUIET)
+	assert_false(data["chanda_awaiting_decision"])
+	assert_false(data["chanda_blessing_active"])
+
+
+func test_view_data_reflects_a_chanda_gift_and_its_blessing() -> void:
+	eco.give_chanda(NOW_BOTH_ACTIVE)
+	var data := EventsTab.build_view_data(eco, NOW_BOTH_ACTIVE + 1000)
+	assert_false(data["chanda_awaiting_decision"])
+	assert_true(data["chanda_blessing_active"])
+
+
+func test_view_data_reports_cannot_afford_chanda() -> void:
+	eco.state.coins = 0
+	var data := EventsTab.build_view_data(eco, NOW_BOTH_ACTIVE)
+	assert_false(data["can_afford_chanda"])
+
+
 func test_format_duration_omits_hours_when_zero() -> void:
 	assert_eq(EventsTab.format_duration(5 * 60_000), "5m")
 

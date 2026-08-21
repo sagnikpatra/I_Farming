@@ -55,6 +55,7 @@ func _populate() -> void:
 	var data := build_view_data(_economy, now)
 	_body.add_child(_build_monsoon_card(data))
 	_body.add_child(_build_festival_card(data))
+	_body.add_child(_build_chanda_card(data))
 
 
 func _now() -> int:
@@ -89,6 +90,13 @@ static func build_view_data(economy: GameEconomy, now: int) -> Dictionary:
 		"next_threshold": next_threshold,
 		"progress": progress,
 		"has_premium": preview.event_has_premium_pass,
+		"chanda_awaiting_decision": economy.chanda_visit_awaiting_decision(now),
+		"chanda_festival": economy.current_chanda_festival(now),
+		"chanda_remaining_ms": economy.chanda_visit_phase_remaining_ms(now),
+		"chanda_ask": economy.chanda_ask_amount(),
+		"chanda_blessing_active": now < economy.state.chanda_blessing_active_until,
+		"chanda_blessing_remaining_ms": economy.state.chanda_blessing_active_until - now,
+		"can_afford_chanda": economy.state.coins >= economy.chanda_ask_amount(),
 	}
 
 
@@ -113,6 +121,18 @@ static func format_duration(remaining_ms: int) -> String:
 
 func _on_premium_pass_pressed() -> void:
 	_economy.buy_premium_pass(_now())
+	_village_board.persist_and_rebuild_if_dirty()
+	_populate()
+
+
+func _on_give_chanda_pressed() -> void:
+	_economy.give_chanda(_now())
+	_village_board.persist_and_rebuild_if_dirty()
+	_populate()
+
+
+func _on_decline_chanda_pressed() -> void:
+	_economy.decline_chanda(_now())
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -217,6 +237,67 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 		box.add_child(active_label)
 	else:
 		box.add_child(_build_premium_pass_button(active))
+
+	card.add_child(box)
+	return card
+
+
+## The Chanda Visit card (design/gdd/festival-visiting-npcs.md) -- an
+## independent companion to the Festival Pass card above, never gated on or
+## combined with it. Three states: awaiting a Give/Decline decision, a
+## blessing currently active, or neither (a quiet "next visit in X" line).
+func _build_chanda_card(data: Dictionary) -> PanelContainer:
+	var festival: ChandaFestivalDef = data["chanda_festival"]
+	var awaiting: bool = data["chanda_awaiting_decision"]
+	var blessing_active: bool = data["chanda_blessing_active"]
+
+	var card := _make_panel(RIPE_GOLD.lerp(WOOD_BROWN_LIGHT, 0.5) if awaiting else WOOD_BROWN_LIGHT, 14)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 4)
+
+	var text_color: Color = SOIL_BROWN_DARK if awaiting else Color.WHITE
+	box.add_child(_make_title_label("%s %s" % [festival.emoji, festival.display_name], 17, text_color))
+
+	if awaiting:
+		var ask: int = data["chanda_ask"]
+		var blurb := _make_title_label(
+			"A neighbor has stopped by collecting chanda for %s. Give ₹%d?" % [festival.display_name, ask],
+			14, text_color
+		)
+		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
+		box.add_child(blurb)
+
+		var buttons := HBoxContainer.new()
+		buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		buttons.add_theme_constant_override("separation", 8)
+
+		var can_afford: bool = data["can_afford_chanda"]
+		var give_button := UiTheme.make_chunky_button(
+			"Give -- ₹%d" % ask if can_afford else "Can't afford ₹%d" % ask,
+			FIELD_GREEN_LIGHT, Color.WHITE, can_afford
+		)
+		give_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		give_button.pressed.connect(_on_give_chanda_pressed)
+		buttons.add_child(give_button)
+
+		var decline_button := UiTheme.make_chunky_button("Not this time", WOOD_BROWN_LIGHT, Color.WHITE, true)
+		decline_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		decline_button.pressed.connect(_on_decline_chanda_pressed)
+		buttons.add_child(decline_button)
+
+		box.add_child(buttons)
+	elif blessing_active:
+		var remaining := format_duration(data["chanda_blessing_remaining_ms"])
+		box.add_child(_make_title_label(
+			"🙏 Blessing active -- +%d%% sell price for %s" % [
+				roundi((GameData.CHANDA_BLESSING_MULTIPLIER - 1.0) * 100.0), remaining
+			],
+			14, text_color
+		))
+	else:
+		var remaining := format_duration(data["chanda_remaining_ms"])
+		box.add_child(_make_title_label("Next visitor in %s" % remaining, 14, text_color))
 
 	card.add_child(box)
 	return card

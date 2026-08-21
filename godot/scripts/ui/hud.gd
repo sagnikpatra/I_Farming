@@ -207,11 +207,21 @@ func _refresh_inventory(inventory: Dictionary) -> void:
 func _refresh_liveops_banner(economy: GameEconomy, now: int) -> void:
 	var monsoon_active := economy.is_monsoon_active(now)
 	var festival_active := economy.is_festival_active(now)
-	if not monsoon_active and not festival_active:
+	# A Chanda Visit (design/gdd/festival-visiting-npcs.md) awaiting a
+	# Give/Decline decision must surface the banner on its own, independent
+	# of Monsoon/Festival -- the Events sheet is the ONLY way to reach it
+	# (events_tab.gd's own header comment: "there is no Events zone on the
+	# board"), so without this a chanda-only active window would be
+	# invisible and unreachable for its entire 30-minute window.
+	var chanda_awaiting := economy.chanda_visit_awaiting_decision(now)
+	if not monsoon_active and not festival_active and not chanda_awaiting:
 		_liveops_banner.visible = false
 		return
 	var festival := economy.current_festival(now)
-	_liveops_banner.text = format_liveops_label(monsoon_active, festival_active, festival)
+	var chanda_festival := economy.current_chanda_festival(now)
+	_liveops_banner.text = format_liveops_label(
+		monsoon_active, festival_active, festival, chanda_awaiting, chanda_festival
+	)
 	_liveops_banner.visible = true
 
 
@@ -236,7 +246,16 @@ static func build_inventory_display(inventory: Dictionary) -> Array:
 ## must check via monsoon_active/festival_active before displaying -- see
 ## _refresh_liveops_banner()). Not underscore-prefixed for the same testing
 ## reason as build_inventory_display() above.
-static func format_liveops_label(monsoon_active: bool, festival_active: bool, festival: FestivalDef) -> String:
+## `chanda_awaiting`/`chanda_festival` take priority over Monsoon/Festival --
+## a Chanda Visit has a hard 30-minute window and needs an actual decision,
+## unlike Monsoon/Festival's purely informational banners, so it must not
+## get silently buried behind them when several are active at once.
+static func format_liveops_label(
+	monsoon_active: bool, festival_active: bool, festival: FestivalDef,
+	chanda_awaiting: bool = false, chanda_festival: ChandaFestivalDef = null
+) -> String:
+	if chanda_awaiting:
+		return "%s %s chanda visitor" % [chanda_festival.emoji, chanda_festival.display_name]
 	if monsoon_active and festival_active:
 		return "🌧️ Monsoon · %s %s" % [festival.emoji, festival.display_name]
 	if monsoon_active:

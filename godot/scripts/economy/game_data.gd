@@ -142,6 +142,24 @@ const FESTIVAL_TIER_THRESHOLDS: Array[int] = [50, 150, 300]
 const FESTIVAL_FREE_REWARDS: Array[int] = [500, 1_500, 4_000]
 const FESTIVAL_PREMIUM_BONUS: Array[int] = [500, 1_500, 4_000]
 
+# --- LiveOps: Chanda Visit (design/gdd/festival-visiting-npcs.md) -----------
+# Independent cycle from the Festival Event Pass above -- a companion
+# system, not a replacement; the two share no state and can overlap freely.
+
+const CHANDA_CYCLE_MS: int = 12 * 60 * 60 * 1000
+const CHANDA_ACTIVE_DURATION_MS: int = 30 * 60 * 1000
+
+## Ask amount scales lightly with progression -- always a minor, affordable
+## ask, never a meaningful economy sink or gate (§4 of the GDD).
+const CHANDA_BASE_ASK: int = 20
+const CHANDA_ASK_PER_LEVEL: int = 15
+
+## Modest, time-limited sell-price blessing for giving -- deliberately
+## weaker than the Festival Pass's own rewards; this is a warmth beat, not
+## a min-max lever.
+const CHANDA_BLESSING_MULTIPLIER: float = 1.08
+const CHANDA_BLESSING_DURATION_MS: int = 2 * 60 * 60 * 1000
+
 # --- Land expansion ----------------------------------------------------------
 
 ## Marginal pricing: each new plot costs more than the last, per the design
@@ -368,6 +386,37 @@ static func festival_def(cycle_index: int) -> FestivalDef:
 	_ensure_festivals()
 	var index: int = int(cycle_index % _festivals.size())
 	return _festivals[index]
+
+# --- LiveOps: Chanda Visit (design/gdd/festival-visiting-npcs.md) -----------
+# Deliberately plural -- the four festivals represent the real religious
+# makeup of a rural Indian village (Hindu, Muslim, Christian, Sikh), not any
+# single community. Fixed rotation order via cycle_index % size(), same as
+# festival_def() above, so every festival appears equally often.
+
+static var _chanda_festivals: Array[ChandaFestivalDef] = []
+
+
+static func _ensure_chanda_festivals() -> void:
+	if not _chanda_festivals.is_empty():
+		return
+	_chanda_festivals.append(
+		ChandaFestivalDef.new("Durga Puja", "🪔", "Durga Puja blessings to you and your family!")
+	)
+	_chanda_festivals.append(
+		ChandaFestivalDef.new("Eid", "🌙", "Eid Mubarak to you and your family!")
+	)
+	_chanda_festivals.append(
+		ChandaFestivalDef.new("Christmas", "🎄", "A very Merry Christmas to you and your family!")
+	)
+	_chanda_festivals.append(
+		ChandaFestivalDef.new("Baisakhi", "🌾", "Happy Baisakhi -- may your harvest be bountiful!")
+	)
+
+
+static func chanda_festival_def(cycle_index: int) -> ChandaFestivalDef:
+	_ensure_chanda_festivals()
+	var index: int = int(cycle_index % _chanda_festivals.size())
+	return _chanda_festivals[index]
 
 
 static func festival_count() -> int:

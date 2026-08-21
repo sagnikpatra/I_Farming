@@ -230,6 +230,75 @@ func _register_festival_sale(crop: int, units_sold: int, now: int) -> void:
 	_mark_dirty()
 
 
+# --- LiveOps: Chanda Visit (design/gdd/festival-visiting-npcs.md) ---------------
+# Independent cycle from the Festival Event Pass above -- see that file's §3.
+
+func is_chanda_visit_active(now: int) -> bool:
+	return posmod(now, GameData.CHANDA_CYCLE_MS) < GameData.CHANDA_ACTIVE_DURATION_MS
+
+
+func current_chanda_festival(now: int) -> ChandaFestivalDef:
+	return GameData.chanda_festival_def(now / GameData.CHANDA_CYCLE_MS)
+
+
+func chanda_visit_phase_remaining_ms(now: int) -> int:
+	var phase := posmod(now, GameData.CHANDA_CYCLE_MS)
+	if phase < GameData.CHANDA_ACTIVE_DURATION_MS:
+		return GameData.CHANDA_ACTIVE_DURATION_MS - phase
+	return GameData.CHANDA_CYCLE_MS - phase
+
+
+## Whether the current visit occurrence (if any) still needs a Give/Decline
+## decision -- false once resolved, false when no visit is active at all.
+func chanda_visit_awaiting_decision(now: int) -> bool:
+	if not is_chanda_visit_active(now):
+		return false
+	var cycle_index: int = now / GameData.CHANDA_CYCLE_MS
+	return state.chanda_last_resolved_cycle_index != cycle_index
+
+
+## The ask amount for the CURRENT farmhouse level -- computed live, never
+## cached, per the GDD's Edge Cases §5.
+func chanda_ask_amount() -> int:
+	return GameData.CHANDA_BASE_ASK + state.farmhouse_level * GameData.CHANDA_ASK_PER_LEVEL
+
+
+func _chanda_blessing_multiplier(now: int) -> float:
+	if now < state.chanda_blessing_active_until:
+		return GameData.CHANDA_BLESSING_MULTIPLIER
+	return 1.0
+
+
+## Deducts the ask amount, starts (or resets -- never stacks, per the GDD's
+## Edge Cases §5) the blessing timer, and marks this occurrence resolved.
+## No-ops (with a message) if no visit is active, it's already resolved, or
+## the ask is unaffordable -- mirrors buy_premium_pass()'s own guard shape.
+func give_chanda(now: int) -> void:
+	if not chanda_visit_awaiting_decision(now):
+		return
+	var ask: int = chanda_ask_amount()
+	if state.coins < ask:
+		_push_event("Need ₹%d for the chanda." % ask)
+		return
+	var festival := current_chanda_festival(now)
+	state.coins -= ask
+	state.chanda_last_resolved_cycle_index = now / GameData.CHANDA_CYCLE_MS
+	state.chanda_blessing_active_until = now + GameData.CHANDA_BLESSING_DURATION_MS
+	_push_event("%s %s" % [festival.emoji, festival.give_flavor])
+	_mark_dirty()
+
+
+## Declines the current visit -- costs nothing, grants no buff, marks the
+## occurrence resolved so the same visit can't be asked twice. Never a
+## worse outcome than doing nothing (per the GDD's Player Fantasy §2).
+func decline_chanda(now: int) -> void:
+	if not chanda_visit_awaiting_decision(now):
+		return
+	state.chanda_last_resolved_cycle_index = now / GameData.CHANDA_CYCLE_MS
+	_push_event("Maybe next time -- no hard feelings.")
+	_mark_dirty()
+
+
 # --- The Ancestral Farmhouse: core progression hub ------------------------------
 
 func storage_capacity() -> int:
@@ -250,9 +319,11 @@ func _growth_speed_multiplier() -> float:
 
 
 ## Farm-wide sell-price multiplier from the Farmhouse level (e.g. 1.10 = 10%
-## more).
-func _sell_price_multiplier() -> float:
-	return 1.0 + GameData.farmhouse_level_def(state.farmhouse_level).sell_price_bonus_percent / 100.0
+## more), composed with the Chanda Visit blessing (see
+## _chanda_blessing_multiplier()) when one is active.
+func _sell_price_multiplier(now: int) -> float:
+	var farmhouse: float = 1.0 + GameData.farmhouse_level_def(state.farmhouse_level).sell_price_bonus_percent / 100.0
+	return farmhouse * _chanda_blessing_multiplier(now)
 
 
 func buy_farmhouse_upgrade() -> void:
@@ -357,7 +428,7 @@ func sell_crop(crop: int, now: int) -> void:
 	if stock == null or stock.total == 0:
 		return
 
-	var sell_multiplier := _sell_price_multiplier()
+	var sell_multiplier := _sell_price_multiplier(now)
 	var crop_def := GameData.crop_def(crop)
 	var normal_value: int = roundi(stock.normal * crop_def.base_sell_price * sell_multiplier)
 	var damaged_value: int = roundi(stock.damaged * crop_def.base_sell_price * GameData.WEATHER_DAMAGE_YIELD_MULTIPLIER * sell_multiplier)
@@ -374,7 +445,7 @@ func sell_crop(crop: int, now: int) -> void:
 func sell_all(now: int) -> void:
 	if state.inventory.is_empty():
 		return
-	var sell_multiplier := _sell_price_multiplier()
+	var sell_multiplier := _sell_price_multiplier(now)
 	var total_value: int = 0
 	var sold_stock: Dictionary = {}
 	for crop: int in state.inventory.keys():
@@ -932,7 +1003,7 @@ func sell_to_mandi(crop: int, now: int) -> void:
 		return
 
 	var market_multiplier := mandi_price_multiplier(crop, now)
-	var farmhouse_multiplier := _sell_price_multiplier()
+	var farmhouse_multiplier := _sell_price_multiplier(now)
 	var combined: float = market_multiplier * farmhouse_multiplier
 
 	var crop_def := GameData.crop_def(crop)

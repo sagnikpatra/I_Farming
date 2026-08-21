@@ -52,6 +52,14 @@ extends Resource
 ## Highest reward tier (0..GameData's festival tier count) already granted
 ## this occurrence.
 @export var event_claimed_tier: int = 0
+## LiveOps: Chanda Visit (design/gdd/festival-visiting-npcs.md) -- an
+## independent companion system to the Festival Event Pass above, not part
+## of it. Which cycle index's visit was last given-to or declined, so the
+## same occurrence can't be resolved twice. -1 = never resolved.
+@export var chanda_last_resolved_cycle_index: int = -1
+## Epoch ms until the give-chanda sell-price blessing is active. 0 = no
+## active blessing.
+@export var chanda_blessing_active_until: int = 0
 ## Custom drag-to-reposition positions for the village board's structure
 ## zones, keyed by zone id (see village_board scripts' zone-id constants).
 ## Missing entries fall back to that zone's default anchor. String zone id ->

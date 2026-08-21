@@ -152,10 +152,21 @@ const AMBIENCE_BASE_LOOP_PATH: String = "res://assets/audio/ambience/amb_village
 const AMBIENCE_MONSOON_LOOP_PATH: String = "res://assets/audio/ambience/amb_layer_monsoon_rain_loop.ogg"
 const AMBIENCE_FESTIVAL_LOOP_PATH: String = "res://assets/audio/ambience/amb_layer_festival_percussion_loop.ogg"
 
-## 11 equal-weight ambience-detail one-shots (birds/temple-bell/well-creak/
+## 10 equal-weight ambience-detail one-shots (birds/temple-bell/well-creak/
 ## cattle-bell), fed to AudioManager's 3-Timer detail scheduler. Along with
-## the 3 loop paths above, totals 14 ambience files + 26 SFX/UI files = the
-## 40 filenames documented in design/audio/audio-core-gameplay-loop.md.
+## the 3 loop paths above, totals 13 ambience files actually IN the pool +
+## 26 SFX/UI files = 39 of the 40 filenames documented in design/audio/
+## audio-core-gameplay-loop.md still active.
+##
+## amb_detail_temple_bell_01.ogg retired from this pool 2026-08-21
+## (production/qa/audio/listen-through-pass-2026-08-21.md) -- sourced from
+## a Japanese Zen temple bell (Daitoku-ji, Kyoto), not an Indian one;
+## spectrogram-confirmed structurally different from _02 (a single
+## long-decay strike vs. _02's 10+ rapid repeated strikes, which is how
+## Hindu temple bells -- _02's own explicit source description -- are
+## actually rung). The file itself is left on disk (a harmless orphaned
+## CC0 asset, still documented in CREDITS.md for provenance) rather than
+## deleted -- only removed from active playback.
 const AMBIENCE_DETAIL_PATHS: Array[String] = [
 	"res://assets/audio/ambience/amb_detail_bird_bulbul_01.ogg",
 	"res://assets/audio/ambience/amb_detail_bird_bulbul_02.ogg",
@@ -163,7 +174,6 @@ const AMBIENCE_DETAIL_PATHS: Array[String] = [
 	"res://assets/audio/ambience/amb_detail_bird_mynah_02.ogg",
 	"res://assets/audio/ambience/amb_detail_bird_crow_01.ogg",
 	"res://assets/audio/ambience/amb_detail_bird_crow_02.ogg",
-	"res://assets/audio/ambience/amb_detail_temple_bell_01.ogg",
 	"res://assets/audio/ambience/amb_detail_temple_bell_02.ogg",
 	"res://assets/audio/ambience/amb_detail_well_creak_01.ogg",
 	"res://assets/audio/ambience/amb_detail_cattle_bell_01.ogg",

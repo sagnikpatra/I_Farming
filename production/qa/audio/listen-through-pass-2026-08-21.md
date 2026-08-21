@@ -68,3 +68,18 @@ This pass can't close the original caveat, only narrow it. Specifically still ne
 ## Recommendation
 
 Not blocking — nothing here is broken, and the one real finding (`temple_bell_01`) has a clear, cheap fix path already identified. Worth doing the actual human listen when convenient; this pass at least means that listen can be targeted (2 flagged files + a quick pass on the rest) rather than starting cold.
+
+## Remediation Log (2026-08-21)
+
+`amb_detail_temple_bell_01.ogg` removed from `AudioCatalogue.
+AMBIENCE_DETAIL_PATHS` (the round-robin pool actually played in-game) —
+`_02` (already confirmed as genuinely Hindu temple bells) now carries the
+temple-bell detail sound alone, rather than round-robining with a
+structurally mismatched Japanese temple bell. The file itself is left on
+disk and still documented in `CREDITS.md` for provenance, just marked
+retired — not deleted, since it's a harmless orphaned CC0 asset and
+deleting it would ripple the "40 files" count referenced in several other
+docs for no real benefit. `bird_mynah_02.ogg`'s weaker approximation and
+the harvest twig-snaps were left as-is per this report's own confidence
+levels (worth a human's ear, not clear-cut enough to act on unilaterally).
+360/360 GUT tests pass, unaffected.

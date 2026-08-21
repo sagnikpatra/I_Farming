@@ -193,6 +193,23 @@ mobile SFX/ambience LUFS targets, but not verified against the originals.
 A listen-through pass (and an on-device audio check) is the natural next
 step before treating this as fully done.
 
+**Update, 2026-08-21**: the on-device audio check is done (real production
+code paths exercised on the emulator, `ui_button_tap`/`ui_sheet_open`/
+`economy_plant`/`ui_sheet_close` all confirmed firing). A listen-through
+pass was attempted but hit a real capability limit head-on: no literal
+listening is possible without auditory perception, so `production/qa/
+audio/listen-through-pass-2026-08-21.md` is a technical/metadata proxy
+(objective QC + spectrogram inspection + source-plausibility cross-check),
+explicitly not a substitute for a human actually listening. It found and
+fixed one real issue: `amb_detail_temple_bell_01.ogg` was a Japanese Zen
+temple bell (Daitoku-ji, Kyoto), not an Indian one, spectrogram-confirmed
+structurally different from `_02` (single long-decay strike vs. `_02`'s
+10+ rapid repeated strikes — how Hindu temple bells, `_02`'s own source
+description, are actually rung) — retired from `AudioCatalogue.
+AMBIENCE_DETAIL_PATHS`, `_02` carries the temple-bell detail alone now.
+The genuine human listen-through remains open — this pass narrows what it
+needs to cover, not replaces it.
+
 **Not wired this pass** (explicit follow-up, not implied as covered):
 - `agroforestry_tab.gd` / `niche_farming_tab.gd` — mechanically identical to
   the already-done `polyhouse_tab.gd` (`progression_structure_unlock` +

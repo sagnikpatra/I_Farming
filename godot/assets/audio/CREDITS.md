@@ -78,7 +78,7 @@ for a matched open/close pair rather than an unrelated third sound.
 | ambience/amb_detail_bird_mynah_02.ogg | [864632](https://freesound.org/s/864632/) | Livingstone's Turaco; Two Short Calls | TheKingOfGeeks360 | approximation, see above |
 | ambience/amb_detail_bird_crow_01.ogg | [361470](https://freesound.org/s/361470/) | Crow Caw | Jofae | |
 | ambience/amb_detail_bird_crow_02.ogg | [536732](https://freesound.org/s/536732/) | Caw.ogg | egomassive | |
-| ambience/amb_detail_temple_bell_01.ogg | [337048](https://freesound.org/s/337048/) | bell-at-daitokuji-temple-kyoto_modified.mp3 | shinephoenixstormcrow | |
+| ambience/amb_detail_temple_bell_01.ogg | [337048](https://freesound.org/s/337048/) | bell-at-daitokuji-temple-kyoto_modified.mp3 | shinephoenixstormcrow | **Retired 2026-08-21** -- a Japanese Zen temple bell (Daitoku-ji, Kyoto), not an Indian one; see `production/qa/audio/listen-through-pass-2026-08-21.md`. File left on disk for provenance; removed from `AudioCatalogue.AMBIENCE_DETAIL_PATHS`, no longer played. |
 | ambience/amb_detail_temple_bell_02.ogg | [271627](https://freesound.org/s/271627/) | 2HinduTemplesBells2.wav | LoopUdu | trimmed 0–3.5s; explicitly Hindu temple bells |
 | ambience/amb_detail_well_creak_01.ogg | [845753](https://freesound.org/s/845753/) | Creaking Door #2 | True_Killian | trimmed 0–2.2s; approximation, see above |
 | ambience/amb_detail_cattle_bell_01.ogg | [481151](https://freesound.org/s/481151/) | Cow Bells 01.wav | LilMati | |

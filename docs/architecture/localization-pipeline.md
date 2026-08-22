@@ -2,12 +2,13 @@
 
 ## Status
 
-Phase 1 complete (infrastructure + a proven real slice). Phase 2
-(finishing the UI-wide string migration) in progress -- all 7
-management sheets and all 3 pickers (`seed_picker.gd`,
-`agro_plant_picker.gd`, `decoration_picker.gd`) done (2026-08-22, same
-day). The 2 info cards, `worker_assignment_row.gd`, and
-`game_economy.gd`'s `_push_event()` strings remain.
+Phase 1 complete (infrastructure + a proven real slice). Phase 2's
+entire mechanical sweep is now complete (2026-08-22, same day): every
+`*_tab.gd`, `*_picker.gd`, `*_card.gd`, and `worker_assignment_row.gd`
+file with hardcoded UI strings has been migrated. The one remaining
+item, `game_economy.gd`'s `_push_event()` message strings, was flagged
+from the start as its own larger design question, not a mechanical
+sweep target -- see that section below.
 
 ## Date
 
@@ -152,31 +153,41 @@ or the HUD's LiveOps banner. What's left is narrower UI surface area.
   `TranslationServer.translate()` throughout.
 - `decoration_picker.gd`: the sheet title (its one hardcoded string;
   decoration display names stay data-driven).
+- `decoration_info_card.gd`: the "Decoration" subtitle and "Remove"
+  button.
+- `growing_info_card.gd`: the "sells ₹%d" subtitle and the "⏩ Skip (%d
+  gems)" button (see `gems-second-sink.md`).
+- `worker_assignment_row.gd`: the "👤 Worker" header, the assigned-
+  status line, and the Assign/Unassign buttons. Character class names
+  (Barbarian, Knight, ...) stay data-driven, same treatment as crop/
+  decoration names elsewhere. **Real regression risk found and
+  guarded**: `test_worker_assignment_row.gd` finds its buttons by exact
+  text match (`n.text == "Assign"`), so the English CSV column had to
+  stay byte-identical to the original hardcoded strings -- verified by
+  a dedicated `test_localization.gd` check, not just assumed safe.
 
-## What's explicitly NOT yet migrated (Phase 2 remaining scope)
+This completes Phase 2's entire mechanical sweep -- every UI file with
+hardcoded player-facing strings has been migrated.
 
-Every other hardcoded string in `godot/scripts/ui/`, specifically:
+## What's explicitly NOT yet migrated
 
-- `decoration_info_card.gd`, `growing_info_card.gd`,
-  `worker_assignment_row.gd` — info cards and the worker-assignment row.
 - `game_economy.gd`'s `_push_event()` message strings (the toast/
   snackbar text surfaced to the player on a rejected or completed
-  action) — a large, free-text surface (dozens of call sites), not
-  migrated this pass.
+  action, drained by `hud.gd` -- see this doc's Related section) -- a
+  large, free-text surface (dozens of call sites), deliberately not
+  folded into the mechanical sweep above.
 - Any dynamically-composed string built with `%` interpolation
   elsewhere in the codebase not listed above.
 
-**Phase 2 plan**: migrate the remaining `*_tab.gd`/`*_card.gd`/
-`*_picker.gd` files sheet by sheet, following this phase's exact
-pattern (extract each hardcoded literal to a namespaced CSV key —
-`<screen>.<element>` — provide a real Hindi translation, flag any
-translation the author isn't confident in rather than guessing
-silently). `_push_event()`'s message strings are a separate, larger
-design question (worth resolving alongside the also-still-open
-`ui_action_rejected` audio-wiring gap in `design/audio/
-audio-core-gameplay-loop.md`, since both need the same "what does this
-message mean, structurally" answer) and should be scoped as its own
-follow-up rather than folded into a mechanical per-file sweep.
+**Phase 3 plan** (renamed from "Phase 2 remaining scope" now that the
+mechanical sweep is done): migrate `_push_event()`'s message strings.
+This is a separate, larger design question from the sweep above (worth
+resolving alongside the now-closed `ui_action_rejected` audio-wiring
+work in `design/audio/audio-core-gameplay-loop.md`, since both needed
+the same "what does this message mean, structurally" answer that
+`GameEvent.is_rejection` partially answered) -- scope it as its own
+follow-up with its own classification pass, not a continuation of this
+phase's per-file sweep.
 
 ## Tests
 
@@ -217,6 +228,13 @@ bug class found repeatedly this session, but the first time it leaked
 through a genuinely global singleton rather than a per-instance field.
 Fixed by having the locale tests delete the real file (not just reset
 `TranslationServer` in-memory) in both `before_each()`/`after_each()`.
+That fix was then generalized into a shared `RealSavePaths` test
+utility (`godot/tests/unit/test_helpers/real_save_paths.gd`) -- see its
+own doc comment for the full 6-occurrence history across this session.
+Extended once more after the 2 info cards/`worker_assignment_row.gd`
+(the last mechanical-sweep slice, including a regression guard for
+`test_worker_assignment_row.gd`'s exact-text button lookups) --
+578/578, twice, non-flaky.
 
 ## Dependencies
 

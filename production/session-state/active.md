@@ -4868,3 +4868,39 @@ Full suite: 576/576, run three times, non-flaky.
 Still open and blocked on the user, unchanged: pushing accumulated
 local commits to origin, and the Play Console Game Services setup for
 real cloud-save sign-in.
+
+## 2026-08-22 (Phase 2 localization, fifth slice -- mechanical sweep complete)
+
+Migrated the last 3 files in Phase 2's mechanical sweep:
+`decoration_info_card.gd` ("Decoration" subtitle, "Remove" button),
+`growing_info_card.gd` ("sells ₹%d" subtitle, "⏩ Skip" button), and
+`worker_assignment_row.gd` (header, status line, Assign/Unassign
+buttons -- character class names like Barbarian/Knight stay
+data-driven, same treatment as crop/decoration names throughout this
+whole effort). Added a regression guard for `test_worker_assignment_
+row.gd`'s exact-text button lookups (`n.text == "Assign"`), confirming
+the English CSV column stays byte-identical to the original hardcoded
+strings.
+
+**This completes Phase 2's entire mechanical sweep** -- every
+`*_tab.gd`, `*_picker.gd`, `*_card.gd`, and `worker_assignment_row.gd`
+file with hardcoded player-facing UI strings is now localized (7
+management sheets + 3 pickers + 2 info cards + 1 worker row, ~140 CSV
+keys total across the whole pass). Renamed the doc's remaining-scope
+section to "Phase 3" now that it's just one item:
+`game_economy.gd`'s `_push_event()` message strings, deliberately
+scoped as its own design question from the very start of Phase 2, not
+a mechanical-sweep target.
+
+Full suite: 578/578 (up from 576/576), run twice, non-flaky. Updated
+localization-pipeline.md and the roadmap's Localization bullet.
+
+**Next step**: Phase 3 (`_push_event()` message-string migration) is
+the one remaining localization item, but it's a genuinely different
+kind of task -- classifying and migrating ~48 free-text economy
+messages needs its own design pass, not a continuation of this
+session's mechanical per-file sweep. Reasonable to treat this as a
+natural stopping point for localization and pick a different area, or
+start Phase 3 fresh next. Still open and blocked on the user,
+unchanged: pushing accumulated local commits to origin, and the Play
+Console Game Services setup for real cloud-save sign-in.

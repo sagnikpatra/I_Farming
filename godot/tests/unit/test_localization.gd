@@ -160,6 +160,24 @@ func test_english_locale_still_resolves_picker_keys() -> void:
 	assert_eq(tr(&"decoration_picker.title"), "Choose a decoration to place")
 
 
+## decoration_info_card.gd/growing_info_card.gd/worker_assignment_row.gd --
+## the last mechanical sweep of Phase 2.
+func test_hindi_locale_resolves_info_card_and_worker_row_keys() -> void:
+	TranslationServer.set_locale("hi")
+	assert_eq(tr(&"decoration_info.remove_button"), "हटाएं")
+	assert_eq(tr(&"growing_info.skip_button") % 10, "⏩ स्किप करें (10 जेम्स)")
+	assert_eq(tr(&"worker_row.status") % "Knight", "Knight इस क्षेत्र में काम कर रहा है।")
+
+
+## Regression guard for test_worker_assignment_row.gd's own exact-text
+## button lookups (n.text == "Assign"/"Unassign") -- those must keep
+## matching under the default English locale after this migration.
+func test_english_locale_worker_row_button_text_is_unchanged() -> void:
+	TranslationServer.set_locale("en")
+	assert_eq(tr(&"worker_row.assign_button"), "Assign")
+	assert_eq(tr(&"worker_row.unassign_button"), "Unassign")
+
+
 # ---------------------------------------------------------------------------
 # AccessibilitySettings.locale
 # ---------------------------------------------------------------------------

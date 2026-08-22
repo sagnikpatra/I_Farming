@@ -81,7 +81,7 @@ func _populate() -> void:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 8)
 
-	box.add_child(UiTheme.make_title_label("👤 Worker", 16))
+	box.add_child(UiTheme.make_title_label(tr(&"worker_row.header"), 16))
 
 	var assignment: WorkerAssignment = _economy.get_worker_assignment(_plot_kind)
 	if assignment != null:
@@ -99,12 +99,12 @@ func _build_assigned_row(assignment: WorkerAssignment) -> HBoxContainer:
 	row.add_theme_constant_override("separation", 8)
 
 	var display_name: String = CHARACTER_DISPLAY_NAMES.get(assignment.character_key, assignment.character_key)
-	var status_label := UiTheme.make_title_label("%s is working this zone." % display_name, 13, Color.WHITE, false)
+	var status_label := UiTheme.make_title_label(tr(&"worker_row.status") % display_name, 13, Color.WHITE, false)
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	row.add_child(status_label)
 
-	var unassign_button := UiTheme.make_chunky_button("Unassign", SOIL_BROWN_DARK)
+	var unassign_button := UiTheme.make_chunky_button(tr(&"worker_row.unassign_button"), SOIL_BROWN_DARK)
 	unassign_button.pressed.connect(_on_unassign_pressed)
 	row.add_child(unassign_button)
 
@@ -123,7 +123,7 @@ func _build_unassigned_row() -> HBoxContainer:
 	_style_option_button(_option_button)
 	row.add_child(_option_button)
 
-	var assign_button := UiTheme.make_chunky_button("Assign", FIELD_GREEN)
+	var assign_button := UiTheme.make_chunky_button(tr(&"worker_row.assign_button"), FIELD_GREEN)
 	assign_button.pressed.connect(_on_assign_pressed)
 	row.add_child(assign_button)
 

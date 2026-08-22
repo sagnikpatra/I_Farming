@@ -85,7 +85,7 @@ func _populate() -> void:
 	add_child(name_label)
 
 	var subtitle_label := Label.new()
-	subtitle_label.text = "sells ₹%d" % crop_def.base_sell_price
+	subtitle_label.text = tr(&"growing_info.sells") % crop_def.base_sell_price
 	subtitle_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle_label.label_settings = _make_label_settings(14, Color(0.243, 0.141, 0.071, 0.9))
@@ -94,7 +94,7 @@ func _populate() -> void:
 	if _economy != null and _village_board != null and _bottom_sheet != null and _plot_id >= 0:
 		var now := int(Time.get_unix_time_from_system() * 1000.0)
 		var can_skip := _economy.can_skip_grow_time(now)
-		var button := UiTheme.make_chunky_button("⏩ Skip (%d gems)" % GameData.GROW_SKIP_COST_GEMS, WOOD_BROWN_LIGHT, Color.WHITE, can_skip)
+		var button := UiTheme.make_chunky_button(tr(&"growing_info.skip_button") % GameData.GROW_SKIP_COST_GEMS, WOOD_BROWN_LIGHT, Color.WHITE, can_skip)
 		button.pressed.connect(_on_skip_pressed)
 		add_child(button)
 

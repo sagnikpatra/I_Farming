@@ -126,13 +126,13 @@ stays the owner's regardless of how much of this list gets done.
       `game_economy.gd`'s `_push_event()` message strings) remain
       unmigrated by design — see `docs/architecture/
       localization-pipeline.md`'s own Phase 2 plan, not silently assumed
-      covered. Phase 2 itself is now in progress: all 7 management
-      sheets and all 3 pickers done same day (`farmhouse_tab.gd`,
-      `mandi_tab.gd`, `polyhouse_tab.gd`, `agroforestry_tab.gd`,
-      `niche_farming_tab.gd`, `open_field_tab.gd`, `events_tab.gd`,
-      `seed_picker.gd`, `agro_plant_picker.gd`, `decoration_picker.gd`),
-      576/576 GUT passing. Only info cards/`worker_assignment_row.gd`/
-      `_push_event()` remain.
+      covered. Phase 2's entire mechanical sweep is now complete, same
+      day: all 7 management sheets, all 3 pickers, both info cards, and
+      `worker_assignment_row.gd` migrated (see `docs/architecture/
+      localization-pipeline.md` for the full file list), 578/578 GUT
+      passing. Only `game_economy.gd`'s `_push_event()` message strings
+      remain -- deliberately scoped as its own Phase 3 design question,
+      not a mechanical-sweep target.
 - [x] Security/save-integrity audit — done 2026-08-21: `/security-audit
       full` run against the Godot save format and economy logic. **1 HIGH
       finding (SEC-001: save-loaded crop/host/decoration enum ordinals

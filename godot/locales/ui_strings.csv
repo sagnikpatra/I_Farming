@@ -103,3 +103,11 @@ agro_plant.instant,Instant,तुरंत
 agro_plant.sandalwood_details,%d+ days · sells ₹%d,%d+ दिन · ₹%d में बिकता है
 agro_plant.sandalwood_needs_host,Needs an adjacent host plant,पास में मेज़बान पौधे की ज़रूरत है
 decoration_picker.title,Choose a decoration to place,रखने के लिए एक सजावट चुनें
+decoration_info.subtitle,Decoration,सजावट
+decoration_info.remove_button,Remove,हटाएं
+growing_info.sells,sells ₹%d,₹%d में बिकता है
+growing_info.skip_button,⏩ Skip (%d gems),⏩ स्किप करें (%d जेम्स)
+worker_row.header,👤 Worker,👤 मजदूर
+worker_row.status,%s is working this zone.,%s इस क्षेत्र में काम कर रहा है।
+worker_row.unassign_button,Unassign,नियुक्ति हटाएं
+worker_row.assign_button,Assign,नियुक्त करें

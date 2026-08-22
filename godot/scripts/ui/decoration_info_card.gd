@@ -74,7 +74,7 @@ func _populate() -> void:
 	add_child(name_label)
 
 	var subtitle_label := Label.new()
-	subtitle_label.text = "Decoration"
+	subtitle_label.text = tr(&"decoration_info.subtitle")
 	subtitle_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	subtitle_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle_label.label_settings = _make_label_settings(14, Color(0.243, 0.141, 0.071, 0.9))
@@ -86,7 +86,7 @@ func _populate() -> void:
 	button_row.add_theme_constant_override("separation", 8)
 	button_row.add_child(_make_icon_button("↻", WOOD_BROWN_LIGHT, _on_rotate_pressed))
 	button_row.add_child(_make_icon_button("⇋", WOOD_BROWN_LIGHT, _on_flip_pressed))
-	button_row.add_child(_make_text_button("Remove", SOIL_BROWN_DARK, _on_remove_pressed))
+	button_row.add_child(_make_text_button(tr(&"decoration_info.remove_button"), SOIL_BROWN_DARK, _on_remove_pressed))
 	add_child(button_row)
 
 

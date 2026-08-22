@@ -167,7 +167,13 @@ var _last_synced_walkable_signature: String = ""
 ## EPIC-M7: PlotKind.Kind ordinal (int) -> WorkerStation. See
 ## _sync_worker_stations().
 var _worker_stations_by_plot_kind: Dictionary = {}
+
+## design/gdd/festival-visiting-npcs.md's board-NPC stretch (decided and
+## built 2026-08-22). Null whenever no Chanda Visit is currently awaiting
+## a decision -- see _sync_chanda_visitor_if_needed().
+var _chanda_visitor_node: ChandaVisitor = null
 const WORKER_STATION_SCENE: PackedScene = preload("res://scenes/village_board/worker_station.tscn")
+const CHANDA_VISITOR_SCENE: PackedScene = preload("res://scenes/village_board/chanda_visitor.tscn")
 
 ## Audio pass: edge-detected Monsoon/Festival active state, so
 ## AudioManager.set_monsoon_active()/set_festival_active() are only called on
@@ -233,6 +239,10 @@ func _ready() -> void:
 	# design/gdd/real-time-day-night.md -- apply the correct real-world
 	# phase immediately, not a flash of Day before the first 3s tick.
 	_apply_time_of_day_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
+	# design/gdd/festival-visiting-npcs.md -- spawn the board NPC immediately
+	# if a Chanda Visit is already awaiting decision at load time (e.g.
+	# resuming a save mid-visit), not just from the next 3s tick.
+	_sync_chanda_visitor_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
 
 
 ## Wipes and rebuilds the static layer (ground, boundary, zones+plinths+plots)
@@ -1718,6 +1728,7 @@ func _on_growth_tick_timeout() -> void:
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_sync_adaptive_ambience_if_needed(now)
 	_apply_time_of_day_if_needed(now)
+	_sync_chanda_visitor_if_needed(now)
 
 	# Audio pass batch-resolve hazard fix: snapshot every plot's
 	# state.kind immediately before calling both resolve methods, diff
@@ -1848,6 +1859,52 @@ func _apply_time_of_day_if_needed(now: int) -> void:
 	if phase == TimeOfDay.Phase.NIGHT or previous_phase == TimeOfDay.Phase.NIGHT:
 		_villager_spawner.sync(_economy.state, _current_population_scale())
 
+
+## design/gdd/festival-visiting-npcs.md's board-NPC stretch, decided and
+## built 2026-08-22 -- spawns/despawns a stationary ChandaVisitor on the
+## same awaiting-decision boolean events_tab.gd's ChandaCard already reads
+## (economy.chanda_visit_awaiting_decision()), so the board NPC and the
+## sheet card always agree on whether a visit is currently open for a
+## decision. Deliberately a plain boolean-edge check, not a walkable-tile
+## signature comparison like _sync_villagers_if_needed() -- this NPC's
+## presence only ever depends on the awaiting-decision flag, never on the
+## board's tile layout changing.
+func _sync_chanda_visitor_if_needed(now: int) -> void:
+	var awaiting := _economy.chanda_visit_awaiting_decision(now)
+	var currently_spawned := _chanda_visitor_node != null
+	if awaiting == currently_spawned:
+		return
+	if awaiting:
+		_spawn_chanda_visitor()
+	else:
+		_despawn_chanda_visitor()
+
+
+func _spawn_chanda_visitor() -> void:
+	var zone: ZoneFixture = _zones_by_id.get(VillageSnapshotMapper.ZONE_ID_FARMHOUSE)
+	if zone == null:
+		return
+	var grid := VillageSnapshotMapper.build_walkable_grid(_economy.state, GRID_COLS, GRID_ROWS)
+	var tile := ChandaVisitorPlacement.find_visitor_tile(zone, grid)
+	if tile == Vector2i(-1, -1):
+		# Farmhouse boxed in on every side -- skip this occurrence rather
+		# than crash or misplace the visitor. Extremely unlikely at this
+		# board's tile counts (see ChandaVisitorPlacement's own doc
+		# comment); the sheet-only path (LiveOps banner) still works
+		# regardless, so nothing is actually lost for the player.
+		return
+	var character_key: String = Villager.CHARACTER_SCENES.keys().pick_random()
+	_chanda_visitor_node = CHANDA_VISITOR_SCENE.instantiate()
+	_actor_layer.add_child(_chanda_visitor_node)
+	_chanda_visitor_node.setup(character_key, tile, GRID_COLS, GRID_ROWS, TILE_SIZE)
+
+
+func _despawn_chanda_visitor() -> void:
+	if _chanda_visitor_node == null:
+		return
+	_chanda_visitor_node.queue_free()
+	_chanda_visitor_node = null
+
 	# design/gdd/real-time-day-night.md's villager lamp-lighting stretch
 	# goal -- every phase change re-applies lamp state (not just Night
 	# transitions like population thinning above): a Dawn/Dusk edge
@@ -1899,6 +1956,10 @@ func persist_and_rebuild_if_dirty(preserve_camera: bool = true) -> void:
 	_economy.dirty = false
 	rebuild(VillageSnapshotMapper.build(_economy.state, int(Time.get_unix_time_from_system() * 1000.0)), preserve_camera)
 	_sync_villagers_if_needed()
+	# design/gdd/festival-visiting-npcs.md -- despawn/spawn immediately on
+	# Give/Decline rather than waiting up to 3s for the next growth tick,
+	# same responsiveness rationale as _sync_villagers_if_needed() above.
+	_sync_chanda_visitor_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
 
 
 ## EPIC-M6: resyncs the villager population only when the board's walkable

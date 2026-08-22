@@ -370,8 +370,10 @@ func _persist_if_dirty(economy: GameEconomy) -> void:
 
 ## Opens the LiveOps Events sheet -- matches the real shipped app exactly
 ## (FarmScreen.kt's `LiveOpsBanner(onTapped = { activeSheet = IsoSheet.Events })`).
-## Only reachable while the banner is visible (Monsoon and/or a festival
-## active), same as the real app -- there is no other way to open this sheet.
+## Reachable via the banner (Monsoon and/or a festival active) and, since
+## design/gdd/festival-visiting-npcs.md's board-NPC stretch (2026-08-22),
+## also via tapping the on-board ChandaVisitor while a Chanda Visit awaits
+## a decision -- see open_events_sheet() below.
 func _on_liveops_banner_pressed() -> void:
 	if _village_board == null:
 		return
@@ -379,6 +381,19 @@ func _on_liveops_banner_pressed() -> void:
 	if economy == null:
 		return
 	_play_ui_audio(&"ui_button_tap")
+	open_events_sheet()
+
+
+## Opens the Events sheet directly, given a real economy is available.
+## Public so board_interactor.gd's ChandaVisitor tap handler can reach it
+## too -- a second, cosmetic entry point into this exact same sheet, not a
+## duplicate UI (see design/gdd/festival-visiting-npcs.md's Tuning Knobs).
+func open_events_sheet() -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
 	var tab: EventsTab = EventsTabScene.instantiate()
 	tab.configure(economy, _village_board)
 	_bottom_sheet.open(tab)

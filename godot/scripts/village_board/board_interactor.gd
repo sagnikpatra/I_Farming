@@ -332,6 +332,12 @@ func _release_primary_touch() -> void:
 						# (see villager_roamer.gd's _build_pick_area()), not a
 						# lookup ID -- nothing to look up, the key IS the info.
 						_open_villager_info_card(pick.get("id", "ranger"))
+					elif pick.get("kind") == "chanda_visitor":
+						# design/gdd/festival-visiting-npcs.md's board-NPC
+						# stretch -- a second, cosmetic entry point into the
+						# exact same Events sheet the LiveOps banner already
+						# opens, not a new give/decline UI of its own.
+						_open_chanda_visit_sheet()
 					elif pick.get("kind") == "decoration":
 						# No selection highlight for decorations -- matches the
 						# Kotlin original (GdxSelection's info card IS the
@@ -900,6 +906,18 @@ func _open_villager_info_card(character_key: String) -> void:
 	var card: VillagerInfoCard = VillagerInfoCardScene.instantiate()
 	card.configure(character_key)
 	hud.get_bottom_sheet().open(card)
+
+
+## design/gdd/festival-visiting-npcs.md's board-NPC stretch -- opens the
+## real Events sheet (the same one hud.gd's LiveOps banner already opens),
+## not a separate give/decline UI. Deliberately delegates to Hud rather
+## than duplicating EventsTab's construction here, so there is exactly one
+## place that knows how to build/configure that sheet.
+func _open_chanda_visit_sheet() -> void:
+	var hud := get_tree().get_first_node_in_group("hud") as Hud
+	if hud == null:
+		return
+	hud.open_events_sheet()
 
 
 ## Opens the matching management sheet for a tapped ZONE, via the same

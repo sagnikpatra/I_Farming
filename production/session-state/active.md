@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
-Feature: Post-M8 continued development. Pushed all accumulated work (master + feature/isometric-village-view) to GitHub origin per explicit user instruction, then resumed active feature development.
-Task: Villager tap interaction shipped (design/gdd/villagers.md rule 8) -- PickArea on VillagerRoamer, VillagerInfoCard greeting card, CHARACTER_DISPLAY_NAMES dedup, localization key, 9 new tests, 592/592 GUT passing (verified twice, non-flaky). About to commit. Continuing development per standing "don't stop" instruction.
+Feature: Post-M8 continued development. Pushed all accumulated work to GitHub origin per explicit user instruction, then resumed active feature development.
+Task: Villager tap interaction shipped (592/592). Doc-accuracy sweep closed stale Acceptance Criteria across 6 GDDs. Chanda Visit's on-board visitor NPC ("future stretch" from festival-visiting-npcs.md) designed and shipped: stationary ChandaVisitor beside the Farmhouse, tap opens the real Events sheet, 607/607 GUT passing (twice, non-flaky), verified live on a real device. About to commit. Continuing development per standing "don't stop" instruction.
 <!-- /STATUS -->
 
 # Active Session State
@@ -5267,3 +5267,62 @@ both runs, 2505 asserts, ~16.4s.
 **Next step**: commit this feature, then continue identifying further
 development targets per the standing "continue developing the game"
 instruction -- do not stop to ask what's next.
+
+## 2026-08-22 (doc-accuracy sweep + Chanda Visit's on-board NPC shipped)
+
+Two more pieces of work this stretch, both closing real, previously-
+identified gaps rather than inventing new scope from nothing.
+
+**Doc-accuracy sweep**: found every unchecked Acceptance Criteria
+checkbox across `design/gdd/` that belonged to features already fully
+shipped and tested earlier this session (villagers.md's stale EPIC-M7
+scope note, festival-visiting-npcs.md/farmhouse-visual-tiers.md/
+gems-daily-tasks.md/real-time-day-night.md/richer-ambient-villagers.md's
+stale checklists) -- verified each claim against real code/tests before
+checking anything off, narrowed rather than overclaimed where the real
+evidence was narrower than the original wording (Chanda's Decline/
+save-reload on-device sampling), and closed one genuine gap outright
+(richer-ambient-villagers.md's "two villagers mutually facing each
+other" -- added a deterministic unit test instead of waiting on a lucky
+screenshot). 6 GDDs updated, 1 commit, GUT suite unaffected (592/592,
+docs-only).
+
+**Chanda Visit's on-board visitor NPC**: festival-visiting-npcs.md's own
+Tuning Knobs had flagged this as "future stretch, explicitly out of
+scope... materially larger scope" back when Chanda Visit first shipped.
+Built it, narrowly scoped specifically to keep that original risk
+contained: the NPC (`ChandaVisitor`, reusing `Villager` rendering) is
+deliberately **stationary** (not a `VillagerRoamer` -- no pathfinding
+risk) and tapping it **reuses** the existing Events sheet
+(`Hud.open_events_sheet()`, extracted from `_on_liveops_banner_pressed()`)
+rather than a new give/decline UI. Placement is a pure, independently
+unit-tested function (`ChandaVisitorPlacement.find_visitor_tile()`) that
+searches a fixed ring around the Farmhouse's live footprint for the
+nearest walkable tile. Spawn/despawn tracks
+`chanda_visit_awaiting_decision()` directly, hooked into the same 3s
+growth tick and post-action resync points `_sync_villagers_if_needed()`
+already uses.
+
+Hit and recovered from the same class of gotcha as ChandaFestivalDef
+earlier this session: new `class_name` scripts (`ChandaVisitor`,
+`ChandaVisitorPlacement`) aren't visible to other scripts' static typing
+until Godot's editor registers them -- fixed with the same
+`--headless --editor --import` pass, not a new discovery.
+
+15 new tests (6 placement, 3 node-construction, 2 real end-to-end tap-
+dispatch, 4 village-board spawn/despawn integration). Full suite run
+twice: 607/607, non-flaky. Verified live on a real device: temporarily
+forced `CHANDA_ACTIVE_DURATION_MS == CHANDA_CYCLE_MS` (reverted
+immediately after, confirmed clean via `git diff`) to guarantee an
+active window without waiting on real wall-clock timing -- same
+instrument-then-delete technique used elsewhere this session. Two real
+screenshots captured: the visitor standing beside the Farmhouse with the
+LiveOps banner correctly reading "🪔 Baisakhi chanda visitor"
+(`production/qa/evidence/chanda-visitor-on-board.png`), and tapping it
+opening the real Events sheet with Monsoon/Festival/Chanda/Daily-Tasks
+cards all present -- proof it's the same shared sheet, not a duplicate
+(`chanda-visitor-tap-opens-events-sheet.png`).
+
+**Next step**: commit both pieces, then continue identifying further
+development targets. No forced stopping point -- per the standing "don't
+stop" instruction, proceeding directly rather than pausing to summarize.

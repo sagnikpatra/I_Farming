@@ -100,3 +100,59 @@ func test_lamps_are_off_when_phase_is_explicitly_not_night() -> void:
 	var farmhouse_node: Node3D = board._zone_nodes_by_id[VillageSnapshotMapper.ZONE_ID_FARMHOUSE]
 	var lamp := farmhouse_node.get_node("NightLamp") as Light3D
 	assert_almost_eq(lamp.light_energy, 0.0, 0.001, "an unrelated rebuild() during Day must not accidentally light a lamp that should stay off")
+
+
+## design/gdd/festival-visiting-npcs.md's board-NPC stretch (2026-08-22):
+## _sync_chanda_visitor_if_needed() spawn/despawn edge-detection. Forces
+## `now=0`, same "control the state, not real-clock timing" approach as
+## the day/night tests above -- a fresh GameState's Chanda cycle is
+## awaiting decision at now=0 (see test_chanda_visit.gd's own
+## test_awaiting_decision_true_for_a_fresh_active_visit()).
+func test_a_chanda_visit_awaiting_decision_spawns_a_board_visitor() -> void:
+	RealSavePaths.wipe_all()
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+
+	board._sync_chanda_visitor_if_needed(0)
+
+	assert_not_null(board._chanda_visitor_node, "an awaiting-decision visit must spawn the board NPC")
+	assert_true(is_instance_valid(board._chanda_visitor_node))
+
+
+func test_giving_chanda_despawns_the_board_visitor() -> void:
+	RealSavePaths.wipe_all()
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+	board._sync_chanda_visitor_if_needed(0)
+	assert_not_null(board._chanda_visitor_node, "precondition: the visitor must actually be spawned first")
+
+	board.get_economy().give_chanda(0)
+	board._sync_chanda_visitor_if_needed(100)
+
+	assert_null(board._chanda_visitor_node, "once resolved (given), the board NPC must despawn -- the visit is no longer awaiting a decision")
+
+
+func test_declining_chanda_despawns_the_board_visitor() -> void:
+	RealSavePaths.wipe_all()
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+	board._sync_chanda_visitor_if_needed(0)
+
+	board.get_economy().decline_chanda(0)
+	board._sync_chanda_visitor_if_needed(100)
+
+	assert_null(board._chanda_visitor_node, "Decline must despawn the board NPC too, not just Give")
+
+
+func test_a_resolved_visit_does_not_spawn_a_visitor_on_the_next_cycle_start() -> void:
+	# Sanity check that the spawn logic tracks the live awaiting-decision
+	# flag correctly across a cycle boundary, not just "spawned once, never
+	# despawns."
+	RealSavePaths.wipe_all()
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+	board._sync_chanda_visitor_if_needed(0)
+	board.get_economy().give_chanda(0)
+	board._sync_chanda_visitor_if_needed(100)
+	assert_null(board._chanda_visitor_node, "precondition: despawned after Give")
+
+	var next_cycle_start: int = GameData.CHANDA_CYCLE_MS
+	board._sync_chanda_visitor_if_needed(next_cycle_start)
+
+	assert_not_null(board._chanda_visitor_node, "the next cycle's fresh visit must spawn its own board NPC")

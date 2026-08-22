@@ -25,6 +25,10 @@ const IDLE_DURATION_MIN_SEC: float = 2.0
 const IDLE_DURATION_MAX_SEC: float = 5.0
 const IDLE_CLIP_NAMES: Array[String] = ["Idle_A", "Idle_B"]
 
+## design/gdd/richer-ambient-villagers.md's Congregating stretch goal
+## (§4 Formulas). In tiles, scaled by _tile_size at call sites.
+const CONGREGATE_DISTANCE_TILES: float = 1.6
+
 enum _State { WALKING, IDLE_PAUSE }
 
 var _grid: WalkableGrid
@@ -37,6 +41,17 @@ var _pending_path: Array[Vector2i] = []
 var _rng := RandomNumberGenerator.new()
 var _state: _State = _State.WALKING
 var _idle_timer: float = 0.0
+
+## Optional, set by the owning VillagerSpawner after all roamers in a
+## population exist (see villager_spawner.gd). Called every frame while
+## idling to fetch other villagers' current world positions -- deliberately
+## a lazily-invoked Callable rather than a direct array/spawner reference,
+## so this class stays testable standalone (every existing test of this
+## class predates congregating and never sets this, so it's simply skipped)
+## and so ordering during population construction doesn't matter (the
+## callable is only ever invoked well after the full population exists).
+## Left unset (an invalid Callable) means "no congregating" -- not an error.
+var other_villager_positions_provider: Callable
 
 
 ## Must be called once before this node starts processing. `grid` is a
@@ -75,6 +90,10 @@ func _process(delta: float) -> void:
 
 	if _state == _State.IDLE_PAUSE:
 		_idle_timer -= delta
+		if other_villager_positions_provider.is_valid():
+			var target: Variant = nearest_congregate_target(position, other_villager_positions_provider.call(), _tile_size)
+			if target != null:
+				_face_direction((target as Vector3 - position))
 		if _idle_timer <= 0.0:
 			_state = _State.WALKING
 			# Pick the next target immediately rather than just flipping the
@@ -131,6 +150,31 @@ static func random_idle_duration(rng: RandomNumberGenerator) -> float:
 
 static func random_idle_clip(rng: RandomNumberGenerator) -> String:
 	return IDLE_CLIP_NAMES[rng.randi_range(0, IDLE_CLIP_NAMES.size() - 1)]
+
+
+## design/gdd/richer-ambient-villagers.md's Congregating stretch goal.
+## Pure: given this villager's own world position and every other
+## villager's current world position, returns the nearest one within
+## CONGREGATE_DISTANCE_TILES (scaled by `tile_size`), or null if none are
+## close enough. Deliberately has zero knowledge of who's idling or
+## walking, and zero two-way coordination between roamers -- each roamer
+## independently re-checks this every idle-pause frame (see _process()),
+## so if a villager happens to idle-pause near another (whether or not
+## that other one is idling too), it turns to face them. Two villagers
+## idling near each other at the same time reads as "chatting" for free,
+## without either roamer needing to know the other exists as anything more
+## than a position.
+static func nearest_congregate_target(own_position: Vector3, other_positions: Array[Vector3], tile_size: float) -> Variant:
+	var nearest_position: Vector3
+	var nearest_distance := INF
+	for other_position in other_positions:
+		var distance := own_position.distance_to(other_position)
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest_position = other_position
+	if nearest_distance <= CONGREGATE_DISTANCE_TILES * tile_size:
+		return nearest_position
+	return null
 
 
 func get_current_tile() -> Vector2i:

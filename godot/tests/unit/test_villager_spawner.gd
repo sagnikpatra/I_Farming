@@ -90,6 +90,44 @@ func test_sync_spawns_fewer_roamers_per_active_worker_assignment() -> void:
 	assert_eq(spawner.get_roamer_count(), 2)
 
 
+# --- Congregating (design/gdd/richer-ambient-villagers.md stretch goal) -------
+
+func test_sync_wires_a_congregating_positions_provider_on_every_roamer() -> void:
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state)
+
+	for roamer in spawner.get_roamers():
+		assert_true(roamer.other_villager_positions_provider.is_valid(), "sync() must wire a congregating provider on every spawned roamer")
+
+
+func test_congregating_provider_excludes_the_roamer_itself() -> void:
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state)
+
+	var roamers := spawner.get_roamers()
+	assert_gt(roamers.size(), 1, "need at least 2 roamers for this test to mean anything")
+	var first := roamers[0]
+	var positions: Array[Vector3] = first.other_villager_positions_provider.call()
+	assert_eq(positions.size(), roamers.size() - 1, "a roamer must never see itself as a congregating candidate")
+	assert_false(positions.has(first.position), "excluding self by identity, not by position, so a coincidental position match isn't what's being tested here -- but if two roamers ever share a position this would be a false pass; sync()'s own distinct-start-tiles guarantee (see test_sync_spawns_at_distinct_start_tiles above) is what actually keeps this meaningful")
+
+
+func test_congregating_provider_reflects_the_current_full_population() -> void:
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state)
+
+	var roamers := spawner.get_roamers()
+	var expected_other_positions: Array[Vector3] = []
+	for r in roamers.slice(1):
+		expected_other_positions.append(r.position)
+	var actual: Array[Vector3] = roamers[0].other_villager_positions_provider.call()
+	for expected in expected_other_positions:
+		assert_true(actual.has(expected), "provider must return every other roamer's current position")
+
+
 func test_sync_roaming_count_at_maximum_worker_saturation() -> void:
 	# Unlock every worker-eligible zone (needed for assign_worker() to
 	# accept the assignment -- see game_economy.gd's _is_plot_kind_unlocked()),

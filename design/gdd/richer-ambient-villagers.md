@@ -12,6 +12,9 @@ clips, including **`Idle_A`/`Idle_B`** -- genuinely usable idle animations
 on the same `Rig_Medium` skeleton every villager character already shares.
 This closes that specific gap: villagers now occasionally pause and play a
 real idle animation before resuming their walk, instead of walking forever.
+Villagers who happen to idle-pause near each other now also turn to face
+one another (Congregating, built 2026-08-22, see §3), reading as a village
+population that occasionally notices its own neighbors.
 
 ## 2. Player Fantasy
 
@@ -42,11 +45,37 @@ than a minigame... a living village").
   this file governs; nothing here touches `WorkerStation` or worker
   visuals.
 - Explicitly **not** in this pass (see Tuning Knobs for why each is
-  deferred, not forgotten): villager-to-villager "congregating"/chatting,
-  point-of-interest lingering near decorations, day/night population
-  thinning. Each needs new cross-component data (other roamers' live
-  positions, decoration tile positions, spawn/despawn control) that the
-  self-contained idle-pause change here doesn't.
+  deferred, not forgotten): point-of-interest lingering near decorations,
+  day/night population thinning. Each needs new cross-component data
+  (decoration tile positions, spawn/despawn control) that the
+  self-contained idle-pause change here doesn't. Villager-to-villager
+  congregating (below) was originally deferred for the same reason but
+  has since been built.
+
+### Congregating (built 2026-08-22)
+
+- While idling (Idle-Pause above), a villager continuously checks every
+  other roamer's current position and, if the nearest one is within
+  `CONGREGATE_DISTANCE_TILES` (1.6 tiles, scaled by board tile size),
+  turns to face it -- re-checked every idling frame, not just once on
+  entering Idle-Pause, so a villager still approaching when another
+  starts idling is picked up the moment it gets close enough, not missed.
+- **Deliberately not two-way coordinated.** Each roamer decides this
+  independently, from nothing more than "where is everyone else right
+  now" -- there is no signal, no handshake, no shared "we are now
+  chatting" state between the two villagers involved. When two villagers
+  happen to be idling near each other at the same time, both
+  independently turn to face the other, which reads as "chatting" without
+  either one knowing the other exists as anything more than a position.
+  This is what keeps it cheap: no new AI, no dialogue, no risk of two
+  roamers waiting on each other and stalling.
+- Confirmed with real on-device logging (not just tests): a stationary
+  idling villager was observed continuously re-orienting toward another
+  villager as it walked closer, tracking it in real time -- the intended
+  "noticing" behavior, not a one-shot facing check.
+- **Assigned/"called" workers remain entirely unaffected**, same as
+  Idle-Pause above -- congregating only ever runs on the ambient roaming
+  population `VillagerSpawner` tracks.
 
 ## 4. Formulas
 
@@ -64,6 +93,11 @@ than a minigame... a living village").
   spend a modest minority of their time idling, not most of it -- the
   population should still read as predominantly ambulatory, idling as
   seasoning, not the default state.
+- **Congregate distance**: `CONGREGATE_DISTANCE_TILES = 1.6` tiles
+  (scaled by board tile size at call sites) -- wide enough that two
+  villagers idling on adjacent tiles (distance 1.0) or diagonally
+  adjacent (distance ~1.41) both count, narrow enough that villagers
+  across the board never appear to notice each other.
 
 ## 5. Edge Cases
 
@@ -89,22 +123,21 @@ than a minigame... a living village").
   into the same `"moves"` animation library `play_animation()` already
   looks up, so no change to that method's existing "moves/X" lookup
   convention is needed.
-- `villager_roamer.gd`: the new Idle-Pause state and its transition logic.
-- Does **not** touch `village_board.gd`, `VillagerSpawner`, `WalkableGrid`,
-  or any `GameState`/economy code -- purely a self-contained roaming-
-  controller + animation-loading change.
+- `villager_roamer.gd`: the new Idle-Pause state and its transition logic,
+  plus `nearest_congregate_target()` and the
+  `other_villager_positions_provider` Callable property Congregating adds.
+- `villager_spawner.gd`: wires each roamer's
+  `other_villager_positions_provider` after the full population exists
+  (Congregating's one real cross-component touch -- Idle-Pause itself
+  stays self-contained).
+- Does **not** touch `village_board.gd`, `WalkableGrid`, or any
+  `GameState`/economy code.
 
 ## 7. Tuning Knobs
 
-- `IDLE_PAUSE_CHANCE`, `IDLE_DURATION_MIN_SEC`/`MAX_SEC` -- all in
-  `villager_roamer.gd`, easy to rebalance after on-device observation.
-- **Future stretch, explicitly out of scope this pass**: villager-to-
-  villager "congregating" (two roamers pathing toward each other, both
-  idle-pausing together as cheap readable "chatting") -- needs each
-  `VillagerRoamer` to become aware of other roamers' live positions/state,
-  which today's fully-independent-per-roamer architecture doesn't provide;
-  a real architectural addition (a shared coordinator or roamer registry),
-  not a small extension of this pass.
+- `IDLE_PAUSE_CHANCE`, `IDLE_DURATION_MIN_SEC`/`MAX_SEC`,
+  `CONGREGATE_DISTANCE_TILES` -- all in `villager_roamer.gd`, easy to
+  rebalance after on-device observation.
 - **Future stretch**: point-of-interest lingering (biasing target
   selection toward tiles adjacent to player-placed decorations) -- needs
   decoration tile positions threaded from `village_board.gd`/
@@ -136,3 +169,34 @@ than a minigame... a living village").
       idle-pausing (not just walking) during a real play session, no
       crash, no visual glitch (T-pose, frozen mid-stride, wrong
       orientation) during or after the idle animation.
+
+### Congregating (2026-08-22)
+
+- [x] `nearest_congregate_target()` is independently unit-testable as pure
+      logic (own position, other positions, tile size in -> nearest
+      in-range position or null out), not coupled to `_process()` --
+      `tests/unit/test_villager_roamer.gd`.
+- [x] A villager with no `other_villager_positions_provider` set behaves
+      exactly as before Congregating existed -- confirmed by an explicit
+      no-provider-set test, not just by code inspection.
+- [x] `VillagerSpawner.sync()` wires a working provider on every spawned
+      roamer, correctly excluding each roamer from seeing itself --
+      `tests/unit/test_villager_spawner.gd`.
+- [x] Full GUT suite green (495/495 at the time this was built).
+- [x] Verified on-device via real logging (not just tests or a single
+      screenshot): an idling villager was observed continuously
+      re-orienting to track another villager walking toward it, over
+      hundreds of real per-frame checks during a live session on the
+      project owner's physical device (temporary forced-idle-chance
+      override + a temporary debug log line, both reverted before
+      commit) -- confirms the tracking is live and continuous, not a
+      one-shot facing check that happens to look right in a screenshot.
+- [ ] Two independently-idling villagers observed actually facing each
+      other simultaneously (both sides of the "chat"), rather than only
+      one tracking the other -- the logged evidence above confirms
+      one-directional tracking works; catching the fully mutual case on
+      video/screenshot is inherently probabilistic (needs two villagers
+      idling within range at the same real moment) and wasn't separately
+      captured. Not blocking: the shared pure function and per-roamer
+      independence mean both sides run identical logic, so this is very
+      likely already true, just not separately visually confirmed.

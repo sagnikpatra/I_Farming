@@ -160,3 +160,87 @@ func test_random_idle_clip_always_returns_one_of_the_named_clips() -> void:
 	for i in range(100):
 		var clip := VillagerRoamer.random_idle_clip(rng)
 		assert_true(VillagerRoamer.IDLE_CLIP_NAMES.has(clip))
+
+
+# --- Congregating (design/gdd/richer-ambient-villagers.md stretch goal) --------
+
+func test_nearest_congregate_target_returns_null_with_no_other_villagers() -> void:
+	var result: Variant = VillagerRoamer.nearest_congregate_target(Vector3.ZERO, [], 1.0)
+	assert_null(result)
+
+
+func test_nearest_congregate_target_returns_null_when_nearest_is_too_far() -> void:
+	var others: Array[Vector3] = [Vector3(10, 0, 0)]
+	var result: Variant = VillagerRoamer.nearest_congregate_target(Vector3.ZERO, others, 1.0)
+	assert_null(result)
+
+
+func test_nearest_congregate_target_returns_the_nearest_one_in_range() -> void:
+	# CONGREGATE_DISTANCE_TILES = 1.6 at tile_size 1.0 -> range is 1.6 world units.
+	var others: Array[Vector3] = [Vector3(10, 0, 0), Vector3(1, 0, 0), Vector3(5, 0, 0)]
+	var result: Variant = VillagerRoamer.nearest_congregate_target(Vector3.ZERO, others, 1.0)
+	assert_eq(result, Vector3(1, 0, 0), "must return the nearest in-range villager, not just any in-range one")
+
+
+func test_nearest_congregate_target_scales_with_tile_size() -> void:
+	# Distance 3.0 world units is out of range at tile_size 1.0 (range 1.6)
+	# but in range at tile_size 2.0 (range 3.2) -- same GDD formula
+	# VillagerRoamer._process()/_tile_to_world() already scales by tile_size.
+	var others: Array[Vector3] = [Vector3(3, 0, 0)]
+	assert_null(VillagerRoamer.nearest_congregate_target(Vector3.ZERO, others, 1.0))
+	assert_eq(VillagerRoamer.nearest_congregate_target(Vector3.ZERO, others, 2.0), Vector3(3, 0, 0))
+
+
+func test_nearest_congregate_target_ignores_the_y_axis_offset_normally() -> void:
+	# Villagers walk on a flat y=0 plane in practice, but the distance check
+	# itself is real 3D distance -- a large y offset should correctly count
+	# against range, same as any other axis. Documents the behavior rather
+	# than assuming a caller always passes y=0.
+	var others: Array[Vector3] = [Vector3(0, 5, 0)]
+	assert_null(VillagerRoamer.nearest_congregate_target(Vector3.ZERO, others, 1.0))
+
+
+func test_roamer_faces_a_nearby_villager_while_idling() -> void:
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.setup(grid, Vector2i(1, 1), 3, 3, 1.0)
+	roamer._state = VillagerRoamer._State.IDLE_PAUSE
+	roamer._idle_timer = 3.0
+	var other_position := roamer.position + Vector3(1, 0, 0)  # due +x, within congregate range
+	roamer.other_villager_positions_provider = func() -> Array[Vector3]: return [other_position]
+
+	simulate(roamer, 1, 0.1)
+
+	var expected_rotation := atan2(1.0, 0.0)  # facing +x, matching _face_direction()'s own atan2(x, z)
+	assert_almost_eq(roamer.rotation.y, expected_rotation, 0.001)
+
+
+func test_roamer_ignores_congregating_when_no_provider_is_set() -> void:
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.setup(grid, Vector2i(1, 1), 3, 3, 1.0)
+	roamer._state = VillagerRoamer._State.IDLE_PAUSE
+	roamer._idle_timer = 3.0
+	var rotation_before := roamer.rotation.y
+
+	simulate(roamer, 5, 0.1)  # no provider set -- every existing (pre-congregating) test relies on this staying a no-op
+
+	assert_almost_eq(roamer.rotation.y, rotation_before, 0.001, "no provider set -- congregating must be a no-op, not a crash")
+
+
+func test_roamer_does_not_congregate_toward_a_too_far_villager() -> void:
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.setup(grid, Vector2i(1, 1), 3, 3, 1.0)
+	roamer._state = VillagerRoamer._State.IDLE_PAUSE
+	roamer._idle_timer = 3.0
+	var rotation_before := roamer.rotation.y
+	var far_position := roamer.position + Vector3(10, 0, 0)
+	roamer.other_villager_positions_provider = func() -> Array[Vector3]: return [far_position]
+
+	simulate(roamer, 1, 0.1)
+
+	assert_almost_eq(roamer.rotation.y, rotation_before, 0.001, "too far to congregate with -- facing must not change")

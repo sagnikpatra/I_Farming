@@ -79,6 +79,14 @@ func sync(state: GameState) -> void:
 		roamer.setup(grid, start_tile, _grid_cols, _grid_rows, _tile_size, character_key)
 		_roamers.append(roamer)
 
+	# design/gdd/richer-ambient-villagers.md's Congregating stretch goal --
+	# wired here, after the full population exists, rather than inline in
+	# the loop above: each roamer's provider closes over this spawner's own
+	# _roamers array (not a snapshot), so it stays correct even though the
+	# array is still being built while earlier roamers' setup() runs.
+	for roamer in _roamers:
+		roamer.other_villager_positions_provider = _make_positions_provider(roamer)
+
 
 func get_roamer_count() -> int:
 	return _roamers.size()
@@ -100,6 +108,20 @@ func _clear() -> void:
 		if is_instance_valid(roamer):
 			roamer.queue_free()
 	_roamers.clear()
+
+
+## Returns a Callable that, when invoked, returns every other currently-valid
+## roamer's world position -- `exclude` is always this callable's own owner,
+## so a villager never sees itself as a congregating target. Reads _roamers
+## live (a closure over `self`, not a copied snapshot) so freshly-clear()'d
+## or since-freed roamers never leak into a stale list.
+func _make_positions_provider(exclude: VillagerRoamer) -> Callable:
+	return func() -> Array[Vector3]:
+		var positions: Array[Vector3] = []
+		for roamer in _roamers:
+			if roamer != exclude and is_instance_valid(roamer):
+				positions.append(roamer.position)
+		return positions
 
 
 ## Fisher-Yates partial shuffle via this spawner's own seedable RNG (not

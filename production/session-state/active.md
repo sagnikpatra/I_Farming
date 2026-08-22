@@ -3998,10 +3998,63 @@ verification passes for the same reason it always was: shipping a cloud
 call path before it can succeed would be pointless, not because the
 code isn't ready.
 
+## 2026-08-22 (cont'd) -- Villager Congregating built end-to-end while
+still blocked on cloud-save's Play Console piece
+
+User: "you did stop. why? please don't stop. continue until the credits
+run out." Fair -- the two real external blockers on cloud-save don't
+move by asking again, so picked the next real unblocked work myself
+rather than waiting: **Villager Congregating**, the lowest-risk of the
+4 remaining feature-scoping stretch goals (item 4 in
+`feature-scoping-2026-08-22.md`) -- no new assets, extends the
+already-shipped-and-tested Idle-Pause state machine directly, and the
+GDD had already scoped exactly what it would need
+(`richer-ambient-villagers.md`'s own "Future stretch" note: "each
+VillagerRoamer [becoming] aware of other roamers' live positions... a
+real architectural addition").
+
+Built `VillagerRoamer.nearest_congregate_target()` (pure, static: own
+position + other positions + tile size -> nearest in-range position or
+null) plus an `other_villager_positions_provider: Callable` property,
+checked every idling frame -- deliberately no two-way coordination
+between roamers, each independently faces whoever's nearest while
+idling, which is what keeps it cheap (no new AI, no dialogue, no risk
+of two roamers waiting on each other). `VillagerSpawner.sync()` wires
+the provider on every roamer after the full population exists.
+
+Hit and fixed one real issue: first test run failed to parse --
+`var result := a_variant_returning_call()` triggers this project's
+warnings-as-errors "inferred Variant type" rule. Fixed with explicit
+`var result: Variant = ...` instead of `:=` at both call sites.
+
+11 new GUT tests (8 in `test_villager_roamer.gd`, 3 in
+`test_villager_spawner.gd`). Full suite: 495/495 (484 + 11), zero
+regressions.
+
+**On-device verification, real logging not just a screenshot**: two
+static screenshots weren't conclusive on their own (villagers had
+already moved on by the second one -- confirmed they'd been walking,
+not idling, in the first), so added a temporary debug print + forced
+`IDLE_PAUSE_CHANCE = 1.0` override (same precedent as the original
+idle-pause verification), rebuilt, ran ~25s on the OnePlus device:
+**341 real congregating events logged**, showing a stationary idling
+villager continuously re-orienting to track another villager walking
+toward it. Both temporary changes reverted before the final build;
+re-ran the full suite (495/495) and did one more export+install+launch
+to confirm the reverted/production code still boots clean with zero
+crashes.
+
+Updated `richer-ambient-villagers.md` (Detailed Rules, Formulas,
+Dependencies, Tuning Knobs, Acceptance Criteria -- honestly marked one
+criterion still open: mutual two-villagers-both-facing-each-other was
+never separately screenshot-confirmed, only one-directional tracking
+was, though the shared pure function makes mutual very likely already
+true) and `feature-scoping-2026-08-22.md`'s summary table.
+
 ## Next Step
 
-1. **Real blocker, needs the project owner specifically**: use the
-   SHA-1/package name above to create a Google Play Console Game
+1. **Real blocker, still needs the project owner specifically**: use
+   the SHA-1/package name above to create a Google Play Console Game
    Services project (or confirm one already exists) and register an
    OAuth client. Only once that exists, and the numeric Project/
    Application ID is handed back, can actual silent sign-in (ADR-0003
@@ -4013,6 +4066,13 @@ code isn't ready.
    actual app-pause call site plus a settings-screen last-sync
    indicator (ADR-0003 Phase 2 steps 7-8) -- the provider class itself
    is already built and tested, this is just the wiring.
+3. Villager Congregating is done. Remaining stretch goals across all 5
+   feature-scoping items, still open/undecided: Farmhouse footprint
+   growth + other-structure sub-upgrade attachments (item 1), a second
+   gems sink (item 2, real-money purchase explicitly excluded --
+   needs its own billing-integration decision first), seasonal palette
+   + villager lamp-lighting (item 3), point-of-interest decoration
+   lingering + night population thinning (item 4).
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)

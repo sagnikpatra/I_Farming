@@ -1,9 +1,20 @@
 ---
 paths:
-  - "src/core/**"
+  - "godot/scripts/village_board/**"
 ---
 
 # Engine Code Rules
+
+<!-- Update (2026-08-23): path corrected from the template-default
+     `src/core/**`, which never matched anything in this project (no
+     `src/` directory exists) -- this rule was silently inert for every
+     engine-level GDScript edit this whole session. `godot/scripts/village_board/`
+     is this project's real rendering/board-interaction layer (the
+     Godot-target analog of the old `core/village3d/` LibGDX module). The
+     "consult docs/engine-reference/ before writing engine API code" rule
+     below is especially relevant here, given this project's pinned
+     Godot 4.7.1 is flagged HIGH knowledge-risk (post-training-cutoff). -->
+
 
 - ZERO allocations in hot paths (update loops, rendering, physics) — pre-allocate, pool, reuse
 - All engine APIs must be thread-safe OR explicitly documented as single-thread-only

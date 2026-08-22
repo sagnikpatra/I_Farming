@@ -1,9 +1,20 @@
 ---
 paths:
-  - "src/gameplay/**"
+  - "godot/scripts/economy/**"
 ---
 
 # Gameplay Code Rules
+
+<!-- Update (2026-08-23): path corrected from the template-default
+     `src/gameplay/**`, which never matched anything in this project --
+     `godot/scripts/economy/` (GameState/GameEconomy) is this project's
+     real gameplay-logic layer. One line below doesn't literally match
+     this project's real practice: gameplay values live as GDScript
+     `const`s centralized in game_data.gd (data-driven in spirit --
+     tunable, documented, no magic numbers scattered through logic --
+     but not "external config files" in the JSON/CSV/Resource sense).
+     That's a deliberate, established architectural choice throughout
+     this project, not an oversight to fix by rewriting the rule. -->
 
 - ALL gameplay values MUST come from external config/data files, NEVER hardcoded
 - Use delta time for ALL time-dependent calculations (frame-rate independence)

@@ -5873,3 +5873,66 @@ Docs-only, full suite re-run to confirm zero impact: 632/632, unchanged.
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- .claude/rules/ path patterns: 4 rules were silently dead
+
+Extended the doc-accuracy sweep to `.claude/rules/*.md` (auto-attached,
+path-scoped rules) after finishing the `@`-included `.claude/docs/`
+files. Checked every rule file's `paths:` frontmatter against what
+actually exists in this repo. Found something structurally significant:
+**every single rule file uses template-default paths
+(`src/core/**`, `src/gameplay/**`, `src/ui/**`, `src/ai/**`,
+`src/networking/**`, `assets/data/**`, `assets/shaders/**`,
+`prototypes/**`, `tests/**`) -- this project has no `src/` directory at
+all**, confirmed by direct check. Most of these never matched a single
+real file this entire session.
+
+Checked each file's actual CONTENT before deciding whether to fix its
+path or leave it correctly inert -- a wrong path isn't automatically a
+bug if the content doesn't apply to this project either:
+
+- **Fixed 3 genuinely relevant files whose content clearly applies but
+  path never matched**: `engine-code.md` (`src/core/**` ->
+  `godot/scripts/village_board/**`, this project's real rendering/board
+  layer -- its "consult docs/engine-reference/ before writing engine API
+  code" rule is especially relevant given the HIGH-knowledge-risk pinned
+  Godot version), `gameplay-code.md` (`src/gameplay/**` ->
+  `godot/scripts/economy/**`, the real GameState/GameEconomy layer),
+  `ui-code.md` (`src/ui/**` -> `godot/scripts/ui/**`, a clean 1:1 match).
+  Noted one partial content mismatch in each rather than silently
+  leaving it misleading: gameplay-code.md's "external config files" line
+  doesn't literally match this project's real practice (GDScript consts
+  centralized in game_data.gd, not JSON/CSV/Resource files) -- a
+  deliberate architecture choice, not something to "fix" by rewriting
+  the rule; ui-code.md's gamepad-support line doesn't apply (touch-only
+  input, a deliberate platform choice per technical-preferences.md).
+- **Fixed 1 already-loosely-working file for precision**:
+  `test-standards.md` (`tests/**` -> `godot/tests/**` -- it was already
+  firing for `godot/tests/unit/*.gd` edits this session, apparently
+  matching on the `tests/` path segment anywhere rather than requiring
+  root-relative, but made the intent explicit). Also flagged one
+  documented, deliberate exception: its "must not depend on external
+  state (filesystem...)" line is knowingly violated by design throughout
+  this test suite (RealSavePaths.wipe_all()'s whole existence -- real
+  disk-based SaveSystem/AccessibilitySettings persistence with no
+  dependency-injected fake layer, cleaned up rather than avoided).
+- **Correctly left inert, not force-fixed**: `ai-code.md` and
+  `network-code.md` -- read their content and found it's genuinely
+  genre-mismatched, not just path-mismatched (perception cones/flanking/
+  formation for `ai-code.md`; server-authoritative state/rollback/host
+  migration for `network-code.md` -- this project has no combat AI and
+  no real-time multiplayer at all, cloud-save is a simple blob sync, not
+  what that rule describes). Forcing these to match a real path would
+  start firing irrelevant reminders, not close a genuine gap.
+  `data-files.md`/`shader-code.md`/`narrative.md`/`prototype-code.md`
+  all point at directories that genuinely don't exist for genuinely
+  inapplicable reasons (no external data-file directory, no custom
+  shaders, no narrative/dialogue system, no separate prototypes
+  directory) -- confirmed each, left alone. `design-docs.md`
+  (`design/gdd/**`) was already correctly matching -- no fix needed.
+
+Docs/rules-only, full suite re-run to confirm zero impact: 632/632,
+unchanged.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

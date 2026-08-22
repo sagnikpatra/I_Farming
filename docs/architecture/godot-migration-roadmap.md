@@ -109,10 +109,20 @@ stays the owner's regardless of how much of this list gets done.
       fixed all 11 contrast sites plus one more caught during remediation
       that the static read had missed (HUD's LiveOps banner), and added a
       checkmark badge decal so harvest-readiness isn't color-only anymore.
-      HIGH/MEDIUM/LOW/ADVISORY findings remain open for a follow-up pass.
-      **On-device visual verification not yet performed** (no emulator
-      available this session) — recommended before considering this
-      fully closed. Report: `production/qa/accessibility/
+      **Update — this bullet had gone stale**: a 2nd and 3rd remediation
+      pass (same file, same day) closed every remaining HIGH/MEDIUM/LOW/
+      ADVISORY finding too (SAFFRON_DARK/FIELD_GREEN button contrast,
+      the Monsoon-card contrast miss, pinch-only zoom's missing single-
+      pointer alternative, drag-only reposition's missing tap
+      alternative, sub-18px body text floors, plus two findings that
+      turned out to already be fixed by an earlier, unrelated UI-chrome
+      pass) — **and both were independently verified on-device**
+      (emulator, real screenshots) rather than left as diffs-only, unlike
+      the first pass. The audit's own final line: "Nothing remains open
+      as of the 2026-08-21 3rd pass" except §7 (audio), an explicit,
+      deliberate DEFER — since substantially addressed by EPIC-M8's own
+      later audio pass (4 volume sliders + mute-all, see the Audio
+      bullet above). Report: `production/qa/accessibility/
       village-board-and-management-sheets-audit-2026-08-21.md`.
 - [x] Localization — **all 3 phases complete, 2026-08-22**: Godot's
       native CSV-translation pipeline (`godot/locales/ui_strings.csv`),

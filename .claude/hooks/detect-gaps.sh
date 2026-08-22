@@ -12,26 +12,39 @@ echo "=== Checking for Documentation Gaps ==="
 # --- Check 0: Fresh project detection (suggests /start) ---
 FRESH_PROJECT=true
 
+# Update (2026-08-23): every check below originally only looked at src/
+# and a bare "**Engine**:" line -- this project has no src/ directory and
+# technical-preferences.md's real format is "**Engine (target)**:"/
+# "**Engine (current)**:", so this whole "Check 0" block always concluded
+# FRESH_PROJECT=true regardless of real project state, printing "NEW
+# PROJECT... run /start" for a project with 632 passing tests, 14 GDDs,
+# and 4 Accepted ADRs. Found by actually running this hook, not just
+# reading it. Fixed to also check godot/scripts/ and the real engine-line
+# format, same root-cause class of bug fixed across .claude/rules/*.md,
+# statusline.sh, and session-start.sh today.
+
 # Check if engine is configured
 if [ -f ".claude/docs/technical-preferences.md" ]; then
-  ENGINE_LINE=$(grep -E "^\- \*\*Engine\*\*:" .claude/docs/technical-preferences.md 2>/dev/null)
+  ENGINE_LINE=$(grep -E "^\- \*\*Engine( \((target|current)\))?\*\*:" .claude/docs/technical-preferences.md 2>/dev/null)
   if [ -n "$ENGINE_LINE" ] && ! echo "$ENGINE_LINE" | grep -q "TO BE CONFIGURED" 2>/dev/null; then
     FRESH_PROJECT=false
   fi
 fi
 
 # Check if game concept exists
-if [ -f "design/gdd/game-concept.md" ]; then
+if [ -f "design/gdd/game-concept.md" ] || [ -f "design/gdd/systems-index.md" ]; then
   FRESH_PROJECT=false
 fi
 
 # Check if source code exists
-if [ -d "src" ]; then
-  SRC_CHECK=$(find src -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | head -1)
-  if [ -n "$SRC_CHECK" ]; then
-    FRESH_PROJECT=false
+for src_dir in src godot/scripts; do
+  if [ -d "$src_dir" ]; then
+    SRC_CHECK=$(find "$src_dir" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | head -1)
+    if [ -n "$SRC_CHECK" ]; then
+      FRESH_PROJECT=false
+    fi
   fi
-fi
+done
 
 if [ "$FRESH_PROJECT" = true ]; then
   echo ""
@@ -44,12 +57,16 @@ if [ "$FRESH_PROJECT" = true ]; then
 fi
 
 # --- Check 1: Substantial codebase but sparse design docs ---
-if [ -d "src" ]; then
-  # Count source files (cross-platform, handles Windows paths)
-  SRC_FILES=$(find src -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | wc -l)
-else
-  SRC_FILES=0
-fi
+# Count source files (cross-platform, handles Windows paths) -- checks
+# both src/ (template default) and godot/scripts/ (this project's real
+# source root), same fix as Check 0 above.
+SRC_FILES=0
+for src_dir in src godot/scripts; do
+  if [ -d "$src_dir" ]; then
+    count=$(find "$src_dir" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" -o -name "*.rs" -o -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | wc -l)
+    SRC_FILES=$((SRC_FILES + count))
+  fi
+done
 
 if [ -d "design/gdd" ]; then
   DESIGN_FILES=$(find design/gdd -type f -name "*.md" 2>/dev/null | wc -l)
@@ -95,7 +112,7 @@ if [ -d "prototypes" ]; then
 fi
 
 # --- Check 3: Core systems without architecture docs ---
-if [ -d "src/core" ] || [ -d "src/engine" ]; then
+if [ -d "src/core" ] || [ -d "src/engine" ] || [ -d "godot/scripts/village_board" ]; then
   if [ ! -d "docs/architecture" ]; then
     echo "⚠️  GAP: Core engine/systems exist but no docs/architecture/ directory"
     echo "    Suggested action: Create docs/architecture/ and run /architecture-decision"
@@ -111,9 +128,18 @@ if [ -d "src/core" ] || [ -d "src/engine" ]; then
 fi
 
 # --- Check 4: Gameplay systems without design docs ---
-if [ -d "src/gameplay" ]; then
+# Update (2026-08-23): this check's whole model -- one subdirectory per
+# system under src/gameplay/ -- doesn't match this project's real
+# convention (godot/scripts/economy/ is one flat directory holding every
+# economy .gd file, not per-system subdirectories) even with the path
+# fixed, so it correctly finds nothing to iterate and stays inert rather
+# than firing false-positive noise. Left checking both roots anyway for
+# template-default-project compatibility.
+GAMEPLAY_DIR="src/gameplay"
+[ -d "$GAMEPLAY_DIR" ] || GAMEPLAY_DIR="godot/scripts/economy"
+if [ -d "$GAMEPLAY_DIR" ]; then
   # Find major gameplay subdirectories (those with 5+ files)
-  GAMEPLAY_SYSTEMS=$(find src/gameplay -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+  GAMEPLAY_SYSTEMS=$(find "$GAMEPLAY_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
 
   if [ -n "$GAMEPLAY_SYSTEMS" ]; then
     while IFS= read -r system_dir; do
@@ -139,9 +165,17 @@ if [ -d "src/gameplay" ]; then
 fi
 
 # --- Check 5: Production planning ---
+# Update (2026-08-23): fixing Check 1's SRC_FILES count above means this
+# check can now actually reach its threshold for the first time -- added
+# production/session-state/active.md as an accepted alternative to
+# sprints/milestones so that doesn't turn into a NEW false-positive.
+# This project deliberately uses a continuous active.md journal instead
+# of sprint/milestone files (an established, working, documented choice,
+# not a gap) -- confirmed neither production/sprints/ nor
+# production/milestones/ exist anywhere in this repo.
 if [ "$SRC_FILES" -gt 100 ]; then
   # For projects with substantial code, check for production planning
-  if [ ! -d "production/sprints" ] && [ ! -d "production/milestones" ]; then
+  if [ ! -d "production/sprints" ] && [ ! -d "production/milestones" ] && [ ! -f "production/session-state/active.md" ]; then
     echo "⚠️  GAP: Large codebase ($SRC_FILES files) but no production planning found"
     echo "    Suggested action: /sprint-plan or create production/ directory"
   fi

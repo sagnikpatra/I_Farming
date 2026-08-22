@@ -6014,3 +6014,54 @@ standing instruction. Remaining `.claude/hooks/` files
 (`detect-gaps.sh`, `validate-*.sh`, `notify.sh`, `pre/post-compact.sh`,
 `log-agent*.sh`, `session-stop.sh`) not yet given this same
 read-and-empirically-test treatment.
+
+## 2026-08-23 (cont'd) -- detect-gaps.sh was telling every session this is a fresh, empty project
+
+The biggest find of this whole hooks-testing thread. Ran
+`detect-gaps.sh` directly (not just read it) and got:
+
+```
+🚀 NEW PROJECT: No engine configured, no game concept, no source code.
+   This looks like a fresh start! Run: /start
+```
+
+-- for a project with 632 passing tests, 14 GDDs, 4 Accepted ADRs, a
+completed engine migration, and continuous heavy development across many
+sessions. Same root-cause family as everything else in this thread:
+Check 0's three fresh-project signals (engine-configured line format,
+`design/gdd/game-concept.md` specifically, and a bare `-d src` source-code
+check) all failed to recognize this project's real state, so
+`FRESH_PROJECT` stayed `true` unconditionally.
+
+Fixed all of Check 0 to also recognize this project's real signals
+(the `**Engine (target/current)**:` line format, `systems-index.md` as
+an accepted concept-doc alternative, and `godot/scripts/` as a real
+source root) -- verified by re-running the script and confirming the
+false message is gone. Also fixed Check 1 (the SRC_FILES count powering
+the sparse-design-docs warning -- same src/ blind spot, verified now
+correctly counts 64 real files) and Check 3
+(`src/core`/`src/engine` -> also recognizes `godot/scripts/village_board`).
+
+Fixing Check 1's count meant Check 5 (production-planning gap warning,
+threshold `SRC_FILES > 100`) could newly reach its threshold behavior
+for the first time -- added `production/session-state/active.md` as an
+accepted alternative to `production/sprints/`/`production/milestones/`
+so fixing one bug didn't introduce a fresh false-positive against this
+project's deliberate choice to use a continuous journal instead of
+sprint files. Left Check 4 (`src/gameplay` -> also checks
+`godot/scripts/economy`) fixed for path-consistency, but its whole
+one-subdirectory-per-system model doesn't match this project's real flat-
+directory convention -- confirmed it correctly finds nothing to iterate
+either way, not a source of new noise.
+
+Verified the complete fix end-to-end: re-ran the script, confirmed clean
+output (no false "new project" message, no false gap warnings -- 14 real
+GDDs vs. the "<5" threshold, 4 real ADRs vs. the "<3" threshold, and the
+now-accepted active.md all correctly registering as real project
+maturity signals). Not a Godot-code change, but ran the full suite anyway
+per this session's own discipline: 632/632, unaffected.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction. Remaining `.claude/hooks/` files
+(`validate-*.sh`, `notify.sh`, `pre/post-compact.sh`, `log-agent*.sh`,
+`session-stop.sh`) not yet given this same treatment.

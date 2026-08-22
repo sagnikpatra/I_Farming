@@ -5616,3 +5616,35 @@ real function and confirmed clean via `git diff`. Full suite run twice:
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- AccessibilitySheet's button/slider wiring untested
+
+Kept scanning. Found another real gap of the same shape as
+WorkerStation's: `accessibility_sheet.gd` had zero coverage of its own
+UI-to-logic wiring. `test_accessibility_settings.gd` already covers
+every `AccessibilitySettings` setter in isolation, but nothing drove the
+actual Button/HSlider nodes this sheet builds -- unlike
+`decoration_info_card.gd`/`growing_info_card.gd`, which this project's
+own established pattern already holds to a "drive the real node, not
+just call the method" standard.
+
+Wrote `test_accessibility_sheet.gd` (6 tests): pressing the real Cycle
+Text Size / colorblind toggle / language toggle / Mute All buttons each
+verified to call through to the real `AccessibilitySettings` setter
+(not just look clickable), dragging the real master-volume `HSlider`
+verified via its own `value_changed` signal, and a check that the sheet
+reflects non-default settings correctly (a `colorblind_safe=true` sheet
+must offer "turn off," not "turn on").
+
+Hit and fixed a real ordering bug while writing these: `configure()`
+must be called *before* the node enters the tree (its own doc comment
+says so, unlike `villager_info_card.gd`'s `configure()` which has a
+defensive `is_inside_tree()` re-populate check this file lacks) --
+calling `add_child_autofree()` first caused `_ready()`'s `_populate()`
+to run against a still-null `_settings`, a real "Nil" error caught
+immediately by the test run itself, not a silent pass. Fixed the
+test helper's call order to match the documented contract.
+
+Full suite run twice: 622/622 (up from 616), non-flaky.
+
+**Next step**: continuing to scan for further genuine gaps.

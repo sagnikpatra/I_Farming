@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
 Feature: Post-M8 continued development. Pushed all accumulated work to GitHub origin per explicit user instruction, then resumed active feature development.
-Task: Villager tap interaction, a 6-GDD doc-accuracy sweep, Chanda Visit's on-board visitor NPC, and the real-time day/night smooth crossfade all shipped this stretch -- three "future stretch" items from earlier GDDs closed out. 609/609 GUT passing (twice, non-flaky). About to commit the crossfade. Continuing development per standing "don't stop" instruction.
+Task: This stretch shipped 5 commits (all pushed to master + feature/isometric-village-view): villager tap interaction, a 6-GDD doc-accuracy sweep, Chanda Visit's on-board visitor NPC, the real-time day/night smooth crossfade, and systems-index.md (closing a gap flagged since M0). All 3 "future stretch" items flagged across this project's GDDs are now closed. 609/609 GUT passing (twice, non-flaky). Continuing to scan for further genuine, unblocked development targets per standing "don't stop" instruction.
 <!-- /STATUS -->
 
 # Active Session State
@@ -5366,3 +5366,69 @@ day/night crossfade) are now closed. 609/609 GUT tests passing.
 **Next step**: commit this crossfade, then continue looking for further
 genuine development targets -- no forced stopping point, continuing per
 the standing "don't stop" instruction.
+
+## 2026-08-22 (systems-index.md written; stretch wrap-up)
+
+Wrote `design/gdd/systems-index.md` -- flagged as a planned deliverable
+in the migration roadmap's own "Kickoff approach" back on 2026-08-18,
+never actually written (deferred past every epic per the roadmap's own
+"gate docs to when needed" decision, then simply never revisited once
+nothing was blocking on it anymore). A single table of all 13 GDDs,
+grouped Core Economy / Secondary Systems / Village Board & Presentation,
+each with a real summary sourced from that doc's own Overview (not
+paraphrased from memory) plus a Dependency Notes section. Also fixed two
+smaller staleness issues found while compiling it: worker-economy.md's
+top Status line still said "ready for implementation" despite its own
+Implementation Status line already correctly saying EPIC-M7 is Complete
+(fixed to match); gems-second-sink.md was missing the standard
+Status/Verified-By header block every other completed GDD carries
+(added one, sourced from content already in the doc). Docs-only, no
+test-suite impact.
+
+Checked two more candidate gaps and deliberately left both alone:
+`docs/architecture/tr-registry.yaml` only has 14 entries covering the
+earliest 5 GDDs (dated 2026-08-18), none of the 8 written since -- but
+it's explicitly owned by `/architecture-review` ("WRITTEN BY:
+/architecture-review, appends new entries, never overwrites") and serves
+a story-file tracking pipeline (`/create-stories`/`/story-done`) this
+project has never actually used (no `production/sprints/` story files
+exist) -- hand-editing it or running a full `/architecture-review` pass
+for a workflow not in active use isn't a clear win, unlike
+systems-index.md which had direct, immediate reference value. Similarly
+left `docs/architecture/control-manifest.md` unwritten -- pure template
+scaffolding with no project-specific source material to draw from
+honestly.
+
+**Full stretch total: 5 commits, all pushed to both `master` and
+`feature/isometric-village-view`.** Covers: villager tap interaction
+(GDD update + PickArea/tap dispatch + info card + localization + 9
+tests), a 6-GDD doc-accuracy sweep (stale Acceptance Criteria checkboxes
+closed against real code/tests, one genuine gap closed with a new
+deterministic test rather than just checked off), Chanda Visit's
+on-board visitor NPC (the last "future stretch" item from
+festival-visiting-npcs.md, 15 new tests, real on-device verification
+with 2 screenshots), the real-time day/night smooth crossfade (the last
+"future stretch" item from real-time-day-night.md, 2 new tests, on-device
+boot verification), and systems-index.md (closing the M0-kickoff gap,
+plus 2 more small staleness fixes). Every "future stretch"/deferred item
+this session's own GDDs had flagged is now closed. 609/609 GUT tests
+passing throughout, run twice non-flaky after every code change.
+
+**Assessment**: every concretely-identifiable, unblocked engineering/
+documentation gap found across this pass (GDD Acceptance Criteria
+staleness, flagged-but-undesigned feature stretches, a named-but-missing
+doc deliverable) is now closed. What remains open is either genuinely
+the user's call (crop-economy.md's spoilage asymmetry and missing
+hard-currency question, liveops-events.md's Premium Pass reward scope
+and leaderboard question, mandi-trading.md's Grade-A bonus scope
+question, land-and-structures.md's MAX_PLOTS=16 confirmation,
+farmhouse-progression.md's "should a next-tier bonus preview exist"
+question -- all real design/product decisions, not implementation gaps)
+or process infrastructure for a workflow this project doesn't currently
+use (the TR registry/control manifest, addressed above).
+
+**Next step**: no further unilaterally-actionable engineering gap
+identified without inventing new scope from nothing or overriding a
+design decision that is genuinely the user's to make. Ready to continue
+immediately given new user direction, or any of the open design
+questions above if the user wants to weigh in on one.

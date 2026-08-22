@@ -60,10 +60,19 @@ stays the owner's regardless of how much of this list gets done.
       this project's own engine-reference has zero audio coverage — a real
       gap this pass surfaced), gameplay-programmer (full implementation).
       **Code complete and tested — 350/350 GUT passing** (independently
-      re-verified, not just trusted). **Zero real audio asset files exist
-      yet** — every catalogued path is a `ResourceLoader.exists()`-gated
-      no-op until real `.ogg` files are dropped in; sourcing/composing them
-      is a separate follow-up task. `agroforestry_tab.gd`/
+      re-verified, not just trusted). **Update — this bullet had gone
+      stale**: real audio asset sourcing, once flagged here as a separate
+      follow-up task, is done -- all 40 catalogued `.ogg` files exist on
+      disk (confirmed: `find godot/assets/audio -name "*.ogg" | wc -l` ->
+      40), and a dedicated re-audit
+      (`production/qa/accessibility/audio-accessibility-reaudit-2026-08-21.md`)
+      independently re-measured every file's loudness against
+      `audio-core-gameplay-loop.md`'s targets, found and fixed a real
+      mastering defect (22 of 22 regular SFX/UI files were systemically
+      under-target, root-caused to single-pass `loudnorm` being unreliable
+      under ~3s of audio), peak-normalized all 22 to a verified-safe
+      target with zero content loss, and added a Master-bus limiter as a
+      structural backstop -- 360/360 GUT passing after. `agroforestry_tab.gd`/
       `niche_farming_tab.gd` wiring (mechanically identical to the done
       `polyhouse_tab.gd`) was deferred at the time this note was written,
       then closed the same way in a later session (commit `d268335`) --
@@ -205,7 +214,7 @@ Assets: 627 `.obj`/`.mtl` across 4 Kenney kits (13 MB), 31 bundled. **No rigged/
 | M5 — Migration Parity Verification & Cutover | QA/Release | 1.5 wk | M1-M4 | **Complete — cutover decided 2026-08-21, see above** |
 | M6 — Villager Asset Pipeline & Ambient Roaming | Feature | 2–2.5 wk | M1, M2 (gated: villager GDD, CC0 rigged characters) | **Complete** — all 6 characters live in-game with visual variety, measured with no detectable perf cost at the population cap (emulator; real-hardware/formal-budget work stays open project-wide, see below) |
 | M7 — Worker Assignment & Wage Economy | Feature | 1.5–2 wk | M6, M2, M4 (gated: balance pass) | **Complete** — design, economy backend, visual stationing, and assignment UI all built, tested (327/327), and verified live via real touch input — see below |
-| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | **All 5 items done** — security audit, QA/smoke pass, accessibility (4 BLOCKING findings fixed), audio (`/team-audio` core-gameplay-loop pass, code complete, real asset sourcing still open), and localization (all 3 phases complete 2026-08-22, 163 CSV keys, English/Hindi) — see "Release Readiness" above. Store readiness remains the owner's own step. |
+| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | **All 5 items fully done** — security audit, QA/smoke pass, accessibility (every BLOCKING/HIGH/MEDIUM/LOW/ADVISORY finding fixed and independently verified on-device across 3 remediation passes), audio (`/team-audio` core-gameplay-loop pass, code complete, all 40 real asset files sourced + loudness-remastered + re-audited), and localization (all 3 phases complete 2026-08-22, 163 CSV keys, English/Hindi) — see "Release Readiness" above. Store readiness remains the owner's own step. |
 
 **Re-baselined estimate**: 10–13 weeks to parity (M0–M5), +3.5–4.5 weeks for villagers/workers (M6–M7), +1 week hardening (M8). Total 14.5–18.5 weeks — higher than ADR-0001's original 8–14 week estimate, mainly due to the character-asset gap and the test-suite work the ADR's own risk analysis requires but didn't budget. Re-baseline again after M0 and after M2.
 

@@ -487,13 +487,65 @@ this ADR's overall Status stays Proposed until that choice is made.
 4. Define `CloudSaveProvider` with `NullCloudProvider` as the default.
    *Verify: full GUT suite green; game behaves identically; no network.*
 
-**Phase 1 — De-risking spike (kill-switch gate)**
+**Phase 1 — De-risking spike (kill-switch gate) -- Substantially de-risked
+(2026-08-22), sign-in verification remains blocked on project-owner action**:
+`gradle_build/use_gradle_build` was `false` project-wide (no `android/`
+Gradle project existed at all) -- a prerequisite gap the ADR didn't
+originally quantify. Enabled it, ran `--install-android-build-template`,
+and confirmed a **plain Gradle export with no plugin** still builds and
+launches cleanly on real hardware (OnePlus OPD2403) first, as a rollback
+checkpoint. Then installed `godot-sdk-integrations/godot-play-game-services`
+v3.4.0 (verified via published SHA-256) into `godot/addons/
+GodotPlayGameServices/`, enabled it, and re-ran the full GUT suite
+(475/475 still passing, zero plugin-caused breakage). Gradle export with
+the plugin **initially failed** -- AAPT rejected the manifest's
+`game_services_project_id` string reference because the plugin's
+`godot_play_game_services/game_id` export option was empty (expected; not
+a 4.7.1 compatibility issue). Filled it with an explicitly-labeled fake
+placeholder purely to unblock the build, then re-exported: **the plugin's
+AAR linked, its Gradle dependencies (`play-services-games-v2:21.0.0`,
+`gson:2.11.0`) resolved, and AAPT passed** -- the single highest-risk
+unknown this ADR flagged (whether the plugin builds under Godot 4.7.1 at
+all) is answered yes. Installed and launched on the OnePlus device:
+`GodotPluginRegistry: Initializing Godot plugin GodotPlayGameServices` ->
+`Completed initialization` (the native plugin loads correctly under
+4.7.1's plugin registry), no crash, no ANR, ordinary gameplay continued.
+Google Play Services itself correctly and gracefully rejected the fake
+ID (`application ID includes non-numeric characters`) rather than
+crashing -- exactly the failure mode wanted. `godot/android/` (the
+generated Gradle build directory, ~1.1 GB) added to `godot/.gitignore` --
+regenerable, was previously uncovered.
 5. Add the PGS plugin. Export, install, launch on the AVD. Confirm the
-   existing export pipeline still works under Godot 4.7.1.
+   existing export pipeline still works under Godot 4.7.1. -- **Done**,
+   verified on real hardware rather than the AVD (see above).
 6. Silent sign-in only. No save data touched.
    *Verify: APK launches, signs in, no crash, no startup regression.*
    **If this fails, stop.** Fall back to Alternative 4 or 5, having spent
-   days rather than weeks.
+   days rather than weeks. -- **Launch/no-crash/no-regression verified,
+   including the actual code-path, not just the plugin's presence.**
+   Added a temporary, clearly-labeled spike probe
+   (`godot/autoload/pgs_phase1_signin_probe.gd`) that calls
+   `GodotPlayGameServices.initialize()` fire-and-forget from `_ready()`
+   (no `await`) and listens for `userAuthenticated`. On-device:
+   `GodotPlayGameServices plugin initialized successfully.` ->
+   `[Phase1Probe] initialize() called...` -> `VillageBoard: overlap check
+   passed` -> `OnGodotMainLoopStarted` ~13ms later, matching baseline
+   timing exactly -- **no startup blocking from the `initialize()` call
+   itself**. No crash, process stayed alive. No `userAuthenticated` signal
+   fired, consistent with Play Services already having declined the
+   placeholder ID at the OS level (non-numeric app ID) -- a config-value
+   problem, not a code-path problem. GUT suite re-confirmed 475/475 with
+   the probe registered; it also correctly no-ops headless (no native
+   singleton present) rather than erroring. **Actual sign-in success is
+   still not verifiable**: it requires a real Google Play Console Game
+   Services project, OAuth client, and this build's SHA-1 fingerprint
+   registered there -- an external account action only the project owner
+   can perform. `export_presets.cfg`'s `godot_play_game_services/game_id`
+   currently holds the placeholder above and must be replaced with the
+   real ID once that setup exists (the file is gitignored, so this
+   placeholder was never at risk of being committed). Once real sign-in
+   is confirmed, delete the spike probe in favor of the ADR's actual
+   chosen shape (`PgsSnapshotProvider : CloudSaveProvider`, Phase 2+).
 
 **Phase 2 — Backup-only (one-way, the safest useful increment)**
 7. Upload on app pause. No download path at all.

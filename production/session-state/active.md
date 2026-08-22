@@ -3793,3 +3793,149 @@ Status stays Proposed.
    intended locked-zone placeholder visual).
 4. Localization, store readiness -- still open, still need the user
    specifically (see entries above).
+
+## 2026-08-22 (cont'd) -- Cloud-save Phase 1 spike: Gradle pipeline +
+PGS plugin substantially de-risked, blocked on user for real sign-in
+
+Continued from a fresh session recovering this state file. User picked
+"Cloud-save Phase 1" (the PGS de-risking spike) when asked what's next,
+then chose to do the buildable parts directly rather than delegate or
+wait on Play Console setup first.
+
+Confirmed `E:\Godot\Godot_v4.7.1-stable_win64.exe` still at its known
+path (session-state, not on any shell PATH). Baseline: 475/475 GUT tests
+green before touching anything.
+
+**Real mid-task correction, called out honestly rather than glossed
+over**: first attempt ran `--install-android-build-template` standalone
+in the background; it just booted the full editor and sat there minutes
+burning CPU with zero output, because (per Godot's own `--help` text)
+that flag only works combined with `--export-debug`/`--export-release`,
+not alone. Killed the stalled process, then re-ran it correctly. Also,
+when asked "why can't I see what you're downloading" -- was transparent
+that output had been going to a redirected log file checked after the
+fact, not streamed live; showed the full raw log rather than a summary,
+and going forward for anything that downloads/builds, show output as it
+happens.
+
+**What got verified, on real hardware (OnePlus OPD2403), not the AVD**:
+1. `gradle_build/use_gradle_build` was `false` project-wide -- no
+   `android/` Gradle project existed yet at all, a prerequisite gap the
+   ADR flagged as a risk but hadn't quantified. Enabled it.
+2. Plain Gradle export, **no plugin**, installed and launched clean as a
+   rollback checkpoint (`kisan-khet-gradle-checkpoint.apk`, 84.5MB vs.
+   ~32MB non-Gradle -- expected, Gradle output isn't stripped as
+   aggressively by default). Logcat: `OnGodotSetupCompleted` ->
+   `VillageBoard: overlap check passed -- 7 zones` ->
+   `OnGodotMainLoopStarted`, no `AndroidRuntime` errors anywhere.
+3. Downloaded `godot-sdk-integrations/godot-play-game-services` v3.4.0
+   (`addons.zip`, SHA-256 verified against GitHub's published digest),
+   inspected its contents before installing, placed at
+   `godot/addons/GodotPlayGameServices/`, enabled in
+   `project.godot`'s `[editor_plugins]`. Full GUT suite re-run: still
+   475/475, zero plugin-caused breakage.
+4. First plugin export **failed** -- AAPT: `resource
+   string/game_services_project_id ... not found`, because the plugin's
+   `godot_play_game_services/game_id` export option was empty (expected
+   plugin-config gap, not a 4.7.1 issue). Added an explicitly-labelled
+   fake placeholder (`"000000000000-PLACEHOLDER-PHASE1-BUILD-CHECK"`) to
+   `export_presets.cfg` purely to unblock the build -- that file is
+   gitignored, so this was never at risk of being committed.
+5. Re-exported: **succeeded**. Plugin AAR linked, its Gradle deps
+   (`play-services-games-v2:21.0.0`, `gson:2.11.0`) resolved, AAPT
+   passed. This is the ADR's single flagged highest-risk unknown
+   (does the plugin build under Godot 4.7.1 at all) -- answered yes.
+6. Installed + launched on-device: `GodotPluginRegistry: Initializing
+   Godot plugin GodotPlayGameServices` -> `Completed initialization` (the
+   native plugin loads correctly in Godot 4.7.1's plugin registry). No
+   crash, no ANR, gameplay continued normally, screenshot evidence
+   captured. Google Play Services itself correctly and gracefully
+   rejected the fake ID (`application ID includes non-numeric
+   characters`) rather than crashing -- the right failure mode.
+7. Added `android/` (the generated Gradle build dir, ~1.1GB,
+   regenerable) to `godot/.gitignore` -- was previously uncovered.
+
+Logged all of this into adr-0003's Migration Plan Phase 1 section inline
+(not just here), matching how Phase 0 was documented.
+
+**What remains genuinely blocked, not just undone**: actual silent
+sign-in verification needs a real Google Play Console Game Services
+project + OAuth client + this build's SHA-1 fingerprint registered --
+an external account action only the project owner can do. The
+placeholder game-id in `export_presets.cfg` must be swapped for the
+real one once that exists.
+
+Evidence: `production/qa/evidence/cloud-save-phase1-gradle-checkpoint.png`,
+`cloud-save-phase1-pgs-plugin-check.png`. Build artifacts + full export
+logs in `godot_builds/` (`kisan-khet-gradle-checkpoint.apk`,
+`kisan-khet-pgs-plugin-check.apk`, `gradle_checkpoint_export.log`,
+`pgs_plugin_export2.log`, `gut_after_pgs_plugin.log`).
+
+Nothing committed this session -- per project standing rule, no commits
+without explicit user instruction. Changed/added, uncommitted:
+`godot/export_presets.cfg` (gradle_build=true, placeholder game-id --
+gitignored either way), `godot/project.godot` (plugin enabled +
+autoload, the latter auto-written by the plugin itself), `godot/
+.gitignore` (added `android/`), `godot/addons/GodotPlayGameServices/`
+(new, should be tracked like the existing `gut` addon), `godot/android/`
+(new, gitignored, not meant to be tracked).
+
+## 2026-08-22 (cont'd) -- Phase 1 pushed one step further: actual
+initialize() call verified safe on-device, not just the plugin's presence
+
+User said "continue" after the writeup above. Rather than stop at the
+Play-Console blocker, found one more increment doable without it: the
+plugin requires a **manual** `GodotPlayGameServices.initialize()` call
+before any client works (nothing had called this yet -- the earlier
+Play Games log lines were the OS-level GMS component reacting to the
+manifest tag, not our code path at all).
+
+Added `godot/autoload/pgs_phase1_signin_probe.gd` -- explicitly labeled
+TEMPORARY spike probe, not the ADR's real chosen shape
+(`PgsSnapshotProvider : CloudSaveProvider`, still Phase 2+ work). Calls
+`initialize()` fire-and-forget (no `await`, per the ADR's own
+implementation guideline) and listens for `userAuthenticated`.
+Registered as an autoload after `GodotPlayGameServices` itself (ordering
+matters). GUT suite re-run first: still 475/475, and the probe correctly
+no-ops headless (no native singleton present) instead of erroring.
+
+Exported + installed + launched on the OnePlus device again. Result:
+`GodotPlayGameServices plugin initialized successfully.` ->
+`[Phase1Probe] initialize() called...` -> `VillageBoard: overlap check
+passed` -> `OnGodotMainLoopStarted` ~13ms later, matching baseline
+timing -- confirms the actual `initialize()` call itself doesn't block
+startup, not just the plugin's mere presence. No crash, process stayed
+alive, zero `AndroidRuntime` errors. No `userAuthenticated` signal
+fired, consistent with Play Services already having declined the
+placeholder ID at the OS level -- a config-value gap, not a code-path
+problem. Screenshot evidence:
+`production/qa/evidence/cloud-save-phase1-signin-probe.png`. Build/log
+artifacts: `godot_builds/kisan-khet-signin-probe.apk`,
+`signin_probe_export.log`, `gut_after_signin_probe.log`. Logged into
+adr-0003 inline.
+
+This is very likely the actual limit of what's verifiable without the
+project owner's Play Console action -- everything else in step 6
+("signs in") requires a real Game Services ID by definition.
+
+## Next Step
+
+1. **Real blocker, needs the project owner specifically**: create a
+   Google Play Console Game Services project (or confirm one already
+   exists), register an OAuth client, and register this build's SHA-1
+   signing fingerprint. Only once that exists can actual silent sign-in
+   (ADR-0003 Phase 1 step 6's last remaining piece) be verified
+   on-device -- swap the placeholder `godot_play_game_services/game_id`
+   in `export_presets.cfg` for the real one at that point.
+2. Once sign-in is verified: (a) delete the temporary
+   `pgs_phase1_signin_probe.gd` spike probe and its autoload
+   registration, (b) Phase 1's kill-switch gate is fully passed, (c)
+   Phase 2 (backup-only, one-way upload on app pause) is the next
+   ADR-0003 milestone -- low risk, since nothing can overwrite the local
+   save yet at that phase.
+3. Commit `291a268` (Phase 0) is still local-only, unresolved from
+   earlier -- still needs the user's word on pushing it (see above).
+   Everything from this Phase 1 session is also uncommitted so far.
+4. Everything else from prior "Next Step" entries (screen-alignment
+   confirmation, localization, store readiness) is unchanged and still
+   open.

@@ -5,7 +5,7 @@
 **Source**: Your direct answers to this session's clarifying questions (2026-08-21, quoted inline below); `docs/architecture/godot-migration-roadmap.md`'s EPIC-M7 (Worker Assignment & Wage Economy) — which is otherwise just a name and a size estimate, no prior design material; `design/gdd/crop-economy.md`'s existing plot lifecycle and lazy offline-resolution pattern, which this system extends rather than duplicates; `design/gdd/villagers.md`'s EPIC-M6 roster, which this system reuses per your answer
 **Date**: 2026-08-21
 **Verified By**: User — §3.6's visibility interpretation and all 4 of §5's edge cases confirmed 2026-08-21; §4's wage rate balance-checked 2026-08-21 (`/balance-check`), one formula bug found and fixed (see §4's Status column)
-**Implementation Status**: Economy backend implemented and verified (assignment, eligibility, lazy harvest-and-replant automation, wage, and all 3 confirmed edge cases with real economic weight — inventory-full, can't-afford-replant, Electricity-lapsed). Not yet implemented: any player-facing UI to assign/unassign a worker, and the visual "stationed at zone" rendering for an assigned villager (§3.6) — see `docs/architecture/godot-migration-roadmap.md`'s EPIC-M7 section for the exact remaining scope.
+**Implementation Status**: **Update (2026-08-22) — this line had gone stale.** Complete: economy backend (assignment, eligibility, lazy harvest-and-replant automation, wage, all 3 confirmed edge cases — inventory-full, can't-afford-replant, Electricity-lapsed), the player-facing assign/unassign UI (`worker_assignment_row.gd`, now localized too — see `docs/architecture/localization-pipeline.md`), and the visual "stationed at zone" rendering for an assigned villager (§3.6, `WorkerStation`). Verified live via real touch input, 327/327 passing at EPIC-M7 close (545+ project-wide as of later sessions). See `docs/architecture/godot-migration-roadmap.md`'s EPIC-M7 section — marked Complete.
 ---
 
 > **Unlike `villagers.md`, this document had almost no prior source
@@ -171,24 +171,33 @@ auto-spending beyond the wage itself):
 
 ## 6. Dependencies
 
+**Update (2026-08-22)**: all three "should note" cross-references below
+were the design-time expectation, written before implementation — all
+three are now confirmed actually present in the referenced docs' own
+Dependents sections, not still-open TODOs.
+
 **Design Dependencies**:
 - `villagers.md` — this document's entire worker roster *is* that
   document's villager roster; an assigned worker is removed from
   `VillagerSpawner`'s ambient-roaming population (exact hand-off
   mechanism is engineering work, not decided here, but the *rule* that
   assigned ≠ ambient-roaming is a real design decision made in §3.1).
-  `villagers.md` should note in its own Dependents that this document
-  reads/removes from its roster, per the bidirectional-dependency rule.
+  Confirmed present in `villagers.md`'s own Dependents section.
 - `crop-economy.md` — this document's automation (§3.3) and offline-safety
   (§3.4) are both direct extensions of that document's plot lifecycle and
-  lazy-resolution pattern, not new mechanics. `crop-economy.md` should
-  note in its own Dependents that `worker-economy.md` calls its
-  `harvestPlot()`/`plantSeed()` on the player's behalf.
+  lazy-resolution pattern, not new mechanics. Confirmed present in
+  `crop-economy.md`'s own Dependents section (`harvestPlot()`/
+  `plantSeed()` called on the player's behalf).
 - `land-and-structures.md` — workers are assigned to that document's
-  structure zones; that document should note in its own Dependents that
-  `worker-economy.md` reads which zones exist and are unlocked.
+  structure zones. Confirmed present in `land-and-structures.md`'s own
+  Dependents section.
 
-**Technical Dependencies**: None yet — no code exists for this system.
+**Technical Dependencies**: **Update — this line had gone stale.**
+Fully implemented: `game_economy.gd` (`assign_worker`/`unassign_worker`/
+`resolve_worker_actions`), `worker_assignment_row.gd` (the assign/
+unassign UI, embedded in every eligible zone sheet), `village_board.gd`
+(`WorkerStation` visual stationing). See the Implementation Status line
+at the top of this document.
 
 **Content Dependencies**: None beyond the EPIC-M6 character roster
 already sourced.
@@ -202,10 +211,11 @@ already sourced.
 
 ## 8. Acceptance Criteria
 
-**Status, 2026-08-21 (economy backend done, UI/visuals not started)**:
+**Status, 2026-08-22 (update — fully built and verified, this section had gone stale)**:
 - [x] A villager can be assigned to a specific zone (`assign_worker()`) —
-      **economy layer only**; no UI exists yet to actually pick a
-      villager and trigger this from play
+      both the economy layer and the player-facing UI
+      (`worker_assignment_row.gd`, embedded in every eligible zone sheet)
+      exist and are wired together
 - [x] An assigned zone's `ReadyToHarvest` plots are automatically
       harvested and replanted with the same crop, without a player tap —
       `resolve_worker_actions()`, tested against Wheat/Open-Field
@@ -218,30 +228,33 @@ already sourced.
       verified for all 3 economically-relevant edge cases (inventory
       full charges nothing; can't-afford-replant still charges for the
       harvest; Electricity-lapsed charges nothing while paused)
-- [ ] An assigned villager is removed from the EPIC-M6 ambient-roaming
+- [x] An assigned villager is removed from the EPIC-M6 ambient-roaming
       population while assigned, and returns to it on un-assignment —
-      **not built yet**; this is the visual/board-integration half of
-      §3.6, separate from the economy-layer assignment state above
+      confirmed in `villager_spawner.gd` (`roaming_count` is computed as
+      the target population minus `state.worker_assignments.size()`),
+      plus the visual "stationed at zone" rendering (`WorkerStation`,
+      `village_board.gd`'s `_sync_worker_stations()`)
 - [x] Every edge case in §5 has an explicit, confirmed answer — resolved
       2026-08-21, and now also covered by passing tests, not just design
       text
 
-**Definition of Done for this document specifically**: ✅ met. §3.6's
-visibility interpretation and all 4 of §5's edge cases are confirmed by
-the user, not assumed. The wage rate (§4, 15%) was balance-checked
-2026-08-21 against all 8 eligible crops — confirmed proportionally
-reasonable, with one real formula bug (missing damage scaling) found and
-fixed in the implementation. Two non-blocking designer calls remain open
-(Wheat's *and Paddy's* disproportionate net-profit cut; worker+structural-
-sink stacking on Polyhouse/Vertical Farm) — noted in §4/§7, not required
-before this document can be considered done.
+**Definition of Done for this document specifically**: ✅ met, and the
+implementation it specified is also ✅ complete (EPIC-M7, 327/327 at
+close). §3.6's visibility interpretation and all 4 of §5's edge cases
+are confirmed by the user, not assumed. The wage rate (§4, 15%) was
+balance-checked 2026-08-21 against all 8 eligible crops — confirmed
+proportionally reasonable, with one real formula bug (missing damage
+scaling) found and fixed in the implementation. Two non-blocking
+designer calls remain open (Wheat's *and Paddy's* disproportionate
+net-profit cut; worker+structural-sink stacking on Polyhouse/Vertical
+Farm) — noted in §4/§7, not required before this document can be
+considered done.
 
 ---
 
-**Next Steps**: Design is confirmed. Implementation can begin, following
-the same slice-by-slice build-test-verify pattern EPIC-M6 used. The
-bidirectional dependency notes in §6 are already added to
-`villagers.md`/`crop-economy.md`/`land-and-structures.md`.
+**Next Steps**: Design confirmed and fully implemented (EPIC-M7,
+Complete). The bidirectional dependency notes in §6 are confirmed
+present in `villagers.md`/`crop-economy.md`/`land-and-structures.md`.
 
 **Related Skills**: `/design-review design/gdd/worker-economy.md`, `/balance-check` (once implemented, for the wage formula)
 

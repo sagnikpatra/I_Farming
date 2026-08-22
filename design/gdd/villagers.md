@@ -65,9 +65,12 @@ to notice mechanically — closer to background birdsong than a minigame.
    design preference: the sourced animation library
    (`Rig_Medium_MovementBasic.glb`) has no natural standing-idle loop
    (only `T-Pose`, a rest bind pose, and `Jump_Idle`, which is a mid-air
-   pose) — see Dependencies §6 for the open question of whether
-   `Rig_Medium_General.glb` (sourced but never inspected) has a real idle
-   clip worth wiring in later.
+   pose). This v1 constraint was later resolved: `Rig_Medium_General.glb`
+   was inspected (2026-08-22) and does have real `Idle_A`/`Idle_B` clips,
+   which `richer-ambient-villagers.md`'s Idle-Pause feature now uses —
+   see that document, not this one, for the current standing-idle
+   behavior (this section stays as the historical v1 baseline it was
+   written against).
 5. **Villagers ignore the player entirely.** No pathing around the
    player's camera, no reacting to taps elsewhere on the board, no
    awareness of game economy state (a villager doesn't "go to" the Mandi
@@ -152,33 +155,48 @@ with all 6 zones unlocked gets `clamp(2 + 4, 2, 6) = 6` villagers (the cap).
   it, not a rewrite of it.
 - `village_board.gd`'s `ActorLayer`, `_grid_to_world()`/`world_to_grid()`,
   and (for the exclusion-margin rule) `VillageSnapshotMapper.max_reserved_tiles()`
-- Godot's `NavigationRegion3D`/`NavigationAgent3D` — not yet added to the
-  village board scene at all; this is new EPIC-M6 engineering work, not
-  something to assume already exists
-- `Rig_Medium_General.glb` (sourced, sitting in `assets_3d/kaykit-adventurers/`,
-  **never inspected** — see Detailed Rules §4's idle-clip gap)
+- Godot's `NavigationRegion3D`/`NavigationAgent3D` — **update**: not what
+  actually shipped. The implementation deliberately deviated to a
+  hand-rolled `WalkableGrid` BFS pathfinder instead (see that class's own
+  doc comment) -- the board is a small, fixed 10×12 grid, so a
+  headless-testable custom pathfinder was simpler and avoided a
+  HIGH-knowledge-risk Godot 4.7 subsystem this project had never used,
+  consistent with `technical-preferences.md`'s existing preference for
+  lightweight hand-rolled systems over heavier engine subsystems.
+- `Rig_Medium_General.glb` (sourced, sitting in `assets_3d/kaykit-adventurers/`)
+  — **update**: inspected 2026-08-22 (see `villager.gd`'s own comment on
+  its `IDLE_CLIP_NAMES` constant), found 15 real clips including
+  `Idle_A`/`Idle_B`, both now in live use by the Idle-Pause feature.
 
 **Design Dependencies**:
 - `land-and-structures.md` — this doc's `unlockedZoneCount` formula input
   reads that doc's structure-unlock boolean flags directly (§2.3);
-  `land-and-structures.md` should note in its own Dependents that
-  `villagers.md` reads those flags, per the bidirectional-dependency rule
-  in `.claude/docs/coding-standards.md`
+  `land-and-structures.md`'s own Dependents section already notes this
+  (bidirectional-dependency rule satisfied, confirmed 2026-08-22).
 - `docs/architecture/godot-migration-roadmap.md`'s EPIC-M6 section — the
   engineering-status source of truth this document's design should stay
   consistent with
-- `worker-economy.md` (EPIC-M7, drafted) — reads/removes from this
-  document's villager roster when a villager is assigned as a worker; an
-  assigned villager is no longer part of the ambient-roaming population
-  this document owns. This document has no dependency back on
-  `worker-economy.md`'s wage/automation mechanics.
+- `worker-economy.md` (EPIC-M7) — reads/removes from this document's
+  villager roster when a villager is assigned as a worker; an assigned
+  villager is no longer part of the ambient-roaming population this
+  document owns. This document has no dependency back on
+  `worker-economy.md`'s wage/automation mechanics. See this doc's own
+  **Dependents** entry below for the reverse direction.
+
+**Dependents**:
+- `worker-economy.md` — this document's entire worker roster *is*
+  `villagers.md`'s villager roster; assigning a worker removes that
+  character from `VillagerSpawner`'s ambient-roaming population this
+  document owns. Confirmed present in `worker-economy.md`'s own
+  Dependencies section too (2026-08-22).
 
 **Content Dependencies**:
 - `assets_3d/README.md`'s "Rigged characters" section — licensing/sourcing
   record for the KayKit Adventurers pack this whole system is built on
-- 5 of 6 sourced characters (Barbarian/Knight/Mage/Rogue/Rogue_Hooded)
-  still need a visual-fix-or-drop decision before they can join the
-  roster — see Tuning Knobs §7
+- **Update**: all 6 sourced characters (Barbarian/Knight/Mage/Ranger/
+  Rogue/Rogue_Hooded) shipped in EPIC-M6 with visual variety, confirmed
+  live in `villager.gd`'s `CHARACTER_SCENES` — matches Tuning Knobs §7's
+  "Character roster size" row, which already reflects this correctly.
 
 ## 7. Tuning Knobs
 

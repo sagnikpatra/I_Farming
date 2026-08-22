@@ -5936,3 +5936,50 @@ unchanged.
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- the statusline's Epic>Feature>Task breadcrumb has never rendered until now
+
+Found the most user-visible bug of this whole doc-accuracy thread.
+`context-management.md` documents a "Status Line Block" feature: a
+`<!-- STATUS -->` block in `active.md` that the statusline script parses
+into an `Epic > Feature > Task` breadcrumb -- this session (and every
+prior one) has been faithfully maintaining that block, dozens of times,
+assuming it was actually showing up in the terminal status line.
+
+Tested `.claude/statusline.sh` directly with synthetic input rather than
+assuming it worked: it printed `ctx: 42% | Sonnet 5 | Pre-Production`
+-- **no breadcrumb at all**. Root cause, read directly out of the
+script rather than guessed: the breadcrumb only renders when the
+auto-detected `stage` is exactly "Production"/"Polish"/"Release", and
+stage auto-detection counts source files by looking in `$cwd/src` --
+**this project has no `src/` directory**, the same root cause already
+found and fixed in `.claude/rules/*.md` today. `src_count` was always
+0, so the heuristic fell through past "Production" every time, landing
+on "Pre-Production" via the (correctly-matching) ADR-detection fallback
+instead -- wrong for a project that's shipped, cut over, and deep into
+post-migration hardening. A second, smaller bug compounded it: the
+engine-configured check's grep pattern (`^\*\*Engine\*\*:`) never
+matched this project's real `**Engine (target)**:`/`**Engine
+(current)**:` split-line format either.
+
+Fixed both, verified empirically before and after each change (not
+just read the code and assumed): created `production/stage.txt`
+("Production" -- the script's own supported explicit-override
+mechanism, kept intentionally since "Polish"/"Release" have no
+auto-detection path at all and may matter later e.g. at store-submission
+time) as the primary fix, confirmed the breadcrumb renders correctly
+with the real live STATUS block content. Then fixed the underlying
+heuristic too for defense-in-depth (in case `stage.txt` is ever
+missing): the source-count check now also looks in `godot/scripts/`
+(this project's real source root), and the engine-line grep now matches
+either format. Removed `stage.txt` temporarily and re-ran the exact same
+test to confirm the auto-detection fix alone is now sufficient on its
+own, independent of the explicit override -- both paths verified
+working, not just one.
+
+Not a Godot-code change, but ran the full suite anyway per this
+session's own discipline: 632/632, unaffected (expected, confirmed
+rather than assumed).
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

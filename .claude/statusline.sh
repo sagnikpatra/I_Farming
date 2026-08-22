@@ -53,16 +53,30 @@ if [ -z "$stage" ]; then
 
   # Check if engine is configured (not placeholder)
   if [ -f "$tech_prefs" ]; then
-    engine_line=$(grep -m1 '^\*\*Engine\*\*:' "$tech_prefs" 2>/dev/null || true)
+    # Update (2026-08-23): also match this project's real "Engine (target)"/
+    # "Engine (current)" split-line format, not just a bare "**Engine**:" --
+    # the exact-match pattern never fired here, silently leaving
+    # engine_configured=false the whole time technical-preferences.md has
+    # actually described a pinned, Accepted engine choice (Godot 4.7.1).
+    engine_line=$(grep -m1 -E '^\*\*Engine( \((target|current)\))?\*\*:' "$tech_prefs" 2>/dev/null || true)
     if [ -n "$engine_line" ] && ! echo "$engine_line" | grep -q "TO BE CONFIGURED"; then
       engine_configured=true
     fi
   fi
 
-  # Count source files (language-agnostic)
-  if [ -d "$cwd/src" ]; then
-    src_count=$(find "$cwd/src" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.h" -o -name "*.py" -o -name "*.rs" -o -name "*.lua" -o -name "*.tscn" -o -name "*.tres" \) 2>/dev/null | wc -l | tr -d ' ')
-  fi
+  # Count source files (language-agnostic). Update (2026-08-23): this
+  # project's real source root is godot/scripts/ (Android/Gradle-adjacent
+  # layout, not the template's generic src/ default) -- checking only
+  # src/ meant src_count was always 0 here regardless of how much real
+  # code existed, so the "Production" stage below could never be reached
+  # by auto-detection. Checks both: src/ for template-default projects,
+  # godot/scripts/ for this one.
+  for src_dir in "$cwd/src" "$cwd/godot/scripts"; do
+    if [ -d "$src_dir" ]; then
+      count=$(find "$src_dir" -type f \( -name "*.gd" -o -name "*.cs" -o -name "*.cpp" -o -name "*.h" -o -name "*.py" -o -name "*.rs" -o -name "*.lua" -o -name "*.tscn" -o -name "*.tres" \) 2>/dev/null | wc -l | tr -d ' ')
+      src_count=$((src_count + count))
+    fi
+  done
 
   # Check for ADRs (signals Pre-Production phase)
   has_adrs=false

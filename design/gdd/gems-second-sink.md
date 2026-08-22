@@ -1,5 +1,17 @@
 # Gems: Grow-Time Skip (Second Sink)
 
+---
+**Status**: Implemented and shipped — live in the game
+**Verified By**: `test_gems_daily_tasks.gd` (8 tests) + `test_save_serializer.gd`
++ `test_growing_info_card.gd` (5 tests, including the real Skip button's
+`pressed` signal end-to-end), full GUT suite green (536/536 at the time
+this was built), and real on-device logcat verification of the economy-
+layer state change
+**Update (2026-08-22)**: this document was missing the standard status
+header every other completed GDD carries — added for consistency; no
+content change.
+---
+
 ## 1. Overview
 
 `design/gdd/gems-daily-tasks.md` shipped gems as a currency and its first

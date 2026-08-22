@@ -1,7 +1,7 @@
 # Worker Economy — Design Document
 
 ---
-**Status**: Confirmed — all open questions resolved by the user, ready for implementation
+**Status**: Implemented and shipped — live in the game (EPIC-M7 complete; see the Implementation Status line below — "ready for implementation" was accurate as of 2026-08-21 but went stale once EPIC-M7 actually finished)
 **Source**: Your direct answers to this session's clarifying questions (2026-08-21, quoted inline below); `docs/architecture/godot-migration-roadmap.md`'s EPIC-M7 (Worker Assignment & Wage Economy) — which is otherwise just a name and a size estimate, no prior design material; `design/gdd/crop-economy.md`'s existing plot lifecycle and lazy offline-resolution pattern, which this system extends rather than duplicates; `design/gdd/villagers.md`'s EPIC-M6 roster, which this system reuses per your answer
 **Date**: 2026-08-21
 **Verified By**: User — §3.6's visibility interpretation and all 4 of §5's edge cases confirmed 2026-08-21; §4's wage rate balance-checked 2026-08-21 (`/balance-check`), one formula bug found and fixed (see §4's Status column)

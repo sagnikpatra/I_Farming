@@ -40,7 +40,6 @@ enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/GodotPlay
 [internationalization]
 
 locale/translations=PackedStringArray("res://locales/ui_strings.en.translation", "res://locales/ui_strings.hi.translation")
-locale/fallback="en"
 
 [layer_names]
 

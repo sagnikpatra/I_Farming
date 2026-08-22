@@ -216,6 +216,40 @@ func test_roamer_faces_a_nearby_villager_while_idling() -> void:
 	assert_almost_eq(roamer.rotation.y, expected_rotation, 0.001)
 
 
+func test_two_idling_roamers_mutually_face_each_other() -> void:
+	# design/gdd/richer-ambient-villagers.md's own honest Acceptance
+	# Criteria gap: the single-roamer test above only proves one side of
+	# "chatting" (a villager tracks a nearby other), never that BOTH
+	# sides do it simultaneously, which is what actually reads as
+	# mutual chatting on the board rather than one villager staring at
+	# another who's looking elsewhere. Two real VillagerRoamer instances
+	# here, each idling, each wired to the other's real live position --
+	# exactly VillagerSpawner's real wiring shape, just with two roamers
+	# instead of a population, and no screenshot needed since the
+	# symmetry is provable directly.
+	var grid := WalkableGrid.new(5, 5, [])
+	var roamer_a := ROAMER_SCENE.instantiate() as VillagerRoamer
+	var roamer_b := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer_a)
+	add_child_autofree(roamer_b)
+	roamer_a.setup(grid, Vector2i(2, 2), 5, 5, 1.0)
+	roamer_b.setup(grid, Vector2i(3, 2), 5, 5, 1.0)  # 1 tile east of A, within congregate range
+	roamer_a._state = VillagerRoamer._State.IDLE_PAUSE
+	roamer_a._idle_timer = 3.0
+	roamer_b._state = VillagerRoamer._State.IDLE_PAUSE
+	roamer_b._idle_timer = 3.0
+	roamer_a.other_villager_positions_provider = func() -> Array[Vector3]: return [roamer_b.position]
+	roamer_b.other_villager_positions_provider = func() -> Array[Vector3]: return [roamer_a.position]
+
+	simulate(roamer_a, 1, 0.1)
+	simulate(roamer_b, 1, 0.1)
+
+	var a_to_b := atan2(1.0, 0.0)  # B is due +x of A
+	var b_to_a := atan2(-1.0, 0.0)  # A is due -x of B
+	assert_almost_eq(roamer_a.rotation.y, a_to_b, 0.001, "A must face toward B")
+	assert_almost_eq(roamer_b.rotation.y, b_to_a, 0.001, "B must face toward A -- both sides of the 'chat', not just one")
+
+
 func test_roamer_ignores_congregating_when_no_provider_is_set() -> void:
 	var grid := WalkableGrid.new(3, 3, [])
 	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer

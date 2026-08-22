@@ -26,3 +26,17 @@ production/session-logs/
 # once already — 634 stray *.import files were committed-tree-adjacent
 # cruft here, cleaned up 2026-08-20).
 assets_3d/**/*.import
+
+# === Local scratch/debug output (never meant to be version-controlled) ===
+# Disposable debug APKs, adb/export logs, and throwaway on-device
+# screenshots from iterative verification passes -- ~2GB and growing,
+# fully regenerable from a fresh `--export-debug` + `adb install`. Real,
+# permanent verification evidence lives in production/qa/evidence/
+# instead (small, curated, one file per real finding -- tracked
+# deliberately, per this project's own Testing Standards).
+godot_builds/
+
+# Pre-adoption bootstrap material (original LibGDX starter zip + extracted
+# contents, an early copy of the concept doc) -- superseded by this
+# project's real structure; kept locally for reference, not tracked.
+Steps/

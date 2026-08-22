@@ -95,3 +95,11 @@ events.daily_bonus_claimed,🎉 All 3 complete -- bonus gems claimed!,🎉 स�
 events.reroll_needs_gems,Reroll -- 💎 %d needed,रीरोल -- 💎 %d चाहिए
 events.reroll_unavailable,Reroll unavailable -- progress made today,रीरोल अनुपलब्ध -- आज प्रगति हो चुकी है
 events.reroll_button,🔄 Reroll Today's Tasks -- 💎 %d,🔄 आज के कार्य रीरोल करें -- 💎 %d
+seed_picker.title,Choose a seed to plant,लगाने के लिए एक बीज चुनें
+seed_picker.crop_details,%dm grow · sells ₹%d,%d मिनट बढ़ना · ₹%d में बिकता है
+agro_plant.title,Plant on this tile,इस टाइल पर लगाएं
+agro_plant.instant_acacia,Instant · shortens Sandalwood grow time,तुरंत · चंदन की बढ़ने की अवधि घटाता है
+agro_plant.instant,Instant,तुरंत
+agro_plant.sandalwood_details,%d+ days · sells ₹%d,%d+ दिन · ₹%d में बिकता है
+agro_plant.sandalwood_needs_host,Needs an adjacent host plant,पास में मेज़बान पौधे की ज़रूरत है
+decoration_picker.title,Choose a decoration to place,रखने के लिए एक सजावट चुनें

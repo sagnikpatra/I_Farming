@@ -4,10 +4,9 @@
 
 Phase 1 complete (infrastructure + a proven real slice). Phase 2
 (finishing the UI-wide string migration) in progress -- all 7
-management sheets (`farmhouse_tab.gd`, `mandi_tab.gd`,
-`polyhouse_tab.gd`, `agroforestry_tab.gd`, `niche_farming_tab.gd`,
-`open_field_tab.gd`, `events_tab.gd`) done (2026-08-22, same day). The
-3 pickers, 2 info cards, `worker_assignment_row.gd`, and
+management sheets and all 3 pickers (`seed_picker.gd`,
+`agro_plant_picker.gd`, `decoration_picker.gd`) done (2026-08-22, same
+day). The 2 info cards, `worker_assignment_row.gd`, and
 `game_economy.gd`'s `_push_event()` strings remain.
 
 ## Date
@@ -136,14 +135,28 @@ human listen-through closed.
 This completes every management sheet reachable from a board-zone tap
 or the HUD's LiveOps banner. What's left is narrower UI surface area.
 
+- `seed_picker.gd`: the sheet title and every row's "Xm grow · sells
+  ₹Y" details line. **Real API pitfall found and fixed while authoring
+  this file**: `format_crop_details()` is a `static func` (unit-tested
+  directly, no scene-tree dependency, per this file's own class doc) --
+  `tr()` is an `Object`/`Node` instance method and cannot be called from
+  a static context (a genuine parse error, not just wrong output --
+  Godot refused to even load the script). Fixed with
+  `TranslationServer.translate()`, the same lookup, callable from
+  anywhere.
+- `agro_plant_picker.gd`: the sheet title, all 3 host rows' subtitle
+  text (Instant / Instant · shortens Sandalwood grow time), and
+  Sandalwood's own conditional subtitle (grow-time-and-price vs. "needs
+  an adjacent host"). Same static-function pitfall as `seed_picker.gd`
+  -- `build_row_data()` is static too, migrated with
+  `TranslationServer.translate()` throughout.
+- `decoration_picker.gd`: the sheet title (its one hardcoded string;
+  decoration display names stay data-driven).
+
 ## What's explicitly NOT yet migrated (Phase 2 remaining scope)
 
 Every other hardcoded string in `godot/scripts/ui/`, specifically:
 
-- `seed_picker.gd`, `agro_plant_picker.gd`, `decoration_picker.gd` —
-  picker sheet chrome (crop/decoration display names themselves come
-  from `GameData`'s catalogue data, a separate, larger data-migration
-  question deliberately out of scope here).
 - `decoration_info_card.gd`, `growing_info_card.gd`,
   `worker_assignment_row.gd` — info cards and the worker-assignment row.
 - `game_economy.gd`'s `_push_event()` message strings (the toast/
@@ -190,6 +203,20 @@ after `open_field_tab.gd`/`events_tab.gd` (including a regression check
 for a real CSV-quoting mistake caught and fixed while authoring that
 slice -- a Hindi string with an embedded comma that needed explicit
 quoting, per RFC 4180) -- 574/574, twice, non-flaky.
+Extended again after the 3 pickers -- 576/576, run **three** times
+(not the usual two) given what authoring that slice found: locale
+tests that call `AccessibilitySettings.set_locale()` on a bare
+`AccessibilitySettings.new()` persist to the real default
+`user://accessibility.tres` (same as every setter in that class), and
+any LATER test that instantiates a fresh `VillageBoard` reloads that
+file in `_ready()` and applies its locale straight to the *global*
+`TranslationServer` -- silently changing output for completely
+unrelated tests (`test_seed_picker.gd`, which doesn't touch locale at
+all) run afterward. This is the same disk-persistence test-isolation
+bug class found repeatedly this session, but the first time it leaked
+through a genuinely global singleton rather than a per-instance field.
+Fixed by having the locale tests delete the real file (not just reset
+`TranslationServer` in-memory) in both `before_each()`/`after_each()`.
 
 ## Dependencies
 

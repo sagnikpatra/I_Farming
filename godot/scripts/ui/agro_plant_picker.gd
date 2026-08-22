@@ -49,7 +49,7 @@ func configure(plot_id: int, economy: GameEconomy, village_board: VillageBoard, 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title_label.text = "Plant on this tile"
+	_title_label.text = tr(&"agro_plant.title")
 	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_title_label.label_settings = _make_label_settings(18, SOIL_BROWN_DARK)
 	_populate()
@@ -74,6 +74,9 @@ func _populate() -> void:
 ## `HostType.entries.forEach { ... }` then the standalone Sandalwood row.
 ## Each entry: "kind" ("host" or "sandalwood"), "host" (HostType.Kind ordinal,
 ## only for "host" rows), "subtitle", "cost", "enabled".
+## TranslationServer.translate() rather than tr() throughout -- this is a
+## static func (see this file's class doc: unit-tested directly, no
+## scene-tree dependency), and tr() is an Object/Node instance method only.
 static func build_row_data(coins: int, can_plant_sandalwood: bool) -> Array:
 	var rows: Array = []
 	for key in HostType.Kind.keys():
@@ -85,7 +88,8 @@ static func build_row_data(coins: int, can_plant_sandalwood: bool) -> Array:
 			"emoji": host_def.emoji,
 			"title": host_def.display_name,
 			"subtitle": (
-				"Instant · shortens Sandalwood grow time" if host == HostType.Kind.ACACIA else "Instant"
+				TranslationServer.translate(&"agro_plant.instant_acacia") if host == HostType.Kind.ACACIA
+				else TranslationServer.translate(&"agro_plant.instant")
 			),
 			"cost": host_def.cost,
 			"enabled": coins >= host_def.cost,
@@ -99,8 +103,8 @@ static func build_row_data(coins: int, can_plant_sandalwood: bool) -> Array:
 		"emoji": sandalwood_def.emoji,
 		"title": sandalwood_def.display_name,
 		"subtitle": (
-			"%d+ days · sells ₹%d" % [sandalwood_def.grow_seconds / 86400, sandalwood_def.base_sell_price]
-			if can_plant_sandalwood else "Needs an adjacent host plant"
+			(TranslationServer.translate(&"agro_plant.sandalwood_details") % [sandalwood_def.grow_seconds / 86400, sandalwood_def.base_sell_price])
+			if can_plant_sandalwood else TranslationServer.translate(&"agro_plant.sandalwood_needs_host")
 		),
 		"cost": sandalwood_def.seed_cost,
 		"enabled": affordable and can_plant_sandalwood,

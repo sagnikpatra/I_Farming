@@ -58,7 +58,7 @@ func configure(plot_id: int, plot_kind: int, economy: GameEconomy, village_board
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title_label.text = "Choose a seed to plant"
+	_title_label.text = tr(&"seed_picker.title")
 	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_title_label.label_settings = _make_label_settings(18, SOIL_BROWN_DARK)
 	_populate()
@@ -93,8 +93,12 @@ static func build_row_data(plot_kind: int, coins: int) -> Array:
 ## "Xm grow · sells ₹Y" -- matches FarmScreen.kt's SeedPicker row text
 ## exactly (`"${crop.growSeconds / 60}m grow · sells ₹${crop.baseSellPrice}"`,
 ## integer-truncating minutes the same way GDScript's int `/` does).
+## TranslationServer.translate() rather than tr() -- this is a static func
+## (no `self`, unit-tested directly with no scene-tree dependency per this
+## file's own class doc), and tr() is an Object/Node instance method only;
+## TranslationServer.translate() is the same lookup, callable from anywhere.
 static func format_crop_details(crop_def: CropDef) -> String:
-	return "%dm grow · sells ₹%d" % [crop_def.grow_seconds / 60, crop_def.base_sell_price]
+	return TranslationServer.translate(&"seed_picker.crop_details") % [crop_def.grow_seconds / 60, crop_def.base_sell_price]
 
 
 # ---------------------------------------------------------------------------

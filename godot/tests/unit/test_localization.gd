@@ -8,18 +8,38 @@ extends GutTest
 
 const TEST_SAVE_PATH: String = "user://test_locale_accessibility.tres"
 
+## Defensively normalize first, in both directions -- TranslationServer is
+## process-global state, AND AccessibilitySettings.set_locale() (like every
+## setter in that class) always save()s to the real default
+## user://accessibility.tres unless given a test-only path. This file's own
+## tests call set_locale() on bare AccessibilitySettings.new() instances
+## without a test-only path -- so beyond the in-memory
+## TranslationServer.set_locale("en") reset, the REAL persisted file must
+## also be wiped, or ANY later test in the suite that instantiates a fresh
+## VillageBoard (which loads AccessibilitySettings.load_or_default() from
+## that same real path in _ready() and immediately applies its locale to
+## the global TranslationServer) silently inherits a contaminated locale --
+## a real, reproducible failure this exposed in test_seed_picker.gd,
+## a file that never even touches locale itself. Same disk-persistence
+## test-isolation bug class found repeatedly this session, this time
+## leaking through a genuinely global singleton rather than a per-instance
+## field -- see test_growing_info_card.gd's own "Defensively normalize
+## first" comment for the precedent.
+func _reset_real_accessibility_file() -> void:
+	if FileAccess.file_exists(AccessibilitySettings.SAVE_PATH):
+		DirAccess.remove_absolute(AccessibilitySettings.SAVE_PATH)
+
 
 func before_each() -> void:
-	# TranslationServer is process-global state -- every test resets it to
-	# "en" first so an earlier test's locale switch can't leak into a later
-	# one (this project's own "must not depend on execution order" rule).
 	TranslationServer.set_locale("en")
+	_reset_real_accessibility_file()
 	if FileAccess.file_exists(TEST_SAVE_PATH):
 		DirAccess.remove_absolute(TEST_SAVE_PATH)
 
 
 func after_each() -> void:
 	TranslationServer.set_locale("en")
+	_reset_real_accessibility_file()
 	if FileAccess.file_exists(TEST_SAVE_PATH):
 		DirAccess.remove_absolute(TEST_SAVE_PATH)
 
@@ -124,6 +144,28 @@ func test_english_locale_still_resolves_events_keys() -> void:
 	TranslationServer.set_locale("en")
 	assert_eq(tr(&"events.reroll_unavailable"), "Reroll unavailable -- progress made today")
 	assert_eq(tr(&"events.tier_reward_locked") % [100, 50], "₹100 (+₹50 🔒)")
+
+
+## The 3 pickers -- seed_picker.gd/agro_plant_picker.gd have player-facing
+## strings inside a `static func` (build_row_data()/format_crop_details()),
+## which cannot call tr() (an Object/Node instance method) and must use
+## TranslationServer.translate() instead -- a real parse error caught while
+## authoring this slice (SeedPicker.format_crop_details() originally used
+## tr() and failed to even load). This test exercises that exact path, not
+## just the CSV lookup tr() already covers elsewhere in this file.
+func test_hindi_locale_resolves_a_static_function_translation() -> void:
+	TranslationServer.set_locale("hi")
+	assert_eq(TranslationServer.translate(&"agro_plant.sandalwood_details") % [3, 5000], "3+ दिन · ₹5000 में बिकता है")
+
+	var wheat_def := GameData.crop_def(CropType.Kind.WHEAT)
+	assert_true(SeedPicker.format_crop_details(wheat_def).contains("बिकता है"), "format_crop_details() must actually resolve the Hindi translation via TranslationServer.translate(), not silently fall back to English")
+
+
+func test_english_locale_still_resolves_picker_keys() -> void:
+	TranslationServer.set_locale("en")
+	assert_eq(tr(&"seed_picker.title"), "Choose a seed to plant")
+	assert_eq(tr(&"agro_plant.title"), "Plant on this tile")
+	assert_eq(tr(&"decoration_picker.title"), "Choose a decoration to place")
 
 
 # ---------------------------------------------------------------------------

@@ -4776,3 +4776,60 @@ sheets are done, which is the highest-visibility surface. Still open
 and blocked on the user, unchanged: pushing accumulated local commits
 to origin, and the Play Console Game Services setup for real cloud-save
 sign-in.
+
+## 2026-08-22 (Phase 2 localization, fourth slice -- all 3 pickers done)
+
+Migrated the 3 remaining pickers: `seed_picker.gd` (title + crop
+details line), `agro_plant_picker.gd` (title + all 3 host
+subtitles + Sandalwood's conditional subtitle), `decoration_picker.gd`
+(its one title string). All player-reachable "choose something to
+place/plant" sheets are now localized.
+
+**Real Godot API pitfall found and fixed**: `SeedPicker.
+format_crop_details()` and `AgroPlantPicker.build_row_data()` are both
+`static func` (deliberately, for scene-tree-free unit testing, per
+this project's own established pattern). `tr()` is an `Object`/`Node`
+instance method and cannot be called from a static context -- this
+produced a genuine PARSE ERROR (Godot refused to even load
+seed_picker.gd), not just wrong output, caught via a headless
+`--check-only` pass before it ever reached the test suite. Fixed with
+`TranslationServer.translate()` -- the same lookup, callable from
+anywhere, no `self` required.
+
+**A 6th instance of this session's recurring disk-persistence
+test-isolation bug**, this time through a genuinely global singleton:
+`AccessibilitySettings.set_locale()` calls in `test_localization.gd`
+(on bare `.new()` instances, no test-only path) persist "hi" to the
+real `user://accessibility.tres`; any LATER test that instantiates a
+fresh `VillageBoard` reloads that file and applies its locale straight
+to the *global* `TranslationServer` in `_ready()` -- silently changing
+output for `test_seed_picker.gd`, a file that never touches locale at
+all. Fixed by having `test_localization.gd` (and `test_village_board.
+gd`'s own locale test, which had the identical unfixed leak) delete the
+real file, not just reset `TranslationServer` in-memory, in both
+`before_each()`/`after_each()`. Verified with 3 full-suite runs (not
+the usual 2) given this bug's history this session: 576/576 all three
+times, non-flaky.
+
+Full suite: 576/576 (up from 574/574). Updated localization-pipeline.md
+(scope list + a detailed Related-section account of both the
+static-function pitfall and the global-singleton leak) and the
+roadmap's Localization bullet.
+
+Remaining Phase 2 scope: `decoration_info_card.gd`,
+`growing_info_card.gd`, `worker_assignment_row.gd`, and
+`game_economy.gd`'s `_push_event()` message strings (its own follow-up).
+
+**Next step**: continue Phase 2 with the 2 info cards and
+`worker_assignment_row.gd` next (the last of the mechanical per-file
+sweep), or consider Phase 2 "good enough for now" -- every place a
+player actively chooses/builds/plants something is now localized, which
+is the highest-value surface. `_push_event()`'s message strings need
+their own design pass regardless (large free-text surface, dozens of
+call sites, better scoped as a dedicated follow-up per localization-
+pipeline.md). Also worth a real look now, given 6 occurrences this
+session: a shared GUT test-isolation utility (wipe every known real
+user:// path in one place) rather than continuing to patch each new
+occurrence locally. Still open and blocked on the user, unchanged:
+pushing accumulated local commits to origin, and the Play Console Game
+Services setup for real cloud-save sign-in.

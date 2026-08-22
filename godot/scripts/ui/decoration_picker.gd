@@ -42,7 +42,7 @@ func configure(economy: GameEconomy, board_interactor: BoardInteractor, bottom_s
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title_label.text = "Choose a decoration to place"
+	_title_label.text = tr(&"decoration_picker.title")
 	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_title_label.label_settings = _make_label_settings(18, SOIL_BROWN_DARK)
 	_populate()

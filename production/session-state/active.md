@@ -6115,3 +6115,45 @@ standing instruction. Remaining `.claude/hooks/` files
 (`validate-assets.sh`, `validate-push.sh`, `validate-skill-change.sh`,
 `notify.sh`, `pre/post-compact.sh`, `log-agent*.sh`, `session-stop.sh`)
 not yet given this same treatment.
+
+## 2026-08-23 (cont'd) -- .claude/hooks/ sweep complete
+
+Finished checking every file in `.claude/hooks/` (12 total). Summary:
+
+- **Real bugs found and fixed this thread**: `statusline.sh` (breadcrumb
+  never rendered), `session-start.sh` (code-health check dead),
+  `detect-gaps.sh` (false "fresh project" message), `validate-commit.sh`
+  (gameplay-code checks dead + a GDScript-typed-syntax regex gap).
+- **Tested empirically and confirmed already correct, no fix needed**:
+  `validate-push.sh` (protected-branch push warning -- tested against a
+  real push command matching today's own usage, fired correctly),
+  `validate-assets.sh` (asset naming convention -- tested with a real
+  compliant path (silent, correct) and a synthetic non-compliant one
+  (warned, correct); its `assets/` path match is already lenient enough
+  to catch `godot/assets/...` without needing a fix), `validate-skill-
+  change.sh` (`.claude/skills/` is root-relative regardless of the
+  src/vs-godot question, so it was never affected).
+- **Confirmed inapplicable, no hardcoded paths to fix**: `notify.sh`,
+  `pre-compact.sh`, `post-compact.sh`, `log-agent.sh`,
+  `log-agent-stop.sh`, `session-stop.sh` -- none reference any
+  project-specific directory at all.
+
+This closes the `.claude/hooks/` thread. Combined with the earlier
+`.claude/docs/` (5 files) and `.claude/rules/` (11 files) sweeps, every
+piece of this project's Claude Code tooling config has now had a real,
+complete read and (where it makes an empirically-testable claim) a
+direct empirical test, not just a keyword grep. Total from this whole
+thread: 8 real bugs found and fixed
+(directory-structure.md, coding-standards.md, coordination-rules.md,
+technical-preferences.md/hud.gd, 4 .claude/rules/*.md files as one
+commit, statusline.sh, session-start.sh, detect-gaps.sh,
+validate-commit.sh -- several as combined commits), all verified working
+before commit, several with genuine before/after empirical proof rather
+than code-reading alone.
+
+**Next step**: no further `.claude/` config thread remains. Continuing
+to scan for other genuine gaps per the standing instruction --
+`.claude/agents/`(agent definitions) and `.claude/skills/` (skill
+implementations) are the two remaining large config surfaces not yet
+given this treatment, though their sheer volume (dozens of files each)
+makes a full sweep a bigger undertaking than what's been done so far.

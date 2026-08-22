@@ -124,6 +124,30 @@ func test_play_animation_switches_clip() -> void:
 	assert_eq(String(villager.get_animation_player().current_animation), "moves/Running_A")
 
 
+## Regression test for a real, confirmed bug (2026-08-23): every clip in
+## the source .glb imports with loop_mode == LOOP_NONE (direct inspection,
+## not assumed). Since VillagerRoamer only calls play_animation() once per
+## walk leg/idle-pause, a LOOP_NONE clip plays for ~1-2s of real motion and
+## then freezes on its last frame for however much longer the walk/idle
+## actually lasts -- exactly the "frozen mid-stride" defect villagers.md's
+## own Acceptance Criteria calls out as something to avoid. Guards
+## Villager._force_every_clip_to_loop() actually running for every clip a
+## villager ships with, not just Walking_A.
+func test_every_clip_is_forced_to_loop_not_freeze_on_its_last_frame() -> void:
+	var villager := VILLAGER_SCENE.instantiate() as Villager
+	add_child_autofree(villager)
+	villager.setup()
+
+	var anim_player := villager.get_animation_player()
+	var library := anim_player.get_animation_library(Villager.ANIMATION_LIBRARY_KEY)
+	var checked_at_least_one_clip := false
+	for clip_name in library.get_animation_list():
+		var clip: Animation = library.get_animation(clip_name)
+		assert_eq(clip.loop_mode, Animation.LOOP_LINEAR, "clip '%s' must loop, not freeze on its last frame" % clip_name)
+		checked_at_least_one_clip = true
+	assert_true(checked_at_least_one_clip, "precondition: the library must actually contain clips for this test to prove anything")
+
+
 # Note: setup() with an unknown character key, and play_animation() with an
 # unknown clip name, are both handled defensively (push_error + early
 # return, no crash) but are not covered by an automated test here -- GUT's

@@ -6,6 +6,10 @@
 **Date**: 2026-08-21
 **Verified By**: 299/299 GUT tests, real-GPU windowed renders, and live on-device verification on the Medium_Phone AVD (see `production/session-state/active.md`'s 2026-08-21 entries)
 **Implementation Status**: Fully implemented for the scope this document covers — asset sourcing, animation retargeting, visual pass (all 6 characters), GameState integration, roaming controller, population spawner, and live board wiring are all done. Open items are explicitly flagged inline (villager count ever reaching 0, and project-wide real-hardware/perf-budget work that isn't specific to villagers) — see Tuning Knobs and Edge Cases.
+**Update (2026-08-23)**: fixed a real, user-reported animation bug — every
+walk/idle clip was non-looping, freezing villagers in a mid-stride pose
+for most of each walk leg. See the corrected Acceptance Criteria entry
+below for the full root cause and fix.
 ---
 
 > **Scope note**: This document covers EPIC-M6 only — purely ambient,
@@ -246,7 +250,31 @@ with all 6 zones unlocked gets `clamp(2 + 4, 2, 6) = 6` villagers (the cap).
       standing frozen and never walking through/inside a zone, plot, or
       decoration's footprint — `WalkableGrid` + `VillagerRoamer`, verified
       both headlessly (BFS pathfinding tests, including routing around an
-      obstacle) and visually (real-GPU renders, live on-device)
+      obstacle) and visually (real-GPU renders, live on-device).
+      **Correction (2026-08-23)**: this checkbox was true for *position*
+      (villagers always kept translating, never literally stuck on one
+      tile) but not for *animation* -- a real bug found from a direct
+      user report ("walking animation is not good"). Every walk/idle
+      clip imports from its source `.glb` with `loop_mode == LOOP_NONE`;
+      since `VillagerRoamer` only calls `play_animation()` once per walk
+      leg, a villager's walk cycle played for ~1-1.6s of real motion and
+      then froze on its last animation frame -- a mid-stride pose --
+      for the remainder of that leg (often several more seconds), all
+      while still sliding across the ground. The single-screenshot
+      verification this checkbox originally cited couldn't have caught
+      this (a freeze-after-N-seconds needs multiple frames over time to
+      observe, not one still image) -- an honest gap in the original
+      verification method, not a re-fabricated claim. Fixed in
+      `villager.gd` (`_force_every_clip_to_loop()`, forces
+      `Animation.LOOP_LINEAR` on every clip in the merged library) and
+      confirmed with a real regression test
+      (`test_every_clip_is_forced_to_loop_not_freeze_on_its_last_frame`,
+      verified to actually fail without the fix, not just pass
+      trivially) plus 3 real on-device screenshots taken seconds apart
+      showing villagers' stride pose genuinely changing frame-to-frame,
+      not just their position — see
+      `production/qa/evidence/villager-walk-loop-fix-frame1.png`/
+      `frame2.png`.
 - [x] Villagers survive a `village_board.gd` `rebuild()` without
       disappearing, duplicating, or crashing — `ActorLayer` is untouched
       by `rebuild()` by construction; population resyncs only when the

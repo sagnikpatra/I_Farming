@@ -119,6 +119,7 @@ func setup(character_key: String = "ranger") -> void:
 		push_error("Villager.setup: could not load movement animation library")
 		return
 	_merge_idle_clips_into(library)
+	_force_every_clip_to_loop(library)
 
 	# Track paths inside the library are relative to the AnimationPlayer's
 	# parent (e.g. "Rig_Medium/Skeleton3D:hips") -- so the AnimationPlayer
@@ -179,6 +180,31 @@ func _merge_idle_clips_into(library: AnimationLibrary) -> void:
 				if general_library.has_animation(clip_name):
 					library.add_animation(clip_name, general_library.get_animation(clip_name))
 	anim_root.free()
+
+
+## Fixes a real, confirmed bug (2026-08-23): every clip in the movement
+## library imports from its source .glb with loop_mode == LOOP_NONE
+## (verified by direct inspection, not assumed -- Walking_A/B/C are all
+## ~1.07-1.6s, Idle_A/B are ~1.07-2.13s). AnimationPlayer.play() on a
+## LOOP_NONE clip plays once and then freezes on the last frame --
+## VillagerRoamer only calls play_animation() once per walk leg /
+## idle-pause (see its own doc comments), so without this fix a walking
+## villager plays ~1s of real walk-cycle motion and then glides the rest
+## of the way to its target frozen in a mid-stride pose (and an idling
+## villager freezes mid-idle-animation for most of its 2-5s pause,
+## statistically almost every time for Idle_B). Exactly the "frozen
+## mid-stride" defect villagers.md's own Acceptance Criteria already
+## calls out as a thing to avoid -- this was silently violating it the
+## whole time. Mutates every clip in `library` (Walking_A/B/C, Idle_A/B)
+## rather than special-casing which ones are ambiently used, since
+## nothing in this project's design wants a non-looping ambient clip;
+## worker_station.gd's HELD_POSE_CLIP use of Walking_A pauses playback
+## explicitly (unaffected by loop_mode, which only governs what happens
+## when playback reaches the end on its own).
+func _force_every_clip_to_loop(library: AnimationLibrary) -> void:
+	for clip_name in library.get_animation_list():
+		var clip: Animation = library.get_animation(clip_name)
+		clip.loop_mode = Animation.LOOP_LINEAR
 
 
 func _find_animation_player(node: Node) -> AnimationPlayer:

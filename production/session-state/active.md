@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
-Feature: Post-M8 continued development. Pushed all accumulated work to GitHub origin per explicit user instruction, then resumed active feature development.
-Task: This stretch shipped 5 commits (all pushed to master + feature/isometric-village-view): villager tap interaction, a 6-GDD doc-accuracy sweep, Chanda Visit's on-board visitor NPC, the real-time day/night smooth crossfade, and systems-index.md (closing a gap flagged since M0). All 3 "future stretch" items flagged across this project's GDDs are now closed. 609/609 GUT passing (twice, non-flaky). Continuing to scan for further genuine, unblocked development targets per standing "don't stop" instruction.
+Feature: Post-M8 continued development, now responding to direct user bug reports.
+Task: User reported "walking animation is not good." Root-caused to every villager walk/idle clip importing with loop_mode=LOOP_NONE, freezing villagers mid-stride for most of each walk leg (VillagerRoamer only calls play_animation() once per leg). Fixed in villager.gd, verified with a real regression test (confirmed to fail without the fix) and 3 on-device screenshots showing continuous stride motion over time. 610/610 GUT passing. About to commit.
 <!-- /STATUS -->
 
 # Active Session State
@@ -5432,3 +5432,61 @@ identified without inventing new scope from nothing or overriding a
 design decision that is genuinely the user's to make. Ready to continue
 immediately given new user direction, or any of the open design
 questions above if the user wants to weigh in on one.
+
+## 2026-08-23 (real bug fix -- villager walking animation freeze)
+
+User reported directly: "walking animation is not good." Investigated
+rather than guessing at a "feel" fix -- wrote a throwaway diagnostic
+script to inspect the actual `.glb` animation data before touching any
+code, per this project's "never fabricate a technical claim" standard.
+
+**Root cause, confirmed by direct inspection, not assumed**: every
+walk clip (Walking_A/B/C, ~1.07-1.6s) and both idle clips (Idle_A/B,
+~1.07-2.13s) import from their source `.glb` files with
+`loop_mode == Animation.LOOP_NONE`. `VillagerRoamer` only calls
+`play_animation()` once per walk leg or idle-pause (never re-triggers
+mid-leg) -- so a villager's walk cycle played for ~1-1.6s of real
+motion and then froze on its last animation frame (a static mid-stride
+pose) for however much longer that leg actually took, all while still
+sliding across the ground toward its target. Idle pauses (2-5s
+duration) were affected even more often, since both idle clips are
+shorter than the pause itself the large majority of the time. Checked
+that this wasn't a root-motion/movement-speed mismatch first (a more
+exotic possible cause) -- confirmed the hip bone track has zero net
+translation in every clip, so root motion was never the issue.
+
+**Fixed**: `villager.gd`'s new `_force_every_clip_to_loop()`, called
+once at the end of `setup()` after the movement + idle clips are
+merged into the per-Villager library, sets `loop_mode = LOOP_LINEAR` on
+every clip. `worker_station.gd`'s deliberate "held pose, paused
+immediately" use of Walking_A is unaffected (loop_mode only governs
+what happens when a clip reaches its end on its own; an explicitly
+`.pause()`-frozen player never gets there).
+
+**Verified properly, not just assumed fixed**: added
+`test_every_clip_is_forced_to_loop_not_freeze_on_its_last_frame` to
+`test_villager.gd`, then did a genuine negative-control check --
+temporarily disabled the fix, confirmed the new test actually fails
+(3 real failures, one per Walking clip), then restored the fix and
+confirmed it passes again. This proves the test is a real guard, not a
+tautology that would pass regardless. Full suite run twice: 610/610,
+non-flaky.
+
+Also verified live, since this was a direct visual complaint a passing
+test suite alone can't fully answer: no physical device was connected,
+so booted the `Medium_Phone` AVD emulator, exported a fresh debug APK,
+installed, and captured 3 screenshots ~2s apart. Villagers' stride pose
+visibly changes between frames (not just their position) -- proof the
+walk cycle is genuinely looping/animating continuously rather than
+freezing. Evidence:
+`production/qa/evidence/villager-walk-loop-fix-frame1.png`/`frame2.png`.
+Updated `villagers.md`'s own Acceptance Criteria with an honest
+correction -- the original "never standing frozen" checkbox was true
+for *position* but not *animation*, and a single-screenshot
+verification method could never have caught a freeze-after-N-seconds
+bug (needs multiple frames over time, which is exactly what this fix's
+verification used).
+
+**Next step**: none forced -- this was a direct, reactive bug fix in
+response to user feedback, now closed and verified both headlessly and
+visually. Ready for further direction.

@@ -41,7 +41,7 @@ func _populate() -> void:
 	for child in _body.get_children():
 		child.queue_free()
 
-	_body.add_child(UiTheme.make_title_label("🌾 Open Field", 18, UiTheme.SOIL_BROWN_DARK))
+	_body.add_child(UiTheme.make_title_label(tr(&"open_field.header"), 18, UiTheme.SOIL_BROWN_DARK))
 
 	var row := WorkerAssignmentRow.new()
 	row.configure(_economy, _village_board, PlotKind.Kind.OPEN_FIELD)

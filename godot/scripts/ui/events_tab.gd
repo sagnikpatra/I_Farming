@@ -198,18 +198,15 @@ func _build_monsoon_card(data: Dictionary) -> PanelContainer:
 	# audit's own explicitly-cited "safe" baseline, used unchanged.
 	var text_color: Color = SOIL_BROWN_DARK if active else Color.WHITE
 	box.add_child(_make_title_label(
-		"🌧️ Monsoon Season -- Active" if active else "☁️ Monsoon Season", 17, text_color
+		tr(&"events.monsoon_active_title") if active else tr(&"events.monsoon_inactive_title"), 17, text_color
 	))
 	var remaining := format_duration(data["monsoon_remaining_ms"])
 	# A11Y fix (§5, HIGH): both raised 12px -> this project's 14px floor.
 	box.add_child(_make_title_label(
-		"Ends in %s" % remaining if active else "Next monsoon in %s" % remaining, 14, text_color
+		(tr(&"events.monsoon_ends_in") % remaining) if active else (tr(&"events.monsoon_next_in") % remaining), 14, text_color
 	))
 	var blurb := _make_title_label(
-		(
-			"While active, open-field crops grow 20% faster but risk a 10% chance of total "
-			+ "flood loss when they mature. Polyhouse owners are completely immune."
-		),
+		tr(&"events.monsoon_blurb"),
 		14,
 		text_color
 	)
@@ -234,15 +231,11 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 	var remaining := format_duration(data["festival_remaining_ms"])
 	# A11Y fix (§5, HIGH): both raised 12px -> this project's 14px floor.
 	box.add_child(_make_title_label(
-		"Active -- ends in %s" % remaining if active else "Not running -- next festival in %s" % remaining, 14
+		(tr(&"events.festival_active_ends_in") % remaining) if active else (tr(&"events.festival_inactive_next_in") % remaining), 14
 	))
 	var crop_def := GameData.crop_def(festival.target_crop)
 	var target_blurb := _make_title_label(
-		(
-			"Sell %s %s while the festival is running to earn Event Points and climb the reward "
-			% [crop_def.emoji, crop_def.display_name]
-			+ "tiers."
-		),
+		tr(&"events.festival_target_blurb") % [crop_def.emoji, crop_def.display_name],
 		14
 	)
 	target_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -250,8 +243,8 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 
 	box.add_child(_make_title_label(
 		(
-			"Points: %d / %d" % [data["event_points"], next_threshold] if next_threshold != null
-			else "Points: %d -- all tiers reached!" % data["event_points"]
+			(tr(&"events.festival_points") % [data["event_points"], next_threshold]) if next_threshold != null
+			else (tr(&"events.festival_points_maxed") % data["event_points"])
 		),
 		13
 	))
@@ -271,7 +264,7 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 	# HIGH): raised to this project's 14px floor -- applies to
 	# active_label below and both labels in _build_tier_row().
 	if data["has_premium"]:
-		var active_label := _make_title_label("🎫 Premium Pass active for this festival", 14, RIPE_GOLD)
+		var active_label := _make_title_label(tr(&"events.premium_pass_active"), 14, RIPE_GOLD)
 		box.add_child(active_label)
 	else:
 		box.add_child(_build_premium_pass_button(active))
@@ -300,7 +293,7 @@ func _build_chanda_card(data: Dictionary) -> PanelContainer:
 	if awaiting:
 		var ask: int = data["chanda_ask"]
 		var blurb := _make_title_label(
-			"A neighbor has stopped by collecting chanda for %s. Give ₹%d?" % [festival.display_name, ask],
+			tr(&"events.chanda_ask") % [festival.display_name, ask],
 			14, text_color
 		)
 		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -312,14 +305,14 @@ func _build_chanda_card(data: Dictionary) -> PanelContainer:
 
 		var can_afford: bool = data["can_afford_chanda"]
 		var give_button := UiTheme.make_chunky_button(
-			"Give -- ₹%d" % ask if can_afford else "Can't afford ₹%d" % ask,
+			(tr(&"events.chanda_give") % ask) if can_afford else (tr(&"events.chanda_cant_afford") % ask),
 			FIELD_GREEN_LIGHT, Color.WHITE, can_afford
 		)
 		give_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		give_button.pressed.connect(_on_give_chanda_pressed)
 		buttons.add_child(give_button)
 
-		var decline_button := UiTheme.make_chunky_button("Not this time", WOOD_BROWN_LIGHT, Color.WHITE, true)
+		var decline_button := UiTheme.make_chunky_button(tr(&"events.chanda_decline"), WOOD_BROWN_LIGHT, Color.WHITE, true)
 		decline_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		decline_button.pressed.connect(_on_decline_chanda_pressed)
 		buttons.add_child(decline_button)
@@ -328,14 +321,14 @@ func _build_chanda_card(data: Dictionary) -> PanelContainer:
 	elif blessing_active:
 		var remaining := format_duration(data["chanda_blessing_remaining_ms"])
 		box.add_child(_make_title_label(
-			"🙏 Blessing active -- +%d%% sell price for %s" % [
+			tr(&"events.chanda_blessing_active") % [
 				roundi((GameData.CHANDA_BLESSING_MULTIPLIER - 1.0) * 100.0), remaining
 			],
 			14, text_color
 		))
 	else:
 		var remaining := format_duration(data["chanda_remaining_ms"])
-		box.add_child(_make_title_label("Next visitor in %s" % remaining, 14, text_color))
+		box.add_child(_make_title_label(tr(&"events.chanda_next_visitor") % remaining, 14, text_color))
 
 	card.add_child(box)
 	return card
@@ -352,14 +345,14 @@ func _build_daily_tasks_card(data: Dictionary) -> PanelContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 4)
 
-	box.add_child(_make_title_label("📅 Daily Tasks -- 💎 %d" % data["gems"], 17))
+	box.add_child(_make_title_label(tr(&"events.daily_tasks_title") % data["gems"], 17))
 
 	var rows: Array = data["daily_tasks"]
 	for row: Dictionary in rows:
 		box.add_child(_build_daily_task_row(row))
 
 	if data["daily_bonus_claimed"]:
-		box.add_child(_make_title_label("🎉 All 3 complete -- bonus gems claimed!", 14, RIPE_GOLD))
+		box.add_child(_make_title_label(tr(&"events.daily_bonus_claimed"), 14, RIPE_GOLD))
 
 	box.add_child(_build_reroll_button(data["can_reroll"], data["gems"]))
 
@@ -395,11 +388,11 @@ func _build_reroll_button(can_reroll: bool, gems: int) -> Button:
 	var can_afford := gems >= GameData.DAILY_TASK_REROLL_COST
 	var label_text: String
 	if not can_afford:
-		label_text = "Reroll -- 💎 %d needed" % GameData.DAILY_TASK_REROLL_COST
+		label_text = tr(&"events.reroll_needs_gems") % GameData.DAILY_TASK_REROLL_COST
 	elif not can_reroll:
-		label_text = "Reroll unavailable -- progress made today"
+		label_text = tr(&"events.reroll_unavailable")
 	else:
-		label_text = "🔄 Reroll Today's Tasks -- 💎 %d" % GameData.DAILY_TASK_REROLL_COST
+		label_text = tr(&"events.reroll_button") % GameData.DAILY_TASK_REROLL_COST
 	var button := UiTheme.make_chunky_button(label_text, SAFFRON_DARK, Color.WHITE, can_reroll)
 	if can_reroll:
 		button.pressed.connect(_on_reroll_daily_tasks_pressed)
@@ -414,14 +407,14 @@ func _build_tier_row(
 	row.add_theme_constant_override("separation", 8)
 
 	var left := _make_title_label(
-		"%s Tier %d (%d pts)" % ["✅" if reached else "▫️", tier_number, threshold], 14
+		tr(&"events.tier_row") % ["✅" if reached else "▫️", tier_number, threshold], 14
 	)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(left)
 
 	var reward_text := (
-		"₹%d + ₹%d" % [free_reward, premium_reward] if has_premium
-		else "₹%d (+₹%d 🔒)" % [free_reward, premium_reward]
+		(tr(&"events.tier_reward_with_premium") % [free_reward, premium_reward]) if has_premium
+		else (tr(&"events.tier_reward_locked") % [free_reward, premium_reward])
 	)
 	row.add_child(_make_title_label(reward_text, 14))
 
@@ -462,8 +455,8 @@ func _build_premium_pass_button(festival_active: bool) -> Button:
 	var can_afford := _economy.state.coins >= GameData.FESTIVAL_PREMIUM_PASS_COST
 	var enabled := festival_active and can_afford
 	var label_text := (
-		"Buy Premium Pass -- ₹%d" % GameData.FESTIVAL_PREMIUM_PASS_COST if festival_active
-		else "Premium Pass available during festivals"
+		(tr(&"events.premium_pass_buy") % GameData.FESTIVAL_PREMIUM_PASS_COST) if festival_active
+		else tr(&"events.premium_pass_unavailable")
 	)
 	var button := UiTheme.make_chunky_button(label_text, SAFFRON_DARK, Color.WHITE, enabled)
 	if enabled:

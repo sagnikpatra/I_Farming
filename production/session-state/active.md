@@ -4741,3 +4741,38 @@ next (the last 2 management sheets), then the pickers/info cards. Still
 open and blocked on the user, unchanged: pushing accumulated local
 commits to origin, and the Play Console Game Services setup for real
 cloud-save sign-in.
+
+## 2026-08-22 (Phase 2 localization, third slice -- all management sheets done)
+
+Finished the last 2 management sheets: `open_field_tab.gd` (its one
+header label) and `events_tab.gd` (the largest single-file slice this
+pass -- all 4 cards: Monsoon, Festival, Chanda Visit, Daily Tasks,
+~26 keys). This completes every sheet reachable from a board-zone tap
+or the HUD's LiveOps banner -- all 7 management sheets are now fully
+localized.
+
+Caught and fixed a real CSV-quoting mistake while authoring this slice:
+one Hindi translation (`events.chanda_blessing_active`) contains an
+embedded comma and wasn't quoted, which would have silently corrupted
+that row's column count. Verified the ENTIRE `ui_strings.csv` parses to
+exactly 3 fields per row (Python's `csv` module) before re-importing,
+and added a permanent regression test for that exact row rather than
+just fixing it manually and moving on.
+
+Full suite: 574/574 (up from 571/571), run twice, non-flaky. Updated
+localization-pipeline.md's Status/scope-list and the roadmap's
+Localization bullet.
+
+Remaining Phase 2 scope: the 3 pickers (`seed_picker.gd`,
+`agro_plant_picker.gd`, `decoration_picker.gd`), the 2 info cards
+(`decoration_info_card.gd`, `growing_info_card.gd`),
+`worker_assignment_row.gd`, and `game_economy.gd`'s `_push_event()`
+message strings (its own larger follow-up, not a mechanical sweep).
+
+**Next step**: continue Phase 2 with the 3 pickers next (similar shape
+to the sheets just finished), or consider Phase 2 "good enough for now"
+and switch to a different area -- all player-reachable management
+sheets are done, which is the highest-visibility surface. Still open
+and blocked on the user, unchanged: pushing accumulated local commits
+to origin, and the Play Console Game Services setup for real cloud-save
+sign-in.

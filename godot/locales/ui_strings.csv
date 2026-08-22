@@ -67,3 +67,31 @@ niche.vertical_farm_title,Build a Vertical Farm,वर्टिकल फार�
 niche.vertical_farm_button,Build for ₹%d,₹%d में बनाएं
 niche.electricity_powered,⚡ Powered: %s left,⚡ संचालित: %s बचा है
 niche.electricity_pay,⚡ Pay Electricity ₹%d,⚡ बिजली भुगतान करें ₹%d
+open_field.header,🌾 Open Field,🌾 खुला खेत
+events.monsoon_active_title,🌧️ Monsoon Season -- Active,🌧️ मानसून सीज़न -- सक्रिय
+events.monsoon_inactive_title,☁️ Monsoon Season,☁️ मानसून सीज़न
+events.monsoon_ends_in,Ends in %s,%s में समाप्त
+events.monsoon_next_in,Next monsoon in %s,अगला मानसून %s में
+"events.monsoon_blurb","While active, open-field crops grow 20% faster but risk a 10% chance of total flood loss when they mature. Polyhouse owners are completely immune.","सक्रिय रहते हुए, खुले खेत की फसलें 20% तेज़ी से बढ़ती हैं लेकिन पकने पर 10% पूर्ण बाढ़ हानि का खतरा रहता है। पॉलीहाउस मालिक पूरी तरह सुरक्षित हैं।"
+events.festival_active_ends_in,Active -- ends in %s,सक्रिय -- %s में समाप्त
+events.festival_inactive_next_in,Not running -- next festival in %s,नहीं चल रहा -- अगला उत्सव %s में
+"events.festival_target_blurb","Sell %s %s while the festival is running to earn Event Points and climb the reward tiers.","इवेंट पॉइंट्स कमाने और इनाम स्तर चढ़ने के लिए त्योहार के दौरान %s %s बेचें।"
+events.festival_points,Points: %d / %d,पॉइंट्स: %d / %d
+events.festival_points_maxed,Points: %d -- all tiers reached!,पॉइंट्स: %d -- सभी स्तर पूरे!
+events.premium_pass_active,🎫 Premium Pass active for this festival,🎫 इस उत्सव के लिए प्रीमियम पास सक्रिय
+events.premium_pass_buy,Buy Premium Pass -- ₹%d,प्रीमियम पास खरीदें -- ₹%d
+events.premium_pass_unavailable,Premium Pass available during festivals,प्रीमियम पास त्योहारों के दौरान उपलब्ध
+events.tier_row,%s Tier %d (%d pts),%s स्तर %d (%d अंक)
+events.tier_reward_with_premium,₹%d + ₹%d,₹%d + ₹%d
+events.tier_reward_locked,₹%d (+₹%d 🔒),₹%d (+₹%d 🔒)
+"events.chanda_ask","A neighbor has stopped by collecting chanda for %s. Give ₹%d?","एक पड़ोसी %s के लिए चंदा इकट्ठा करने आया है। ₹%d दें?"
+events.chanda_give,Give -- ₹%d,दें -- ₹%d
+events.chanda_cant_afford,Can't afford ₹%d,₹%d वहन नहीं कर सकते
+events.chanda_decline,Not this time,इस बार नहीं
+events.chanda_blessing_active,🙏 Blessing active -- +%d%% sell price for %s,"🙏 आशीर्वाद सक्रिय -- +%d%% बिक्री मूल्य, %s तक"
+events.chanda_next_visitor,Next visitor in %s,अगला आगंतुक %s में
+events.daily_tasks_title,📅 Daily Tasks -- 💎 %d,📅 दैनिक कार्य -- 💎 %d
+events.daily_bonus_claimed,🎉 All 3 complete -- bonus gems claimed!,🎉 सभी 3 पूर्ण -- बोनस जेम्स प्राप्त!
+events.reroll_needs_gems,Reroll -- 💎 %d needed,रीरोल -- 💎 %d चाहिए
+events.reroll_unavailable,Reroll unavailable -- progress made today,रीरोल अनुपलब्ध -- आज प्रगति हो चुकी है
+events.reroll_button,🔄 Reroll Today's Tasks -- 💎 %d,🔄 आज के कार्य रीरोल करें -- 💎 %d

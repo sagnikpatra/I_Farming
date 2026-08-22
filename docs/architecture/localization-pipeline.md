@@ -3,10 +3,12 @@
 ## Status
 
 Phase 1 complete (infrastructure + a proven real slice). Phase 2
-(finishing the UI-wide string migration) in progress --
-`farmhouse_tab.gd`/`mandi_tab.gd`/`polyhouse_tab.gd`/
-`agroforestry_tab.gd`/`niche_farming_tab.gd` done (2026-08-22, same day),
-the rest of the list below still open.
+(finishing the UI-wide string migration) in progress -- all 7
+management sheets (`farmhouse_tab.gd`, `mandi_tab.gd`,
+`polyhouse_tab.gd`, `agroforestry_tab.gd`, `niche_farming_tab.gd`,
+`open_field_tab.gd`, `events_tab.gd`) done (2026-08-22, same day). The
+3 pickers, 2 info cards, `worker_assignment_row.gd`, and
+`game_economy.gd`'s `_push_event()` strings remain.
 
 ## Date
 
@@ -124,13 +126,20 @@ human listen-through closed.
 - `niche_farming_tab.gd`: both section headers (Makhana Ponds, Saffron
   Vertical Farm), both build cards (title/blurb/button), and the
   electricity chip (both Powered/Pay states).
+- `open_field_tab.gd`: its one header label.
+- `events_tab.gd`: all 4 cards (Monsoon, Festival, Chanda Visit, Daily
+  Tasks) — every static label, blurb, button, and tier/reward-row
+  format string. The largest single-file slice of this pass (~26 keys).
+  Festival/crop display names themselves stay data-driven from
+  `GameData`, unchanged.
+
+This completes every management sheet reachable from a board-zone tap
+or the HUD's LiveOps banner. What's left is narrower UI surface area.
 
 ## What's explicitly NOT yet migrated (Phase 2 remaining scope)
 
 Every other hardcoded string in `godot/scripts/ui/`, specifically:
 
-- `open_field_tab.gd`, `events_tab.gd` — the two remaining management
-  sheets' full body text.
 - `seed_picker.gd`, `agro_plant_picker.gd`, `decoration_picker.gd` —
   picker sheet chrome (crop/decoration display names themselves come
   from `GameData`'s catalogue data, a separate, larger data-migration
@@ -176,7 +185,11 @@ non-flaky. Extended with 3 more spot-checks after the `farmhouse_tab.gd`/
 `mandi_tab.gd` Phase 2 slice (two-placeholder format keys from each file,
 plus an English-still-works sanity check) -- 569/569, twice, non-flaky.
 Extended again after `polyhouse_tab.gd`/`agroforestry_tab.gd`/
-`niche_farming_tab.gd` -- 571/571, twice, non-flaky.
+`niche_farming_tab.gd` -- 571/571, twice, non-flaky. Extended again
+after `open_field_tab.gd`/`events_tab.gd` (including a regression check
+for a real CSV-quoting mistake caught and fixed while authoring that
+slice -- a Hindi string with an embedded comma that needed explicit
+quoting, per RFC 4180) -- 574/574, twice, non-flaky.
 
 ## Dependencies
 

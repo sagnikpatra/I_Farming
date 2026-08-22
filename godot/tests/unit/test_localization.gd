@@ -104,6 +104,28 @@ func test_english_locale_still_resolves_polyhouse_agroforestry_niche_keys() -> v
 	assert_eq(tr(&"niche.vertical_farm_title"), "Build a Vertical Farm")
 
 
+## open_field_tab.gd/events_tab.gd -- the CSV row exercised here
+## (events.chanda_blessing_active) is the one with an embedded comma in its
+## Hindi text, requiring real CSV quoting; this test would catch a silently
+## truncated/misparsed row (a real mistake caught and fixed while authoring
+## this same CSV -- worth a permanent regression check, not just a one-time
+## manual fix).
+func test_hindi_locale_resolves_events_key_with_an_embedded_comma() -> void:
+	TranslationServer.set_locale("hi")
+	assert_eq(tr(&"events.chanda_blessing_active") % [10, "5m"], "🙏 आशीर्वाद सक्रिय -- +10% बिक्री मूल्य, 5m तक")
+
+
+func test_hindi_locale_resolves_open_field_header() -> void:
+	TranslationServer.set_locale("hi")
+	assert_eq(tr(&"open_field.header"), "🌾 खुला खेत")
+
+
+func test_english_locale_still_resolves_events_keys() -> void:
+	TranslationServer.set_locale("en")
+	assert_eq(tr(&"events.reroll_unavailable"), "Reroll unavailable -- progress made today")
+	assert_eq(tr(&"events.tier_reward_locked") % [100, 50], "₹100 (+₹50 🔒)")
+
+
 # ---------------------------------------------------------------------------
 # AccessibilitySettings.locale
 # ---------------------------------------------------------------------------

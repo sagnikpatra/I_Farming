@@ -4186,6 +4186,50 @@ throughout) and `feature-scoping-2026-08-22.md`'s summary table -- item
 Night, deliberately separated out for its own asset/placement
 questions) as an open stretch goal.
 
+## 2026-08-22 (cont'd) -- Villager Lamp-Lighting built; item 3's
+stretch-goal backlog also fully closed (2nd item this session to reach
+zero open stretch goals)
+
+Fifth stretch goal this session: one small warm `OmniLight3D` per
+structure (any `has_building=true` zone), lit only at Night. Resolves
+both open questions the GDD had explicitly separated this out over --
+placement reuses `_build_zone_structure()`'s own existing footprint/
+height math, and there's no asset question since Godot's built-in light
+node needs no sourced 3D model.
+
+Found and fixed a real architectural timing gap before it shipped as a
+bug, the same category of catch as Night Population Thinning's own fix
+earlier this session: `rebuild()` (which fully tears down and
+reconstructs every zone, including a freshly-off lamp, far more often
+than an actual day/night phase change -- any purchase or drag-commit
+triggers one) would have silently darkened every lamp on the very next
+unrelated rebuild() during Night, staying dark until the next real
+phase transition. Fixed by unconditionally re-applying the already-known
+current phase's lamp state at the end of every rebuild(), via one new
+shared helper (`_apply_night_lamps_to_current_state()`) called from both
+that end-of-rebuild() point and the existing phase-change edge in
+`_apply_time_of_day_if_needed()`. Also wired lamp repositioning into the
+existing `_reposition_zone_group()` so a dragged structure's lamp moves
+with it on every drag frame, not just at initial build.
+
+No automated test coverage exists for this (village_board.gd has none,
+a pre-existing project-wide gap already documented this session, not
+introduced here) -- full GUT suite (518/518) confirms zero regressions
+elsewhere, but on-device verification carried the real weight.
+**Genuinely strong visual result**: forced-Night screenshot shows
+multiple structures with real warm light pooling on the ground near
+them, clearly atmospheric, no crash -- better than expected. Reverted
+before the final build; re-ran the full suite and did one more
+export/install/launch, capturing a second screenshot confirming zero
+regression to the normal daytime look. Honestly noted one real
+verification gap in the GDD rather than glossing over it: the specific
+rebuild-during-Night fix was verified by code inspection, not exercised
+via an actual live purchase/drag action mid-Night on-device.
+
+Updated `real-time-day-night.md` (new Villager Lamp-Lighting subsections
+throughout) and `feature-scoping-2026-08-22.md`'s summary table -- item
+3 now joins item 4 with zero open stretch goals.
+
 ## Next Step
 
 1. **Real blocker, still needs the project owner specifically**: use
@@ -4201,17 +4245,19 @@ questions) as an open stretch goal.
    actual app-pause call site plus a settings-screen last-sync
    indicator (ADR-0003 Phase 2 steps 7-8) -- the provider class itself
    is already built and tested, this is just the wiring.
-3. Item 4 (richer ambient villagers) is fully done. Item 3 (real-world
-   weather) has only villager lamp-lighting left. Next time a save with
-   decorations exists on-device, capture the still-open on-device
-   visual confirmation for Point-of-Interest Lingering (see that GDD's
-   Acceptance Criteria).
-4. Remaining open stretch goals: villager lamp-lighting (item 3 --
-   structure-adjacent `Light3D` nodes active at Night, no new 3D assets
-   strictly required since Godot's built-in light nodes would suffice);
-   Farmhouse footprint growth + other-structure sub-upgrade attachments
-   (item 1); a second gems sink (item 2, real-money purchase explicitly
-   excluded -- needs its own billing-integration decision first).
+3. Items 3 and 4 (real-world weather, richer ambient villagers) are both
+   now fully done -- zero open stretch goals on either. Next time a save
+   with decorations exists on-device, capture the still-open visual
+   confirmation for Point-of-Interest Lingering, and next time a
+   purchase/drag can be triggered live during a forced-Night session,
+   capture the still-open live confirmation of the rebuild-during-Night
+   lamp fix (both currently verified by code inspection/tests, not a
+   live action -- see each GDD's Acceptance Criteria).
+4. Remaining open stretch goals, both real design decisions, not just
+   implementation: Farmhouse footprint growth + other-structure
+   sub-upgrade attachments (item 1); a second gems sink (item 2,
+   real-money purchase explicitly excluded -- needs its own
+   billing-integration decision first).
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)

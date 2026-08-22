@@ -72,6 +72,10 @@ const GROUND_COLOR := Color(0.32, 0.42, 0.10)
 # that's not yet unlocked, regardless of whether it has a sourced model (a
 # locked zone always renders as this placeholder, never its real model).
 const LOCKED_ZONE_PLACEHOLDER_COLOR := Color(0.97, 0.93, 0.84, 0.30)
+# design/gdd/real-time-day-night.md's villager lamp-lighting stretch goal --
+# each structure's NightLamp OmniLight3D energy at Night; 0.0 (off) at every
+# other phase. See _apply_night_lamps_to_current_state().
+const NIGHT_LAMP_ENERGY: float = 1.5
 # Track B: Polyhouse's translucent-glass placeholder alpha (see
 # _build_zone_structure()'s use_translucent_placeholder branch). Higher than
 # LOCKED_ZONE_PLACEHOLDER_COLOR's 0.30 -- an unlocked, built Polyhouse should
@@ -294,6 +298,16 @@ func rebuild(zones: Array[ZoneFixture], preserve_camera: bool = false) -> void:
 	if not preserve_camera:
 		var bounds := _board_bounds()
 		_camera_rig.frame_bounds(bounds.center, bounds.extents)
+
+	# design/gdd/real-time-day-night.md's villager lamp-lighting stretch
+	# goal -- every zone_node built above starts with its NightLamp off
+	# (see _build_zone_structure()). rebuild() runs far more often than
+	# an actual day/night phase change (any purchase, drag-commit, etc.),
+	# so without this, lamps would incorrectly go dark on the very next
+	# unrelated rebuild() during Night and stay dark until the next real
+	# phase transition -- possibly hours later. Applying the already-known
+	# current phase here, unconditionally, closes that gap.
+	_apply_night_lamps_to_current_state()
 
 
 func _grid_to_world(col: float, row: float) -> Vector3:
@@ -1124,6 +1138,28 @@ func _build_zone_structure(zone: ZoneFixture, zone_node: Node3D) -> void:
 	zone_node.add_child(pick_area)
 	zone_node.set_meta("building_top_y", building_top_y)
 
+	# design/gdd/real-time-day-night.md's villager lamp-lighting stretch
+	# goal -- one small OmniLight3D per structure. That GDD flagged this
+	# as needing "new light-emitting objects... its own asset/placement
+	# questions": placement reuses this function's own footprint/height
+	# math (no separate design pass needed), and there's no asset
+	# question at all since Godot's built-in Light3D needs no sourced
+	# model. Energy (not visibility) is the day/night toggle -- see
+	# _apply_night_lamps_to_current_state() -- kept off by default here
+	# so a fresh zone_node never flashes lit before that function's first
+	# real application.
+	var lamp := OmniLight3D.new()
+	lamp.name = "NightLamp"
+	lamp.light_color = Color(1.0, 0.75, 0.35)  # warm lamplight
+	lamp.light_energy = 0.0
+	lamp.omni_range = maxf(footprint.x, footprint.y) * 1.2
+	zone_node.add_child(lamp)
+	# Corner offset from the footprint center, elevated partway up the
+	# structure -- stored as meta (same pattern building_top_y already
+	# uses) so _reposition_zone_group() can keep it correctly placed
+	# through a drag, not just at initial build.
+	zone_node.set_meta("lamp_offset", Vector3(footprint.x * 0.4, building_top_y * 0.5, footprint.y * 0.4))
+
 
 ## Single source of truth for "where do this zone's Plinth/Building/PickArea
 ## sit for a given world-space center" -- used both for the zone's initial
@@ -1141,6 +1177,15 @@ func _reposition_zone_group(zone_node: Node3D, center: Vector3) -> void:
 	var pick_area := zone_node.get_node("PickArea") as Node3D
 	var top_y: float = zone_node.get_meta("building_top_y")
 	pick_area.position = Vector3(center.x, top_y / 2.0, center.z)
+
+	# design/gdd/real-time-day-night.md's villager lamp-lighting stretch
+	# goal -- only zones with a building have a lamp (see
+	# _build_zone_structure()); has_meta() correctly skips the Open Field
+	# pseudo-zone rather than needing a separate has_building check here.
+	if zone_node.has_meta("lamp_offset"):
+		var lamp := zone_node.get_node("NightLamp") as Node3D
+		var lamp_offset: Vector3 = zone_node.get_meta("lamp_offset")
+		lamp.position = center + lamp_offset
 
 
 ## Generic per-model scale normalization (root cause #3): scales a mesh
@@ -1748,6 +1793,13 @@ func _apply_time_of_day_if_needed(now: int) -> void:
 	if phase == TimeOfDay.Phase.NIGHT or previous_phase == TimeOfDay.Phase.NIGHT:
 		_villager_spawner.sync(_economy.state, _current_population_scale())
 
+	# design/gdd/real-time-day-night.md's villager lamp-lighting stretch
+	# goal -- every phase change re-applies lamp state (not just Night
+	# transitions like population thinning above): a Dawn/Dusk edge
+	# doesn't change whether lamps are lit, but it's cheap enough to just
+	# always call rather than adding a third separate condition to track.
+	_apply_night_lamps_to_current_state()
+
 
 ## design/gdd/richer-ambient-villagers.md's Night population thinning.
 ## Single source of truth for "what scale applies right now" -- reads
@@ -1757,6 +1809,22 @@ func _apply_time_of_day_if_needed(now: int) -> void:
 ## current phase.
 func _current_population_scale() -> float:
 	return VillagerSpawner.NIGHT_POPULATION_SCALE if _last_time_of_day_phase == TimeOfDay.Phase.NIGHT else 1.0
+
+
+## design/gdd/real-time-day-night.md's villager lamp-lighting stretch goal.
+## Sets every currently-built structure's NightLamp energy to match
+## _last_time_of_day_phase -- called both from an actual phase-change
+## edge (_apply_time_of_day_if_needed() above) and unconditionally at the
+## end of every rebuild() (see that function's own comment for why: a
+## freshly-rebuilt zone_node's lamp always starts off, so any rebuild()
+## that isn't itself the phase-change trigger must still re-apply the
+## already-known current state).
+func _apply_night_lamps_to_current_state() -> void:
+	var energy := NIGHT_LAMP_ENERGY if _last_time_of_day_phase == TimeOfDay.Phase.NIGHT else 0.0
+	for zone_node: Node3D in _zone_nodes_by_id.values():
+		var lamp := zone_node.get_node_or_null("NightLamp") as Light3D
+		if lamp:
+			lamp.light_energy = energy
 
 
 ## Shared save-if-dirty + re-render pattern, gated on GameEconomy.dirty per

@@ -84,6 +84,37 @@ checking in on, not a screen that looks identical 24/7.
   `preset_for_phase_and_season()`, which `village_board.gd` is the only
   caller of.
 
+### Villager Lamp-Lighting (built 2026-08-22)
+
+- Every structure (any zone with `has_building=true` -- Farmhouse,
+  Polyhouse, Mandi, Agroforestry, Aquaculture, Vertical Farm; not the
+  synthetic Open Field pseudo-zone, which has no building) gets one
+  small warm light source, lit only at Night.
+- **Resolves both open questions this stretch goal was originally
+  separated out over**: placement reuses `_build_zone_structure()`'s own
+  existing footprint/height math (a fixed corner offset from the
+  structure, elevated partway up it) rather than needing a new design
+  pass; there is no asset question at all, since Godot's built-in
+  `OmniLight3D` needs no sourced 3D model.
+- Energy, not visibility, is the day/night toggle -- the light node
+  always exists once its structure is built, just at `0.0` energy
+  outside Night, so toggling it is a single float write, never a
+  scene-tree add/remove.
+- **A real timing gap was found and fixed before it could ship as a
+  bug**: `rebuild()` (which tears down and reconstructs every zone,
+  including its lamp, far more often than an actual day/night phase
+  changes -- any purchase or drag-commit triggers one) always creates a
+  fresh lamp at `0.0` energy. Without an explicit fix, any `rebuild()`
+  that wasn't itself the phase-change trigger would silently darken
+  every lamp until the next real phase transition, possibly hours
+  later. Fixed by unconditionally re-applying the already-known current
+  phase's lamp state at the end of every `rebuild()`, not only on an
+  actual phase-change edge.
+- A dragged/repositioned structure's lamp moves with it -- the same
+  `_reposition_zone_group()` that already repositions Plinth/Building/
+  PickArea on every drag frame now repositions the lamp too, reading a
+  stored offset the same way it already reads `building_top_y`.
+
 ## 4. Formulas
 
 **Local hour** (pure function, mirrors `GameEconomy.local_day_key()`'s
@@ -131,6 +162,12 @@ no risk of subtly drifting the already-shipped daytime look.)
 `ambient_color`/`sun_color` component-wise by the season's tint;
 `ambient_energy`/`sun_energy` pass through unchanged.
 
+**Lamp light** (`village_board.gd`'s `NIGHT_LAMP_ENERGY` constant): warm
+color `(1.0, 0.75, 0.35)`, `omni_range` = the structure's own larger
+footprint axis x1.2, `light_energy` = `1.5` at Night, `0.0` at every
+other phase. Position offset from the structure's footprint center:
+`(footprint.x * 0.4, building_top_y * 0.5, footprint.y * 0.4)`.
+
 ## 5. Edge Cases
 
 - **Device clock/timezone changes mid-session**: recomputed fresh every
@@ -151,6 +188,15 @@ no risk of subtly drifting the already-shipped daytime look.)
   re-read on an actual phase change, not its own timer -- worst case, up
   to one phase-transition window's latency after the real calendar
   boundary before the new season's tint appears. Accepted, not a defect.
+- **A `rebuild()` fires during Night for a reason unrelated to day/night**
+  (a purchase, a drag-commit): every structure's lamp would otherwise
+  reset to its freshly-built default of off -- fixed, see Villager
+  Lamp-Lighting above. Not a theoretical edge case; `rebuild()` genuinely
+  fires far more often than an actual phase change.
+- **A structure is dragged to a new position**: its lamp moves with it
+  in the same frame, via the same `_reposition_zone_group()` call that
+  already repositions the rest of the structure -- never lags a frame
+  behind or gets left at the old position.
 
 ## 6. Dependencies
 
@@ -165,6 +211,13 @@ no risk of subtly drifting the already-shipped daytime look.)
 - `village_board.gd` (`_ready()` and `_on_growth_tick_timeout()` apply the
   current preset to the existing `WorldEnvironment`/`DirectionalLight3D`
   nodes already in `village_board.tscn` -- no new scene nodes needed).
+  **Villager Lamp-Lighting is the one stretch goal that adds new scene
+  nodes**: `_build_zone_structure()` creates one `OmniLight3D` per
+  structure, `_reposition_zone_group()` keeps it correctly placed
+  through a drag, and the new `_apply_night_lamps_to_current_state()`
+  helper (called from both `_apply_time_of_day_if_needed()` and the end
+  of `rebuild()`) is the single source of truth for every lamp's current
+  energy.
 - Does **not** depend on or modify `game_economy.gd`, `GameState`, or any
   Monsoon/Festival/Chanda/Daily-Tasks logic.
 
@@ -172,14 +225,10 @@ no risk of subtly drifting the already-shipped daytime look.)
 
 - The exact preset RGB/energy values per phase, the hour-range
   boundaries, the season tint values, and the month-range boundaries --
-  all centralized in `time_of_day.gd`.
-- Option B (the seasonal palette) has no stretch goals remaining -- built.
-- **Future stretch**: villager lamp-lighting (small light sources active
-  near structures at Night) -- the original brief's own recommended path
-  bundled this in, but it's a distinct content addition (new
-  light-emitting objects, not just existing-light-property changes) with
-  its own asset/placement questions, deliberately separated out here
-  rather than silently expanded into.
+  all centralized in `time_of_day.gd`. `NIGHT_LAMP_ENERGY` and the lamp
+  offset/range formulas -- in `village_board.gd`.
+- Every stretch goal originally deferred from this pass (Option B/the
+  seasonal palette, villager lamp-lighting) has now been built.
 - **Future stretch**: a smooth crossfade between phases instead of an
   instant swap on the next tick.
 
@@ -230,3 +279,32 @@ no risk of subtly drifting the already-shipped daytime look.)
       intentionally subtle by design, and the boundary math itself is
       what's actually load-bearing here, which the unit tests above
       cover completely.
+
+### Villager Lamp-Lighting (2026-08-22)
+
+- [x] Every structure (`has_building=true` zone) gets exactly one
+      `NightLamp` -- confirmed by code inspection of
+      `_build_zone_structure()`'s unconditional lamp creation within
+      that branch (`village_board.gd` has no dedicated test file,
+      matching this project's existing gap for that class -- see
+      `technical-preferences.md`'s Testing section, same accepted gap
+      the Night Population Thinning feature already documented).
+- [x] Lamps are off (`light_energy = 0.0`) at every phase except Night --
+      confirmed by code inspection of `_apply_night_lamps_to_current_state()`.
+- [x] A `rebuild()` unrelated to a day/night phase change does not
+      darken lamps that should still be lit -- the specific bug this
+      pass found and fixed (see Detailed Rules/Edge Cases above);
+      verified by code inspection of `rebuild()`'s unconditional final
+      call to `_apply_night_lamps_to_current_state()`, not exercised via
+      a live rebuild-during-Night action this session (would need
+      triggering a real purchase/drag mid-Night on-device -- noted as a
+      gap, not silently assumed correct).
+- [x] Full GUT suite green throughout (518/518 -- no automated coverage
+      exists for the new code itself, but the full suite confirms it
+      introduces zero parse errors or regressions elsewhere).
+- [x] Verified on-device via a temporary forced-Night override (reverted
+      before commit, same precedent as every other feature this
+      session): screenshot shows multiple structures with a genuine warm
+      light pooling on the ground near them, clearly distinct from the
+      unlit board, no crash. A second screenshot after reverting
+      confirms zero visual regression to the normal daytime look.

@@ -5805,3 +5805,41 @@ Docs-only, full suite re-run to confirm zero impact: 632/632, unchanged.
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- coding-standards.md: wrong test framework, wrong paths, phantom CI
+
+Following the directory-structure.md find, gave `.claude/docs/coding-
+standards.md` (also `@`-included in every session via CLAUDE.md) a full
+read rather than another narrow grep. Found real, actionable
+inaccuracies, not just stale wording:
+
+- **Wrong test framework entirely**: the CI/CD Rules section's Godot
+  command was `godot --headless --script tests/gdunit4_runner.gd` --
+  this project uses **GUT** (Godot Unit Test), never gdUnit4; that file
+  doesn't exist. Replaced with the real, working invocation this session
+  has run dozens of times today alone.
+- **Wrong file-naming convention**: said `[system]_[feature]_test.[ext]`
+  (a `_test` suffix) -- backwards from this project's actual `test_`
+  prefix convention (confirmed against every one of the 51 real files in
+  `godot/tests/unit/`), and disagreed with `.claude/rules/test-standards.md`'s
+  own correct naming rule -- two sibling docs contradicting each other on
+  the same fact.
+- **Wrong directory layout**: the Test Evidence table pointed at
+  `tests/unit/[system]/` and `tests/integration/[system]/` -- neither
+  exists; the real convention is a flat `godot/tests/unit/`, with
+  integration-style tests (real `VillageBoard`+`GameEconomy` scenes) living
+  alongside pure-logic ones in the same directory, not a separate tree.
+- **Phantom CI**: the whole CI/CD Rules section described automated
+  pipeline behavior ("runs on every push," "blocking gate in CI") as if
+  it already existed -- checked `.github/workflows/`, confirmed empty/
+  absent. No CI pipeline exists in this repo. Added an honest note: this
+  section describes the intended target, not current practice; real
+  current practice is the manual "run the suite twice before every
+  commit" discipline this session (and prior ones) has actually followed.
+
+Docs-only, full suite re-run to confirm zero impact: 632/632, unchanged.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction. `context-management.md`/`coordination-rules.md`
+(the two remaining `@`-included `.claude/docs/` files) not yet given
+this same full-read treatment -- worth checking next.

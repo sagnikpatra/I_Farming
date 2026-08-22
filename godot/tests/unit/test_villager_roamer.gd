@@ -294,6 +294,35 @@ func test_roamer_chooses_the_poi_tile_at_approximately_the_configured_rate() -> 
 	assert_almost_eq(ratio, VillagerRoamer.POI_LINGER_CHANCE, 0.08, "should choose the POI tile at approximately the configured rate")
 
 
+func test_roamer_actually_arrives_at_a_poi_tile_via_the_real_selection_and_movement_flow() -> void:
+	# design/gdd/richer-ambient-villagers.md's own on-device visual gap
+	# for Lingering ("a villager actually walks toward and lingers near a
+	# real placed decoration... genuinely unconfirmed") -- closed here the
+	# same way the grow-skip button's equivalent gap was closed: a
+	# stronger headless integration test rather than fighting on-device
+	# friction further. Unlike the statistical test above (which calls
+	# _choose_target_tile() directly, decision-only), this drives the
+	# real, unmocked _pick_new_target() -> find_path() -> _process()
+	# movement chain end to end and asserts genuine arrival.
+	#
+	# Seed 13 confirmed (via a throwaway probe script, same "seed it,
+	# don't mock RNG" convention this file already established for
+	# should_enter_idle_pause) to roll should_linger_at_poi() true on the
+	# very first RNG draw -- poi_tiles and the seed are both set before
+	# setup() runs, so setup()'s own internal _pick_new_target() call is
+	# that first draw, exactly matching the probe's conditions.
+	var grid := WalkableGrid.new(3, 1, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.poi_tiles = [Vector2i(2, 0)]
+	roamer._rng.seed = 13
+	roamer.setup(grid, Vector2i(0, 0), 3, 1, 1.0)
+
+	simulate(roamer, 20, 0.1)  # 2 tiles at 1.2 tiles/sec, delta 0.1 -> arrives well within budget
+
+	assert_eq(roamer.get_current_tile(), Vector2i(2, 0), "the roamer must actually arrive at the POI tile via the real selection roll + real pathfinding + real movement, not just select it")
+
+
 func test_roamer_excludes_its_own_current_tile_from_poi_candidates() -> void:
 	var grid := WalkableGrid.new(3, 3, [])
 	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer

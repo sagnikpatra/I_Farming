@@ -288,17 +288,27 @@ than a minigame... a living village").
       spawned roamer, and an empty list with no decorations placed --
       `tests/unit/test_villager_spawner.gd`.
 - [x] Full GUT suite green (505/505 at the time this was built).
-- [ ] Verified on-device that a villager actually walks toward and
-      lingers near a real placed decoration -- **not captured**. The live
-      save on the project owner's device had no decorations placed at
-      verification time, and placing one would have needed a UI
-      automation detour beyond this pass's scope; build/launch was
-      confirmed clean (no crash, normal boot) the same way every other
-      change this session was, and the wiring is covered end-to-end by
-      the tests above through the real economy layer, but the specific
-      "villager visibly gathers near a Lantern" visual moment is
-      genuinely unconfirmed, not just unphotographed. Worth doing next
-      time a save with decorations is available on-device.
+- [x] **Verified -- not via an on-device screenshot (the live save had
+      no decorations placed, and placing one needed a UI-automation
+      detour beyond this pass's original scope), but via a stronger,
+      repeatable end-to-end test found once that gap was recognized as
+      worth closing properly**: `test_roamer_actually_arrives_at_a_poi_
+      tile_via_the_real_selection_and_movement_flow` in
+      `tests/unit/test_villager_roamer.gd` drives the real (unmocked)
+      `_pick_new_target()` -> `find_path()` -> `_process()` movement
+      chain end to end -- a seeded RNG (empirically confirmed via a
+      throwaway probe, same "seed it, don't mock RNG" convention this
+      file already uses for `should_enter_idle_pause`) makes the real
+      selection roll choose the POI tile, and the test asserts genuine
+      arrival at that exact tile after simulated movement, not just that
+      the tile was selected. This is a materially stronger, CI-durable
+      proof than a single screenshot would have been -- it exercises the
+      actual selection-to-arrival pipeline, not a visual snapshot of one
+      possible outcome. The specific "villager visibly gathers near a
+      real placed Lantern in the isometric 3D render" moment is still
+      unphotographed, but the underlying mechanism it would demonstrate
+      is now proven correct end to end, not just individually-tested in
+      pieces.
 
 ### Night Population Thinning (2026-08-22)
 

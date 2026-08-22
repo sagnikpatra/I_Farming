@@ -30,6 +30,35 @@ func _find_button_with_text(node: Node, substring: String) -> Button:
 	return null
 
 
+## Defensively normalize first: every test here drives a VillageBoard's
+## own SaveSystem-loaded economy, and this class of test genuinely writes
+## to that same persisted user://save.tres (test_pressing_the_real_
+## skip_button_... presses a real button that calls
+## persist_and_rebuild_if_dirty()) -- without this reset, a PRIOR test's
+## real write could leave grow_skip_used_today=true on disk, making a
+## LATER "fresh" test flaky depending on run order. Same class of bug
+## already caught once this session for worker assignments (see
+## test_village_snapshot_mapper.gd's own "Defensively normalize first"
+## comment) -- test-standards.md's "tests must not depend on execution
+## order" rule, applied here too.
+func _reset_grow_skip_cap(economy: GameEconomy) -> void:
+	economy.state.grow_skip_day_key = -1
+	economy.state.grow_skip_used_today = false
+
+
+## Same "prior persisted save could leave real state behind" risk as
+## _reset_grow_skip_cap() above, for the specific plot each test plants
+## into -- plant_seed() silently no-ops on a non-EMPTY plot, so a
+## leftover GROWING/READY_TO_HARVEST plot from an earlier test's real
+## write would otherwise make that test's own "GROWING plot" precondition
+## silently false.
+func _reset_plot_to_empty(economy: GameEconomy, plot_id: int) -> void:
+	for plot: Plot in economy.state.plots:
+		if plot.id == plot_id:
+			plot.state = PlotState.new_empty()
+			return
+
+
 func test_card_shows_no_skip_button_without_full_context() -> void:
 	# configure()'s economy/village_board/bottom_sheet default to null --
 	# must not attempt to build the button at all in that shape.
@@ -41,9 +70,11 @@ func test_card_shows_no_skip_button_without_full_context() -> void:
 func test_card_shows_an_enabled_skip_button_with_full_context() -> void:
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
+	_reset_grow_skip_cap(economy)
 	economy.state.gems = GameData.GROW_SKIP_COST_GEMS
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
 	var sheet: BottomSheet = add_child_autofree(BottomSheetScene.instantiate())
 
@@ -59,9 +90,11 @@ func test_card_shows_an_enabled_skip_button_with_full_context() -> void:
 func test_skip_button_is_disabled_with_insufficient_gems() -> void:
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
+	_reset_grow_skip_cap(economy)
 	economy.state.gems = GameData.GROW_SKIP_COST_GEMS - 1
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
 	var sheet: BottomSheet = add_child_autofree(BottomSheetScene.instantiate())
 
@@ -76,12 +109,15 @@ func test_skip_button_is_disabled_with_insufficient_gems() -> void:
 func test_skip_button_is_disabled_after_the_daily_cap_is_used() -> void:
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
+	_reset_grow_skip_cap(economy)
 	economy.state.gems = GameData.GROW_SKIP_COST_GEMS * 2
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
 	economy.skip_grow_time(plot_id, now)  # uses today's one skip
 	var second_plot_id := economy.state.plots[1].id
+	_reset_plot_to_empty(economy, second_plot_id)
 	economy.plant_seed(second_plot_id, CropType.Kind.WHEAT, now)
 	var sheet: BottomSheet = add_child_autofree(BottomSheetScene.instantiate())
 
@@ -99,9 +135,11 @@ func test_pressing_the_real_skip_button_spends_gems_and_resolves_the_plot() -> v
 	# like test_gems_daily_tasks.gd already does.
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
+	_reset_grow_skip_cap(economy)
 	economy.state.gems = GameData.GROW_SKIP_COST_GEMS
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
+	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
 	var sheet: BottomSheet = add_child_autofree(BottomSheetScene.instantiate())
 

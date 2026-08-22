@@ -4420,6 +4420,43 @@ Updated `gems-second-sink.md`'s Acceptance Criteria (the item flips
 from open to closed, with the reasoning above) and
 `feature-scoping-2026-08-22.md`'s closing summary.
 
+## 2026-08-22 (cont'd) -- Same strategy applied to close Point-of-
+Interest Lingering's on-device gap; a real test-isolation bug found and
+fixed along the way
+
+Applied the exact same successful strategy immediately to the other
+item carrying the same class of gap. Added
+`test_roamer_actually_arrives_at_a_poi_tile_via_the_real_selection_and_
+movement_flow` to `test_villager_roamer.gd`: drives the real, unmocked
+`_pick_new_target()` -> `find_path()` -> `_process()` movement chain
+end to end (not the pure decision-only statistical test already
+covering the selection rate) and asserts genuine tile arrival. Needed a
+seed that reliably rolls the real selection true on the first draw --
+found one (13) via a quick throwaway probe script rather than guessing,
+same "seed it, don't mock RNG" convention this file already established
+for `should_enter_idle_pause`.
+
+**Caught and fixed a real test-isolation bug while verifying this**:
+the first full-suite run after adding the POI test showed 2 unrelated
+`test_growing_info_card.gd` tests newly failing (a button that should
+have been enabled wasn't; a press that should have spent gems didn't).
+Root cause: `VillageBoardScene.instantiate()` loads from a real,
+persisted `user://save.tres` in the headless test environment, and
+`test_pressing_the_real_skip_button_...` genuinely writes to that same
+file (pressing the real button triggers `persist_and_rebuild_if_dirty()`).
+Later tests in the same run inherited that write instead of getting a
+truly fresh economy -- the exact same class of bug already documented
+once this session for worker assignments
+(`test_village_snapshot_mapper.gd`'s own "Defensively normalize first"
+comment), now caught a second time in a different file. Fixed with the
+same pattern: explicit `_reset_grow_skip_cap()`/`_reset_plot_to_empty()`
+helpers called at the start of every test in `test_growing_info_card.gd`
+that depends on fresh cap/plot state, rather than assuming
+`VillageBoardScene.instantiate()` ever hands back a truly blank slate.
+Confirmed the fix by running the full suite twice in a row (542/542
+both times, not just once) -- this project's own established bar for
+calling a fix non-flaky, not just "passed once."
+
 ## Next Step
 
 1. **Real blocker, still needs the project owner specifically**: use
@@ -4442,16 +4479,22 @@ from open to closed, with the reasoning above) and
    implementation item left from that list. The next real decision is
    the project owner's: cloud-save Phase 1's Play Console step, or a
    genuinely new direction.
-4. One narrow, honestly-flagged on-device visual confirmation remains
-   open (logic fully tested, only the live "watch it on the real board"
-   step is missing) -- Point-of-Interest Lingering, needs a save with
-   decorations placed. The grow-skip button's equivalent gap is now
-   closed via the headless button-press test above instead. Also still
-   open from earlier: the rebuild-during-Night lamp fix and the
-   two-villagers-mutually-facing Congregating case (both inherently
-   hard to catch live, see their own GDDs) -- worth revisiting with the
-   same "write a stronger headless test instead" approach if they prove
-   similarly hard to catch on-device.
+4. Point-of-Interest Lingering's on-device gap is also now closed, same
+   approach as the grow-skip button: a new headless test
+   (`test_roamer_actually_arrives_at_a_poi_tile_via_the_real_selection_
+   and_movement_flow` in `test_villager_roamer.gd`) drives the real,
+   unmocked selection-roll -> pathfind -> movement chain end to end and
+   confirms genuine tile arrival, using a seed empirically confirmed (via
+   a throwaway probe script) to roll the real selection true. Confirmed
+   non-flaky across 2 repeated full-suite runs (542/542 both times).
+   Still open from earlier, both inherently harder to catch even with
+   this approach: the rebuild-during-Night lamp fix (needs a live
+   purchase/drag mid-Night, or a `village_board.gd` test harness this
+   project doesn't have yet) and the two-villagers-mutually-facing
+   Congregating case (needs two roamers' idle timing to overlap, harder
+   to force deterministically than a single roamer's target pick) --
+   worth revisiting with the same strategy if a clean way to force them
+   presents itself.
 5. **Process note for future on-device debug verification in this
    project**: any temporary `_ready()` override that mutates GameState
    MUST have a real save backup pulled first (`run-as ... cat

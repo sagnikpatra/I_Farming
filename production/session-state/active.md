@@ -5648,3 +5648,40 @@ test helper's call order to match the documented contract.
 Full suite run twice: 622/622 (up from 616), non-flaky.
 
 **Next step**: continuing to scan for further genuine gaps.
+
+## 2026-08-23 (cont'd) -- DecorationInfoCard: the precedent-setter had no test itself
+
+Found the highest-value gap of this stretch: `decoration_info_card.gd`
+is repeatedly cited BY OTHER test files' own header comments as "the
+established precedent" for this project's "drive the real node, not
+just call the economy method" testing standard
+(`growing_info_card.gd`/`villager_info_card.gd`/`chanda_visitor.gd`'s
+comments all reference it) -- but the precedent-setter itself had zero
+coverage. Worth more than the other gaps found today: Rotate/Flip/Remove
+are real, save-mutating gameplay actions (Remove genuinely deletes the
+player's placed decoration), not cosmetic flavor text.
+
+Wrote `test_decoration_info_card.gd` (4 tests): Rotate/Flip verified to
+call through to the real `GameEconomy` methods (not just look
+clickable), a check that Rotate/Flip re-populate the card in place
+rather than closing the sheet (the file's own documented "DESIGN CALL,"
+verified directly instead of trusted from the comment), and Remove
+verified to both delete the real decoration AND close the sheet.
+
+Hit a real button-finding bug while writing these: Rotate/Flip are
+glyph-only circular buttons built via
+`UiTheme.make_circular_emoji_button()`, whose own `Button.text` is
+always `""` -- the glyph renders through a child `Label` instead. The
+existing `_find_button_with_text()` helper (matches `Button.text`
+directly) correctly found Remove but always returned null for
+Rotate/Flip. Wrote a second helper that searches a Button's descendants
+for the matching `Label` text instead of the Button's own text.
+
+Verified the highest-stakes test (Remove) with a genuine negative-control
+check: temporarily made `remove_decoration()` a no-op, confirmed exactly
+1 test failed (3/4, the Remove one), then restored the real function and
+confirmed clean via `git diff`. Full suite run twice: 626/626 (up from
+622), non-flaky.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

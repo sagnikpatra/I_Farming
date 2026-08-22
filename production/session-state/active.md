@@ -5685,3 +5685,56 @@ confirmed clean via `git diff`. Full suite run twice: 626/626 (up from
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- confirmed ui/, village_board/ dirs fully covered; found a stale audio-comment cluster
+
+Re-checked `ui/` and `village_board/` script directories for missing test
+files after closing the 3 gaps above: `ui/` now has a dedicated test file
+for every script except `ui_theme.gd` (a pure Control-node factory
+library, correctly covered indirectly through every card/sheet test that
+calls its functions -- confirmed by inspection, not assumed). `village_board/`
+is down to `plot_fixture.gd` (pure data, no logic) and `zone_fixture.gd`
+(its real logic, `occupied_tiles()`, is now covered by today's overlap-
+detection tests). Both directories are genuinely done for this pass.
+
+Checked every remaining Timer in the codebase for the exact bug class the
+walking-animation fix closed (fires once when it should repeat) --
+`audio_manager.gd`'s two one-shot timers and `village_board.gd`'s growth
+tick are all correctly configured (one-shot timers explicitly intended
+one-shot; the growth tick has no one_shot flag, defaulting to repeat).
+Nothing else wrong in that specific bug class.
+
+Found a different, real gap while checking `audio/` for missing tests:
+`audio_catalogue.gd`/`audio_manager.gd`/`test_audio_manager.gd` all still
+had class-doc comments claiming "NO REAL AUDIO ASSET FILES EXIST YET
+(zero .ogg files)" -- true when written, false now (all 40 real files
+have existed since 2026-08-21, playback verified on-device the same
+session). Fixed all 3 comment blocks to reflect reality, and fixed a
+matching stale line in `design/audio/audio-core-gameplay-loop.md` itself
+(§3's `ui_action_rejected` bullet still said "catalogued, not wired"
+despite the same document's own later "Not wired this pass" section
+correctly saying it was wired 2026-08-22 -- an internal contradiction
+within one doc, now resolved).
+
+The stale test comment led to a real test-integrity fix, not just a
+wording fix: `test_play_sfx_with_no_real_asset_files_is_a_safe_no_op()`
+called `play_sfx()` on two REAL catalogued events (`economy_plant`/
+`economy_harvest`) claiming to prove the missing-file no-op path -- but
+now that real files exist for those events, those specific calls no
+longer exercise that path at all (they exercise real playback instead).
+Renamed and re-scoped the test to `test_play_sfx_with_real_catalogued_
+events_does_not_crash()` (accurate: a real-playback smoke test) and
+removed its redundant uncatalogued-key check, since a clean dedicated
+test for that already existed right below it.
+
+Also closed a genuine coverage gap surfaced by the same investigation:
+`AudioCatalogue.paths_for_event()`/`bus_for_event()`/
+`max_polyphony_for_event()` -- 3 real lookup functions, each with a real
+fallback-on-unknown-key branch -- had never been called directly by any
+test. 6 new tests: known-key correctness + unknown-key fallback for all
+3 functions.
+
+Full suite run twice: 632/632 (up from 626), non-flaky.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

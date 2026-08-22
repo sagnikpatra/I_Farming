@@ -60,7 +60,7 @@ Two decisions made explicitly during this pass, and why:
 - `ui_sheet_open` / `ui_sheet_close` (max_polyphony 1 each) — every BottomSheet-based sheet/picker/card, via one shared hook
 - `ui_drag_pickup` / `ui_drag_drop_success` (max_polyphony 1 each) — zone and decoration long-press-drag
 - `ui_rotate_flip` (max_polyphony 3) — decoration rotate/flip *(zone rotate/flip has no UI trigger in this codebase)*
-- `ui_action_rejected` (max_polyphony 1) — **catalogued, not wired** (see Implementation Status)
+- `ui_action_rejected` (max_polyphony 1) — **wired (2026-08-22)**: `hud.gd`'s `_show_next_toast()` plays it whenever a real `GameEvent.is_rejection` toast is shown, the same GameEvent snackbar/toast drain built to close a previously-invisible gap (see `docs/architecture/localization-pipeline.md`'s Related section). This line had gone stale — corrected 2026-08-23.
 
 ### Ambience (bus Ambience)
 - `amb_village_base_loop` — always-on base bed, starts on VillageBoard load

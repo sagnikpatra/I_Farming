@@ -1,12 +1,13 @@
-## Covers audio_manager.gd's two testable-without-real-audio-files pieces:
+## Covers audio_manager.gd's two headlessly-testable pieces:
 ## pick_variant()'s no-immediate-repeat guarantee (pure, no scene-tree
-## dependency) and the missing-audio-file no-op safety path (real end-to-end
-## proof, since zero .ogg files exist in this repo as of this pass -- see
-## audio_catalogue.gd's header comment). Visual/timing behavior (ambience
-## crossfade Tweens, the detail-sound Timer scheduler's actual random
-## intervals) is explicitly NOT covered here per this project's testing
-## standards (.claude/docs/coding-standards.md: "Visual/Feel" territory) --
-## only pure logic and the deliberate no-op contract are.
+## dependency) and the safe-no-op contract for a missing/uncatalogued audio
+## event -- plus a smoke check that playing a real catalogued event (all 40
+## .ogg files now exist on disk, see audio_catalogue.gd's header comment)
+## doesn't crash headlessly. Visual/timing behavior (ambience crossfade
+## Tweens, the detail-sound Timer scheduler's actual random intervals) is
+## explicitly NOT covered here per this project's testing standards
+## (.claude/docs/coding-standards.md: "Visual/Feel" territory) -- only pure
+## logic and the deliberate no-op/no-crash contracts are.
 extends GutTest
 
 const _REPEAT_TRIALS: int = 200
@@ -67,22 +68,26 @@ func test_pick_variant_with_empty_array_does_not_crash() -> void:
 	assert_eq(chosen, 0)
 
 
-# --- Missing-audio-file no-op path --------------------------------------------------
+# --- Real catalogued events + the missing/uncatalogued no-op path -------------------
 
-func test_play_sfx_with_no_real_asset_files_is_a_safe_no_op() -> void:
-	# Arrange -- zero .ogg files exist in this repo as of this pass (see
-	# audio_catalogue.gd's header comment), so every catalogued path is
-	# guaranteed missing right now: this is a real, not simulated,
-	# exercise of the "build now, source assets later" no-op path.
+## Update (2026-08-23): this test used to prove the missing-file no-op path
+## for real catalogued events too, back when zero .ogg files existed in this
+## repo -- every catalogued path was guaranteed missing, so playing one WAS
+## exercising the no-op branch for real. All 40 files now exist on disk
+## (see audio_catalogue.gd's header comment), so these specific calls now
+## exercise real playback instead -- still worth covering (must not crash
+## with real files loaded, headless or not), just no longer proof of the
+## no-op path. That path now has its own dedicated test below
+## (test_play_sfx_with_uncatalogued_event_key_is_a_safe_no_op), which this
+## test used to redundantly re-check inline.
+func test_play_sfx_with_real_catalogued_events_does_not_crash() -> void:
 	var manager: AudioManager = add_child_autofree(AudioManager.new())
 
-	# Act / Assert -- must not error or crash for a real catalogued event...
 	manager.play_sfx(&"economy_plant")
 	manager.play_sfx(&"economy_harvest")
 	manager.play_batch_resolve_chime()
-	# ...nor for a genuinely uncatalogued event key.
-	manager.play_sfx(&"not_a_real_event")
-	assert_true(true, "play_sfx()/play_batch_resolve_chime() completed without raising an error")
+
+	assert_true(true, "play_sfx()/play_batch_resolve_chime() completed without raising an error against real, on-disk asset files")
 
 
 func test_play_sfx_with_uncatalogued_event_key_is_a_safe_no_op() -> void:
@@ -94,6 +99,43 @@ func test_play_sfx_with_uncatalogued_event_key_is_a_safe_no_op() -> void:
 
 	# Assert
 	assert_true(true, "play_sfx() with an uncatalogued key completed without raising an error")
+
+
+# --- AudioCatalogue's own lookup functions -------------------------------------------
+# Found 2026-08-23: AudioManager's own construction (test_ready_builds_one_player_per_
+# catalogued_event() below) exercises AudioCatalogue.EVENT_DEFS as a whole, but nothing
+# called paths_for_event()/bus_for_event()/max_polyphony_for_event() directly -- each
+# has a real fallback-on-unknown-key branch (empty array / BUS_SFX / DEFAULT_MAX_POLYPHONY)
+# that was untested.
+
+func test_paths_for_event_returns_the_real_catalogued_paths() -> void:
+	var paths := AudioCatalogue.paths_for_event(&"economy_plant")
+	assert_eq(paths, [
+		"res://assets/audio/sfx/sfx_economy_plant_01.ogg",
+		"res://assets/audio/sfx/sfx_economy_plant_02.ogg",
+		"res://assets/audio/sfx/sfx_economy_plant_03.ogg",
+	] as Array[String])
+
+
+func test_paths_for_event_returns_empty_for_an_uncatalogued_key() -> void:
+	var paths := AudioCatalogue.paths_for_event(&"not_a_real_event")
+	assert_eq(paths, [] as Array[String])
+
+
+func test_bus_for_event_returns_the_real_catalogued_bus() -> void:
+	assert_eq(AudioCatalogue.bus_for_event(&"ui_button_tap"), AudioCatalogue.BUS_UI)
+
+
+func test_bus_for_event_falls_back_to_sfx_for_an_uncatalogued_key() -> void:
+	assert_eq(AudioCatalogue.bus_for_event(&"not_a_real_event"), AudioCatalogue.BUS_SFX)
+
+
+func test_max_polyphony_for_event_returns_the_real_catalogued_value() -> void:
+	assert_eq(AudioCatalogue.max_polyphony_for_event(&"ui_sheet_open"), AudioCatalogue.RARE_MAX_POLYPHONY)
+
+
+func test_max_polyphony_for_event_falls_back_to_default_for_an_uncatalogued_key() -> void:
+	assert_eq(AudioCatalogue.max_polyphony_for_event(&"not_a_real_event"), AudioCatalogue.DEFAULT_MAX_POLYPHONY)
 
 
 func test_ready_builds_one_player_per_catalogued_event() -> void:

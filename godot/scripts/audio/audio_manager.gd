@@ -14,13 +14,16 @@
 ## Add `@onready var _audio_manager: AudioManager = $AudioManager` +
 ## `get_audio_manager()` there is the exact mirror of that precedent.
 ##
-## NO REAL AUDIO ASSETS EXIST YET (zero .ogg files in this repo as of this
-## pass) -- see audio_catalogue.gd's header comment for the full rationale
-## and design/audio/audio-core-gameplay-loop.md for the asset list once that
-## doc lands. Every play path funnels through _play_path_on(), which checks
-## ResourceLoader.exists() before ever calling load(); a missing file is a
-## deliberate, permanent-until-assets-land silent no-op, not a bug --
-## covered directly by tests/unit/test_audio_manager.gd.
+## Update (2026-08-23): the comment here used to say no real audio assets
+## existed yet -- stale. All 40 catalogued .ogg files exist on disk and
+## playback is verified on-device; see audio_catalogue.gd's header comment
+## and design/audio/audio-core-gameplay-loop.md's Implementation Status for
+## the full story. Every play path still funnels through _play_path_on(),
+## which still checks ResourceLoader.exists() before ever calling load() --
+## a permanent defensive pattern (a bad/renamed/missing path stays a silent
+## no-op instead of a hard parse error), not a temporary one this pass was
+## expected to graduate out of once assets landed -- covered directly by
+## tests/unit/test_audio_manager.gd.
 ##
 ## VOICE LIMITING: one dedicated AudioStreamPlayer child per catalogued
 ## event, built in _ready() from AudioCatalogue.EVENT_DEFS, with
@@ -118,10 +121,10 @@ static func pick_variant(paths: Array[String], last_index: int) -> int:
 
 
 ## Single point every play path in this file funnels through -- see class
-## doc's "NO REAL AUDIO ASSETS EXIST YET" section. ResourceLoader.exists()
-## is checked before ever calling load(); a missing file is a silent no-op
-## (no error, no crash), not a bug, until real assets are dropped in at the
-## documented paths with no filename changes needed.
+## doc's 2026-08-23 update. ResourceLoader.exists() is checked before ever
+## calling load(); a missing/renamed file is a silent no-op (no error, no
+## crash), a permanent defensive guard rather than a stopgap now that the
+## real 40-file catalogue is in place.
 func _play_path_on(player: AudioStreamPlayer, path: String) -> void:
 	if player == null:
 		return

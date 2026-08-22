@@ -1,18 +1,20 @@
 ## Audio event/asset catalogue for the core gameplay loop pass. See
 ## design/audio/audio-core-gameplay-loop.md for the full sonic direction,
 ## sound-designer's event rationale, and the complete asset-naming list this
-## file's paths are drawn from (once that doc is approved and written --
-## pending as of this pass, see that doc's own "Implementation Status").
+## file's paths are drawn from.
 ##
-## NO REAL AUDIO ASSET FILES EXIST YET in this repo (zero .ogg files as of
-## this pass). Every path below is therefore a plain STRING, never a
-## preloaded AudioStream -- a preload() on a file that doesn't exist yet is a
-## hard parse error that would break the whole project on load. AudioManager
-## (audio_manager.gd) checks ResourceLoader.exists() before ever attempting
-## to load one of these paths (see its _play_path_on()); until real files are
-## dropped in at these exact paths, every play_*() call is a deliberate,
-## permanent-until-assets-land silent no-op -- not a bug. Once real files
-## land here with no filename changes, playback works with zero code changes.
+## Update (2026-08-23): this comment used to say no real audio asset files
+## existed yet -- stale. All 40 catalogued .ogg files were sourced
+## 2026-08-21 (CC0, freesound.org), exist on disk at these exact paths, and
+## playback has been verified on-device (real production code paths
+## exercised, not just the plugin's presence -- see that GDD's
+## Implementation Status). Every path below is still a plain STRING, never
+## a preloaded AudioStream, though -- that choice wasn't just about the
+## files not existing yet: a preload() failure on any one bad/renamed path
+## would be a hard parse error breaking the whole project on load, so
+## AudioManager's ResourceLoader.exists() check before ever calling load()
+## (see its _play_path_on()) stays the safer permanent pattern, not a
+## temporary one this pass was expected to graduate out of.
 ##
 ## Static-only data holder (no instances expected) -- same "catalogue table"
 ## spirit as GameData's tunable-constant tables, referenced directly as

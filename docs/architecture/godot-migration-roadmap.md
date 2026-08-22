@@ -1,9 +1,13 @@
 # IFarming → Godot 4 Migration Roadmap
 
-**Status**: M0–M5 complete, verified, and **cut over** — `godot/` is the
-active codebase for all new work. M6–M8 not started (see Cutover Decision
-below).
-**Date**: 2026-08-18 (roadmap authored) / 2026-08-21 (M5 reached, cutover decided)
+**Status**: M0–M7 complete, verified, and **cut over** — `godot/` is the
+active codebase for all new work. M8 (Post-Migration Hardening)'s
+engineering-scoped items are all done too (security, QA, accessibility,
+audio, localization — see Release Readiness below); only "Store
+readiness" remains, and that's explicitly the project owner's own step
+(Play Console account, signed release keystore, store listing,
+privacy policy), not further engineering work.
+**Date**: 2026-08-18 (roadmap authored) / 2026-08-21 (M5 reached, cutover decided) / 2026-08-22 (M8's remaining engineering items closed)
 **Governing ADRs**: `adr-0001-godot-engine-migration.md` (Accepted), `adr-0002-godot-language-and-save-format.md` (Accepted — GDScript, clean save format)
 
 > This is the working roadmap for the Godot migration. Update epic status as

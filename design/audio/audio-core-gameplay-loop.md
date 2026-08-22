@@ -215,9 +215,16 @@ listen-tonight/`) and confirmed it sounds good. Caveat closed.
 - ~~`agroforestry_tab.gd` / `niche_farming_tab.gd`~~ — **done** 2026-08-21
   (commit `d268335`), mechanically identical to `polyhouse_tab.gd` as
   described below.
-- `ui_action_rejected` — no reliable trigger exists yet. `GameEvent`'s
-  `pending_events` carries no success/rejection discriminant and isn't
-  drained by any UI code today; needs its own small design decision first.
+- ~~`ui_action_rejected`~~ — **done** 2026-08-22
+  (docs/architecture/localization-pipeline.md's Related section):
+  `GameEvent` gained an `is_rejection` discriminant, classified by hand at
+  every `_push_event()` call site in `game_economy.gd`, and `hud.gd` now
+  drains `pending_events` every refresh tick into a queued toast, playing
+  this SFX specifically for rejection-classified events. This also closed
+  a bigger latent gap than just this one SFX: `pending_events` was
+  produced throughout the economy layer but never drained by any UI code
+  at all before this pass, so rejection/info messages were silently lost
+  to the player entirely, not just missing a sound.
 - Direct (non-Mandi) `sell_crop()`, `buy_land_expansion()`, `rotate_zone()`/
   `flip_zone()` — none of these currently have ANY UI call site in the
   codebase, so there is nothing to wire yet regardless of audio.

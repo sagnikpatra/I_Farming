@@ -68,9 +68,13 @@ stays the owner's regardless of how much of this list gets done.
       `polyhouse_tab.gd`) was deferred at the time this note was written,
       then closed the same way in a later session (commit `d268335`) --
       both tabs now call `_play_audio()` from every purchase handler,
-      confirmed by inspection 2026-08-22. `ui_action_rejected` (needs a
-      `GameEvent` design decision first) remains open, explicitly
-      deferred, not silently skipped.
+      confirmed by inspection 2026-08-22. `ui_action_rejected` is also now
+      closed (2026-08-22, same session as the localization pass) -- see
+      `docs/architecture/localization-pipeline.md`'s Related section: it
+      turned out to need a real GameEvent snackbar/toast drain, not just a
+      wiring fix, since `pending_events` was never drained by any UI code
+      at all before this. This EPIC-M8 audio bullet's own two originally-
+      deferred items are both closed now.
       Design doc: `design/audio/audio-core-gameplay-loop.md`.
 - [x] QA pass — done 2026-08-21: `/smoke-check` run against the Godot
       build (adapted for this project having no formal `production/

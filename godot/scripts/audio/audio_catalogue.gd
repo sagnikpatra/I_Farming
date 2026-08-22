@@ -132,14 +132,12 @@ const EVENT_DEFS: Dictionary = {
 		],
 		"bus": BUS_UI, "max_polyphony": DEFAULT_MAX_POLYPHONY,
 	},
-	# NOT WIRED to any real call site as of this pass -- see audio_manager.gd's
-	# class doc / this pass's session notes: GameEvent.pending_events (the
-	# only existing "an action was rejected" signal) carries no
-	# success/rejection discriminant and is never drained by any UI code
-	# today, so there is no single reliable hook to call play_sfx() from
-	# without either a Foundation-layer change to GameEvent or fragile
-	# message-string matching in Presentation code. Catalogued here (for the
-	# asset-naming list/doc) but genuinely silent until that's resolved.
+	# WIRED as of 2026-08-22 (docs/architecture/localization-pipeline.md's
+	# Related section): GameEconomy.pending_events now carries a real
+	# success/rejection discriminant (GameEvent.is_rejection, classified by
+	# hand at every _push_event() call site in game_economy.gd), and hud.gd
+	# drains the queue every refresh tick into a toast, playing this SFX
+	# specifically for events classified as a rejection.
 	&"ui_action_rejected": {
 		"paths": ["res://assets/audio/sfx/sfx_ui_action_rejected_01.ogg"],
 		"bus": BUS_UI, "max_polyphony": RARE_MAX_POLYPHONY,

@@ -64,8 +64,17 @@ func pop_event() -> GameEvent:
 	return pending_events.pop_front()
 
 
-func _push_event(message: String) -> void:
-	pending_events.append(GameEvent.new(message))
+## `is_rejection` (default false, additive -- see GameEvent's own class doc
+## for the full rationale) marks "the player tried an action and it was
+## blocked" (insufficient funds/gems, a daily cap already used, a required
+## precondition unmet) as distinct from neutral/positive informational
+## events (a purchase/sale succeeded, a festival gift was given, a
+## narrative weather/theft outcome). Classified by hand, call site by call
+## site, against the real message/context at each one -- not guessed from a
+## sample. Drives GameEvent-drain UI (hud.gd's toast queue): a rejection
+## plays the `ui_action_rejected` SFX, an informational event doesn't.
+func _push_event(message: String, is_rejection: bool = false) -> void:
+	pending_events.append(GameEvent.new(message, is_rejection))
 
 
 func _mark_dirty() -> void:
@@ -179,13 +188,13 @@ func event_state_preview(now: int) -> GameState:
 
 func buy_premium_pass(now: int) -> void:
 	if not is_festival_active(now):
-		_push_event("The Premium Pass can only be bought during an active festival.")
+		_push_event("The Premium Pass can only be bought during an active festival.", true)
 		return
 	_with_fresh_event_occurrence(now)
 	if state.event_has_premium_pass:
 		return
 	if state.coins < GameData.FESTIVAL_PREMIUM_PASS_COST:
-		_push_event("Need ₹%d for the Premium Pass." % GameData.FESTIVAL_PREMIUM_PASS_COST)
+		_push_event("Need ₹%d for the Premium Pass." % GameData.FESTIVAL_PREMIUM_PASS_COST, true)
 		return
 	state.coins -= GameData.FESTIVAL_PREMIUM_PASS_COST
 	state.event_has_premium_pass = true
@@ -278,7 +287,7 @@ func give_chanda(now: int) -> void:
 		return
 	var ask: int = chanda_ask_amount()
 	if state.coins < ask:
-		_push_event("Need ₹%d for the chanda." % ask)
+		_push_event("Need ₹%d for the chanda." % ask, true)
 		return
 	var festival := current_chanda_festival(now)
 	state.coins -= ask
@@ -421,10 +430,10 @@ func reroll_daily_tasks(now: int) -> void:
 	_with_fresh_daily_tasks(now)
 	for kind: int in state.daily_task_kinds:
 		if state.daily_task_claimed.get(kind, false):
-			_push_event("Can't reroll -- you've already made progress today.")
+			_push_event("Can't reroll -- you've already made progress today.", true)
 			return
 	if state.gems < GameData.DAILY_TASK_REROLL_COST:
-		_push_event("Need %d gems to reroll." % GameData.DAILY_TASK_REROLL_COST)
+		_push_event("Need %d gems to reroll." % GameData.DAILY_TASK_REROLL_COST, true)
 		return
 	state.gems -= GameData.DAILY_TASK_REROLL_COST
 	var rng := RandomNumberGenerator.new()
@@ -451,10 +460,10 @@ func skip_grow_time(plot_id: int, now: int) -> void:
 		state.grow_skip_day_key = day_key
 		state.grow_skip_used_today = false
 	if state.grow_skip_used_today:
-		_push_event("Already used today's grow-time skip.")
+		_push_event("Already used today's grow-time skip.", true)
 		return
 	if state.gems < GameData.GROW_SKIP_COST_GEMS:
-		_push_event("Need %d gems for a grow-time skip." % GameData.GROW_SKIP_COST_GEMS)
+		_push_event("Need %d gems for a grow-time skip." % GameData.GROW_SKIP_COST_GEMS, true)
 		return
 	var plot := _find_plot(plot_id)
 	if plot == null or plot.state.kind != PlotState.Kind.GROWING:
@@ -513,7 +522,7 @@ func buy_farmhouse_upgrade() -> void:
 		return
 	var next_level := GameData.farmhouse_level_def(state.farmhouse_level + 1)
 	if state.coins < next_level.upgrade_cost:
-		_push_event("Need ₹%d to upgrade to %s." % [next_level.upgrade_cost, next_level.display_name])
+		_push_event("Need ₹%d to upgrade to %s." % [next_level.upgrade_cost, next_level.display_name], true)
 		return
 	state.coins -= next_level.upgrade_cost
 	state.farmhouse_level += 1
@@ -536,10 +545,10 @@ func plant_seed(plot_id: int, crop: int, now: int) -> void:
 	if crop_def.required_plot_kind != plot.kind:
 		return
 	if crop == CropType.Kind.SAFFRON and not is_electricity_active(now):
-		_push_event("Renew the electricity credit to power the grow lights.")
+		_push_event("Renew the electricity credit to power the grow lights.", true)
 		return
 	if state.coins < crop_def.seed_cost:
-		_push_event("Not enough coins for %s seeds." % crop_def.display_name)
+		_push_event("Not enough coins for %s seeds." % crop_def.display_name, true)
 		return
 
 	var speed_boosted: bool = (
@@ -910,11 +919,11 @@ func buy_land_expansion() -> void:
 		if plot.kind == PlotKind.Kind.OPEN_FIELD:
 			open_field_count += 1
 	if open_field_count >= GameData.MAX_PLOTS:
-		_push_event("Your farm has reached its maximum size for now.")
+		_push_event("Your farm has reached its maximum size for now.", true)
 		return
 	var cost := GameData.land_expansion_cost(open_field_count)
 	if state.coins < cost:
-		_push_event("Need ₹%d to expand your land." % cost)
+		_push_event("Need ₹%d to expand your land." % cost, true)
 		return
 	state.coins -= cost
 	state.plots.append(Plot.new(_next_plot_id()))
@@ -926,7 +935,7 @@ func buy_polyhouse() -> void:
 		return
 	var cost := GameData.polyhouse_cost(GameData.is_subsidy_unlocked(state.total_harvests))
 	if state.coins < cost:
-		_push_event("Need ₹%d to build a Polyhouse." % cost)
+		_push_event("Need ₹%d to build a Polyhouse." % cost, true)
 		return
 	var next_id := _next_plot_id()
 	state.coins -= cost
@@ -941,7 +950,7 @@ func buy_fan_pad() -> void:
 	if not state.has_polyhouse or state.has_fan_pad:
 		return
 	if state.coins < GameData.FAN_PAD_COST:
-		_push_event("Need ₹%d for Fan & Pad Climate Control." % GameData.FAN_PAD_COST)
+		_push_event("Need ₹%d for Fan & Pad Climate Control." % GameData.FAN_PAD_COST, true)
 		return
 	state.coins -= GameData.FAN_PAD_COST
 	state.has_fan_pad = true
@@ -952,7 +961,7 @@ func buy_drip_irrigation() -> void:
 	if not state.has_polyhouse or state.has_drip_irrigation:
 		return
 	if state.coins < GameData.DRIP_IRRIGATION_COST:
-		_push_event("Need ₹%d for Drip Irrigation." % GameData.DRIP_IRRIGATION_COST)
+		_push_event("Need ₹%d for Drip Irrigation." % GameData.DRIP_IRRIGATION_COST, true)
 		return
 	state.coins -= GameData.DRIP_IRRIGATION_COST
 	state.has_drip_irrigation = true
@@ -963,7 +972,7 @@ func renew_film(now: int) -> void:
 	if not state.has_polyhouse:
 		return
 	if state.coins < GameData.UV_FILM_COST:
-		_push_event("Need ₹%d to renew the UV-stabilized film." % GameData.UV_FILM_COST)
+		_push_event("Need ₹%d to renew the UV-stabilized film." % GameData.UV_FILM_COST, true)
 		return
 	state.coins -= GameData.UV_FILM_COST
 	state.film_expires_at_epoch_ms = now + GameData.UV_FILM_DURATION_MS
@@ -1005,7 +1014,7 @@ func buy_agroforestry() -> void:
 	if state.has_agroforestry:
 		return
 	if state.coins < GameData.AGROFORESTRY_UNLOCK_COST:
-		_push_event("Need ₹%d to clear land for Agroforestry." % GameData.AGROFORESTRY_UNLOCK_COST)
+		_push_event("Need ₹%d to clear land for Agroforestry." % GameData.AGROFORESTRY_UNLOCK_COST, true)
 		return
 	var next_id := _next_plot_id()
 	var size := GameData.AGROFORESTRY_GRID_SIZE
@@ -1024,7 +1033,7 @@ func buy_security() -> void:
 	if not state.has_agroforestry or state.has_security:
 		return
 	if state.coins < GameData.SECURITY_COST:
-		_push_event("Need ₹%d for fencing and security." % GameData.SECURITY_COST)
+		_push_event("Need ₹%d for fencing and security." % GameData.SECURITY_COST, true)
 		return
 	state.coins -= GameData.SECURITY_COST
 	state.has_security = true
@@ -1039,7 +1048,7 @@ func plant_host(plot_id: int, host: int) -> void:
 		return
 	var host_def := GameData.host_type_def(host)
 	if state.coins < host_def.cost:
-		_push_event("Need ₹%d for %s." % [host_def.cost, host_def.display_name])
+		_push_event("Need ₹%d for %s." % [host_def.cost, host_def.display_name], true)
 		return
 	state.coins -= host_def.cost
 	plot.host_type = host
@@ -1071,11 +1080,11 @@ func plant_sandalwood(plot_id: int, now: int) -> void:
 		if neighbor.host_type == HostType.Kind.ACACIA:
 			has_acacia_host = true
 	if not has_host:
-		_push_event("Sandalwood needs a host plant (Pigeon Pea, Neem, or Acacia) next to it.")
+		_push_event("Sandalwood needs a host plant (Pigeon Pea, Neem, or Acacia) next to it.", true)
 		return
 	var crop_def := GameData.crop_def(CropType.Kind.SANDALWOOD)
 	if state.coins < crop_def.seed_cost:
-		_push_event("Not enough coins for a Sandalwood sapling.")
+		_push_event("Not enough coins for a Sandalwood sapling.", true)
 		return
 	var base_seconds: int = GameData.SANDALWOOD_GROW_SECONDS_ACACIA if has_acacia_host else GameData.SANDALWOOD_GROW_SECONDS_BASE
 	var effective_seconds: int = maxi(roundi(base_seconds * _growth_speed_multiplier()), 1)
@@ -1091,7 +1100,7 @@ func buy_aquaculture() -> void:
 	if state.has_aquaculture:
 		return
 	if state.coins < GameData.AQUACULTURE_UNLOCK_COST:
-		_push_event("Need ₹%d to excavate ponds." % GameData.AQUACULTURE_UNLOCK_COST)
+		_push_event("Need ₹%d to excavate ponds." % GameData.AQUACULTURE_UNLOCK_COST, true)
 		return
 	var next_id := _next_plot_id()
 	state.coins -= GameData.AQUACULTURE_UNLOCK_COST
@@ -1106,7 +1115,7 @@ func buy_vertical_farm() -> void:
 	if state.has_vertical_farm:
 		return
 	if state.coins < GameData.VERTICAL_FARM_UNLOCK_COST:
-		_push_event("Need ₹%d to build the vertical farm." % GameData.VERTICAL_FARM_UNLOCK_COST)
+		_push_event("Need ₹%d to build the vertical farm." % GameData.VERTICAL_FARM_UNLOCK_COST, true)
 		return
 	var next_id := _next_plot_id()
 	state.coins -= GameData.VERTICAL_FARM_UNLOCK_COST
@@ -1121,7 +1130,7 @@ func renew_electricity(now: int) -> void:
 	if not state.has_vertical_farm:
 		return
 	if state.coins < GameData.ELECTRICITY_COST:
-		_push_event("Need ₹%d for the electricity bill." % GameData.ELECTRICITY_COST)
+		_push_event("Need ₹%d for the electricity bill." % GameData.ELECTRICITY_COST, true)
 		return
 	state.coins -= GameData.ELECTRICITY_COST
 	state.electricity_expires_at_epoch_ms = now + GameData.ELECTRICITY_DURATION_MS
@@ -1165,7 +1174,7 @@ func buy_mandi() -> void:
 	if state.has_mandi:
 		return
 	if state.coins < GameData.MANDI_UNLOCK_COST:
-		_push_event("Need ₹%d to register at the Local Mandi." % GameData.MANDI_UNLOCK_COST)
+		_push_event("Need ₹%d to register at the Local Mandi." % GameData.MANDI_UNLOCK_COST, true)
 		return
 	state.coins -= GameData.MANDI_UNLOCK_COST
 	state.has_mandi = true
@@ -1177,7 +1186,7 @@ func buy_mandi_terminal() -> void:
 	if not state.has_mandi or state.has_mandi_terminal:
 		return
 	if state.coins < GameData.MANDI_TERMINAL_COST:
-		_push_event("Need ₹%d for a digital auction terminal." % GameData.MANDI_TERMINAL_COST)
+		_push_event("Need ₹%d for a digital auction terminal." % GameData.MANDI_TERMINAL_COST, true)
 		return
 	state.coins -= GameData.MANDI_TERMINAL_COST
 	state.has_mandi_terminal = true
@@ -1246,7 +1255,7 @@ func flip_zone(zone_id: String, default_tile_x: float, default_tile_y: float) ->
 func place_decoration(type: int, tile_x: float, tile_y: float) -> void:
 	var type_def := GameData.decoration_type_def(type)
 	if state.coins < type_def.cost:
-		_push_event("Need ₹%d for %s." % [type_def.cost, type_def.emoji])
+		_push_event("Need ₹%d for %s." % [type_def.cost, type_def.emoji], true)
 		return
 	var decoration := Decoration.new(state.next_decoration_id, type, tile_x, tile_y)
 	state.coins -= type_def.cost

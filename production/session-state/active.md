@@ -4627,3 +4627,66 @@ above; (2) Phase 2 of the localization migration. Still open and
 blocked on the user, unchanged: pushing accumulated local commits to
 origin, and the Play Console Game Services setup for real cloud-save
 sign-in.
+
+## 2026-08-22 (cont'd once more)
+
+Built the GameEvent snackbar/toast drain identified as the real gap
+behind `ui_action_rejected`'s audio note (see previous entry) --
+`GameEconomy.pending_events` was produced throughout `game_economy.gd`
+(rejection AND informational messages both) but never drained by any UI
+code at all, so the player never saw why a purchase/action failed.
+
+- `GameEvent` gained `is_rejection: bool` (additive, defaults false).
+- `GameEconomy._push_event()` gained a matching optional param. Every
+  one of its ~48 real call sites in `game_economy.gd` was read and
+  classified by hand against its actual message/context -- 27 are real
+  rejections ("Need ₹X", "Already used...", "...needs a host plant"),
+  the rest are informational/success/narrative outcomes (purchases,
+  sales, festival/chanda flavor text, weather/theft events) and stay
+  default `false`.
+- `hud.gd`: new `_drain_pending_events()` (called every 0.3s refresh
+  tick) queues every drained event into a new top-center toast
+  (`_build_toast()`/`_show_next_toast()`/`_on_toast_timer_timeout()`),
+  2.5s display each, never overwriting a queued message -- the same
+  "never silently drop a message" principle `GameEvent`'s own BUGFIX
+  comment already established for the underlying queue, now finally
+  reaching the player. A rejection-classified event plays the
+  already-catalogued `ui_action_rejected` SFX; an informational one
+  doesn't.
+- New `test_toast_drain.gd`: real classification checks against actual
+  economy actions (not synthetic messages), plus the real HUD-wired
+  drain/queue/advance/hide behavior via a scene structure matching
+  `main.tscn`'s real `VillageBoard`/`HUD` sibling naming. Building this
+  hit the SAME disk-persistence test-isolation bug class found 3 times
+  earlier this session (`has_polyhouse`/`has_agroforestry` already true
+  from an earlier test's real save-file write, making
+  `buy_polyhouse()`/`buy_agroforestry()` silently no-op instead of
+  rejecting) -- fixed with the same "defensively normalize first"
+  pattern already established, in `_build_wired_hud()`.
+- Full suite: 566/566 (up from 558/558), run twice, non-flaky.
+- Updated the two docs that had flagged this as blocked
+  (`design/audio/audio-core-gameplay-loop.md`'s `ui_action_rejected`
+  bullet, `audio_catalogue.gd`'s comment above that entry) plus the
+  roadmap's EPIC-M8 audio bullet.
+
+Note for future sessions: this is now the FOURTH real instance of the
+"a test loads/writes the real persisted user:// file, contaminating a
+later test" bug class found this session (previously: gems via daily
+tasks, monsoon-flood RNG, AccessibilitySettings.locale). Worth
+considering, as an actual future task rather than a one-off fix each
+time: either a shared GUT `before_all`/`before_each` hook that wipes
+every known real `user://*.tres` path project-wide, or dependency-
+injecting a test-only save directory into `SaveSystem`/
+`AccessibilitySettings` so tests can never touch the real path at all --
+currently every fix has been local to the specific test file that hit
+it, which works but means the same class of bug is likely to resurface
+again in the next new test file that combines a fresh real-path load
+with an exact-value assertion.
+
+**Next step**: no forced next step. The two candidate targets from the
+previous entry are now both done. Remaining good candidates: Phase 2 of
+the localization migration (the rest of `*_tab.gd`/`*_card.gd`/
+`*_picker.gd`, plus `_push_event()`'s own message strings), or the
+test-isolation infrastructure idea above. Still open and blocked on the
+user, unchanged: pushing accumulated local commits to origin, and the
+Play Console Game Services setup for real cloud-save sign-in.

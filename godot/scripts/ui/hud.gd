@@ -64,6 +64,17 @@
 ## NOT used to paper over this (that would conflate "HUD refresh" with
 ## "economy simulation tick" ownership); flagged for a future task to
 ## resolve deliberately.
+##
+## GAP CLOSED, 2026-08-22 (docs/architecture/localization-pipeline.md's
+## Related section): GameEconomy.pending_events was produced throughout
+## game_economy.gd but never drained by any UI code at all -- rejection
+## messages ("Need ₹500 for the Premium Pass.") were silently lost. This
+## file's refresh Timer now drains it every tick (_drain_pending_events())
+## into a queued top-center toast (_build_toast()/_show_next_toast()),
+## playing the already-catalogued `ui_action_rejected` SFX
+## (audio_catalogue.gd) specifically for events GameEconomy classified as a
+## rejection (GameEvent.is_rejection) -- not for informational/success
+## events.
 class_name Hud
 extends CanvasLayer
 
@@ -125,6 +136,18 @@ var _zoom_in_button: Button
 var _zoom_out_button: Button
 var _move_mode_button: Button
 
+## GameEvent toast drain (docs/architecture/localization-pipeline.md's
+## Related section) -- see _drain_pending_events()/_show_next_toast() below
+## for the full rationale. Queued, not overwritten: the same "never
+## silently drop a message" principle GameEvent's own BUGFIX comment
+## already documents for the underlying Array/queue, now honored all the
+## way to the player instead of stopping at GameEconomy.pending_events.
+var _toast_panel: PanelContainer
+var _toast_label: Label
+var _toast_timer: Timer
+var _toast_queue: Array[GameEvent] = []
+const TOAST_DISPLAY_SECONDS: float = 2.5
+
 
 func _ready() -> void:
 	# EPIC-M4 slice 2: lets board_interactor.gd find this HUD instance (to
@@ -137,6 +160,7 @@ func _ready() -> void:
 	_build_bottom_left_panel()
 	_build_bottom_right_shop()
 	_build_bottom_center_nav()
+	_build_toast()
 	_reposition_all()
 
 	get_viewport().size_changed.connect(_reposition_all)
@@ -178,6 +202,7 @@ func _refresh() -> void:
 	_refresh_inventory(economy.state.inventory)
 	_refresh_liveops_banner(economy, now)
 	_refresh_move_mode_button()
+	_drain_pending_events(economy)
 	_reposition_all()
 
 
@@ -195,6 +220,39 @@ func _refresh_move_mode_button() -> void:
 	_move_mode_button.self_modulate = (
 		Color(1.3, 1.15, 0.6) if interactor.is_move_mode_active() else Color.WHITE
 	)
+
+
+## Drains EVERY event GameEconomy produced since the last refresh tick
+## (0.3s -- see this file's class doc) into the toast queue, never just the
+## latest one -- GameEvent's own BUGFIX comment already established that
+## principle for the underlying Array/queue; this is that guarantee finally
+## reaching the player, which nothing did before this pass (see
+## docs/architecture/localization-pipeline.md's Related section). Starts
+## showing immediately if nothing is already on screen; otherwise the
+## drained events simply wait their turn in _toast_queue.
+func _drain_pending_events(economy: GameEconomy) -> void:
+	var was_empty_and_idle := _toast_queue.is_empty() and not _toast_panel.visible
+	while economy.has_events():
+		_toast_queue.append(economy.pop_event())
+	if was_empty_and_idle and not _toast_queue.is_empty():
+		_show_next_toast()
+
+
+func _show_next_toast() -> void:
+	if _toast_queue.is_empty():
+		_toast_panel.visible = false
+		return
+	var event: GameEvent = _toast_queue.pop_front()
+	_toast_label.text = event.message
+	_toast_panel.visible = true
+	_reposition_all()
+	if event.is_rejection:
+		_play_ui_audio(&"ui_action_rejected")
+	_toast_timer.start(TOAST_DISPLAY_SECONDS)
+
+
+func _on_toast_timer_timeout() -> void:
+	_show_next_toast()
 
 
 func _refresh_inventory(inventory: Dictionary) -> void:
@@ -434,6 +492,8 @@ func _reposition_all() -> void:
 	_fit_and_place(_bottom_left_panel, false, true)
 	_fit_and_place(_bottom_right_shop, true, true)
 	_fit_and_place_bottom_center(_bottom_center_nav)
+	if _toast_panel != null and _toast_panel.visible:
+		_fit_and_place_top_center(_toast_panel)
 
 
 func _fit_and_place(control: Control, right_edge: bool, bottom_edge: bool) -> void:
@@ -463,6 +523,18 @@ func _fit_and_place_bottom_center(control: Control) -> void:
 	var viewport_size := get_viewport().get_visible_rect().size
 	var x := (viewport_size.x - content_size.x) / 2.0
 	var y := viewport_size.y - HUD_MARGIN - content_size.y
+	control.position = Vector2(x, y)
+
+
+## Top-center variant of _fit_and_place_bottom_center(), for the GameEvent
+## toast only -- sits clear of both top corner groups (title/resources),
+## just below the same safe-area offset those use.
+func _fit_and_place_top_center(control: Control) -> void:
+	var content_size := control.get_combined_minimum_size()
+	control.size = content_size
+	var viewport_size := get_viewport().get_visible_rect().size
+	var x := (viewport_size.x - content_size.x) / 2.0
+	var y := float(HUD_MARGIN + TOP_SAFE_AREA_OFFSET)
 	control.position = Vector2(x, y)
 
 
@@ -665,6 +737,33 @@ func _on_nav_chip_pressed(zone_id: String) -> void:
 	_play_ui_audio(&"ui_button_tap")
 	var world_pos := _village_board.get_zone_center_world(zone_id)
 	_village_board.get_camera_rig().center_on(Vector2(world_pos.x, world_pos.z))
+
+
+## GameEvent toast (docs/architecture/localization-pipeline.md's Related
+## section) -- same "small static shell, procedural content" split every
+## sheet in godot/scripts/ui/ already uses, just inline here rather than a
+## separate scene since it's a single label in a panel. Hidden by default
+## (nothing to show at launch); _show_next_toast()/_drain_pending_events()
+## own the visible/queue lifecycle. _toast_timer is built here rather than
+## in hud.tscn alongside _refresh_timer -- this project's own precedent for
+## a purely-code-driven Timer is village_board.gd's growth-tick timer, not
+## a new idiom.
+func _build_toast() -> void:
+	_toast_panel = _make_panel(SOIL_BROWN_DARK, 12)
+	_toast_panel.visible = false
+	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_toast_panel)
+
+	_toast_label = _make_title_label("", 16)
+	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_toast_label.custom_minimum_size = Vector2(280, 0)
+	_toast_panel.add_child(_toast_label)
+
+	_toast_timer = Timer.new()
+	_toast_timer.one_shot = true
+	_toast_timer.timeout.connect(_on_toast_timer_timeout)
+	add_child(_toast_timer)
 
 
 func _make_inventory_chip(emoji: String, count: int) -> PanelContainer:

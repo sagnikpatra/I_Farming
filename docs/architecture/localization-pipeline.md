@@ -49,9 +49,18 @@ godot/locales/ui_strings.hi.translation      (not hand-edited; regenerated
 ```
 
 `project.godot`'s new `[internationalization]` section registers both
-generated `.translation` resources and sets `locale/fallback="en"`, so
-an unmigrated key resolves to itself (Godot's own default `tr()`
-behavior) rather than crashing or silently blanking.
+generated `.translation` resources; an unmigrated key resolves to itself
+(Godot's own default `tr()` behavior) rather than crashing or silently
+blanking. This was originally set via an explicit `locale/fallback="en"`
+line — confirmed (2026-08-22, via a real Gradle export) that Godot's own
+project-settings serializer silently prunes that line on the next
+editor-triggered resave, since `"en"` already equals Godot's built-in
+default fallback value: a no-op setting, not a real value. Re-verified
+with the full GUT suite (including the "unmigrated key falls back to
+itself" test) both before and after the line disappeared — behavior is
+genuinely unaffected. Documented here so a future `git diff` showing
+this line silently vanish again reads as expected Godot behavior, not
+an accidental regression to chase.
 
 **Locale preference**: `AccessibilitySettings.locale` (`godot/scripts/
 accessibility/accessibility_settings.gd`), bounded to `SUPPORTED_LOCALES

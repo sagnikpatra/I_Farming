@@ -111,3 +111,54 @@ worker_row.header,👤 Worker,👤 मजदूर
 worker_row.status,%s is working this zone.,%s इस क्षेत्र में काम कर रहा है।
 worker_row.unassign_button,Unassign,नियुक्ति हटाएं
 worker_row.assign_button,Assign,नियुक्त करें
+event.premium_pass_no_festival,The Premium Pass can only be bought during an active festival.,प्रीमियम पास केवल सक्रिय उत्सव के दौरान ही खरीदा जा सकता है।
+event.premium_pass_need_coins,Need ₹%d for the Premium Pass.,प्रीमियम पास के लिए ₹%d चाहिए।
+event.premium_pass_activated,🎫 Premium Pass activated for this festival!,🎫 इस उत्सव के लिए प्रीमियम पास सक्रिय हो गया!
+event.festival_tier_reached,%s %s Tier %d reached! +₹%d,%s %s स्तर %d पूरा! +₹%d
+event.festival_tier_premium_bonus_suffix," (+₹%d Premium bonus)"," (+₹%d प्रीमियम बोनस)"
+event.chanda_need_coins,Need ₹%d for the chanda.,चंदे के लिए ₹%d चाहिए।
+event.chanda_decline_flavor,Maybe next time -- no hard feelings.,शायद अगली बार -- कोई बात नहीं।
+event.daily_task_complete,%s %s complete! +%d gems,%s %s पूरा! +%d जेम्स
+event.daily_tasks_all_complete,🎉 All daily tasks complete! +%d bonus gems,🎉 सभी दैनिक कार्य पूरे! +%d बोनस जेम्स
+event.reroll_blocked_progress,Can't reroll -- you've already made progress today.,रीरोल नहीं कर सकते -- आज पहले ही प्रगति हो चुकी है।
+event.reroll_need_gems,Need %d gems to reroll.,रीरोल के लिए %d जेम्स चाहिए।
+event.reroll_success,🔄 Today's tasks rerolled.,🔄 आज के कार्य रीरोल हो गए।
+event.grow_skip_already_used,Already used today's grow-time skip.,आज का ग्रो-टाइम स्किप पहले ही उपयोग हो चुका है।
+event.grow_skip_need_gems,Need %d gems for a grow-time skip.,ग्रो-टाइम स्किप के लिए %d जेम्स चाहिए।
+event.grow_skip_success,⏩ Grow time skipped!,⏩ ग्रो टाइम स्किप हो गया!
+event.farmhouse_need_coins,Need ₹%d to upgrade to %s.,₹%d चाहिए %s में अपग्रेड के लिए।
+event.farmhouse_upgraded,%s Welcome to your new %s!,%s आपके नए %s में स्वागत है!
+event.plant_needs_electricity,Renew the electricity credit to power the grow lights.,ग्रो लाइट चलाने के लिए बिजली क्रेडिट नवीनीकृत करें।
+event.plant_not_enough_coins,Not enough coins for %s seeds.,%s के बीज के लिए पर्याप्त सिक्के नहीं हैं।
+event.storage_full,📦 Storage full (%d/%d)! Sell crops or upgrade your Farmhouse.,📦 भंडारण भरा हुआ (%d/%d)! फसलें बेचें या फार्महाउस अपग्रेड करें।
+event.harvest_spoiled,🥀 That %s sat too long and spoiled a little.,🥀 वह %s बहुत देर तक पड़ा रहा और थोड़ा खराब हो गया।
+event.sold_crop,Sold %d %s for ₹%d,%d %s ₹%d में बेचे गए
+event.sold_everything,Sold everything for ₹%d,सब कुछ ₹%d में बेच दिया गया
+event.sandalwood_stolen,💀 Thieves made off with a Sandalwood tree before you could harvest it!,💀 चोर आपके चंदन के पेड़ को काटने से पहले ही ले गए!
+event.monsoon_flood_wiped,🌊 Monsoon floods wiped out your %s! Polyhouse owners are immune.,🌊 मानसून बाढ़ ने आपके %s को बर्बाद कर दिया! पॉलीहाउस मालिक पूरी तरह सुरक्षित हैं।
+event.weather_clipped,⛈️ Unseasonal weather clipped your %s!,⛈️ असामान्य मौसम ने आपके %s को नुकसान पहुँचाया!
+event.worker_harvested,A worker harvested %s %s (wage: ₹%d).,एक मजदूर ने %s %s की कटाई की (मज़दूरी: ₹%d)।
+event.land_max_size,Your farm has reached its maximum size for now.,आपका खेत फिलहाल अपने अधिकतम आकार तक पहुँच गया है।
+event.land_need_coins,Need ₹%d to expand your land.,अपनी ज़मीन बढ़ाने के लिए ₹%d चाहिए।
+event.polyhouse_need_coins,Need ₹%d to build a Polyhouse.,पॉलीहाउस बनाने के लिए ₹%d चाहिए।
+event.polyhouse_built,🏠 Polyhouse built! Colored Capsicum and Dutch Rose are now available.,🏠 पॉलीहाउस बन गया! रंगीन शिमला मिर्च और डच गुलाब अब उपलब्ध हैं।
+event.fan_pad_need_coins,Need ₹%d for Fan & Pad Climate Control.,फैन एंड पैड क्लाइमेट कंट्रोल के लिए ₹%d चाहिए।
+event.drip_need_coins,Need ₹%d for Drip Irrigation.,ड्रिप सिंचाई के लिए ₹%d चाहिए।
+event.film_need_coins,Need ₹%d to renew the UV-stabilized film.,यूवी-स्थिर फिल्म नवीनीकृत करने के लिए ₹%d चाहिए।
+event.film_renewed,UV-stabilized film renewed. Climate control active.,यूवी-स्थिर फिल्म नवीनीकृत हो गई। जलवायु नियंत्रण सक्रिय।
+event.agroforestry_need_coins,Need ₹%d to clear land for Agroforestry.,कृषि-वानिकी के लिए भूमि साफ़ करने हेतु ₹%d चाहिए।
+event.agroforestry_built,"🌳 Agroforestry plots cleared. Plant a host, then Sandalwood beside it.","🌳 कृषि-वानिकी प्लॉट साफ़ हो गए। एक मेज़बान लगाएं, फिर उसके बगल में चंदन।"
+event.security_need_coins,Need ₹%d for fencing and security.,बाड़ और सुरक्षा के लिए ₹%d चाहिए।
+event.need_coins_for_named_item,Need ₹%d for %s.,₹%d चाहिए %s के लिए।
+event.sandalwood_needs_host,"Sandalwood needs a host plant (Pigeon Pea, Neem, or Acacia) next to it.","चंदन को पास में एक मेज़बान पौधे (अरहर, नीम, या बबूल) की ज़रूरत है।"
+event.sandalwood_need_coins,Not enough coins for a Sandalwood sapling.,चंदन के पौधे के लिए पर्याप्त सिक्के नहीं हैं।
+event.aquaculture_need_coins,Need ₹%d to excavate ponds.,तालाब खोदने के लिए ₹%d चाहिए।
+event.aquaculture_built,🪷 Ponds excavated! Makhana and Pond Fish are now available.,🪷 तालाब खुद गए! मखाना और तालाब मछली अब उपलब्ध हैं।
+event.vertical_farm_need_coins,Need ₹%d to build the vertical farm.,वर्टिकल फार्म बनाने के लिए ₹%d चाहिए।
+event.vertical_farm_built,🌸 Saffron vertical farm built! Pay for electricity to start growing.,🌸 केसर वर्टिकल फार्म बन गया! उगाना शुरू करने के लिए बिजली का भुगतान करें।
+event.electricity_need_coins,Need ₹%d for the electricity bill.,बिजली बिल के लिए ₹%d चाहिए।
+event.electricity_paid,Electricity bill paid. Grow lights powered.,बिजली बिल चुका दिया गया। ग्रो लाइट चालू।
+event.mandi_need_coins,Need ₹%d to register at the Local Mandi.,स्थानीय मंडी में पंजीकरण के लिए ₹%d चाहिए।
+event.mandi_registered,🏛️ Registered at the Local Mandi -- e-NAM auctions are now open to you.,🏛️ स्थानीय मंडी में पंजीकरण हो गया -- ई-नाम नीलामी अब आपके लिए खुली है।
+event.mandi_terminal_need_coins,Need ₹%d for a digital auction terminal.,डिजिटल नीलामी टर्मिनल के लिए ₹%d चाहिए।
+event.mandi_sold,🏛️ Mandi bought %d %s at %d%% market rate for ₹%d,मंडी ने %d %s को %d%% बाज़ार दर पर ₹%d में खरीदा

@@ -2,13 +2,14 @@
 
 ## Status
 
-Phase 1 complete (infrastructure + a proven real slice). Phase 2's
-entire mechanical sweep is now complete (2026-08-22, same day): every
-`*_tab.gd`, `*_picker.gd`, `*_card.gd`, and `worker_assignment_row.gd`
-file with hardcoded UI strings has been migrated. The one remaining
-item, `game_economy.gd`'s `_push_event()` message strings, was flagged
-from the start as its own larger design question, not a mechanical
-sweep target -- see that section below.
+**All three phases complete (2026-08-22, same day)**: Phase 1
+(infrastructure), Phase 2 (every `*_tab.gd`/`*_picker.gd`/`*_card.gd`/
+`worker_assignment_row.gd` file's UI strings), and Phase 3
+(`game_economy.gd`'s `_push_event()` message strings -- ~48 call
+sites, 52 CSV keys). Every player-facing string in the Godot port's
+UI and economy-event layer is now routed through the CSV-translation
+pipeline, with real Hindi translations throughout. 163 total CSV keys.
+Full GUT suite: 581/581, run twice, non-flaky.
 
 ## Date
 
@@ -169,25 +170,59 @@ or the HUD's LiveOps banner. What's left is narrower UI surface area.
 This completes Phase 2's entire mechanical sweep -- every UI file with
 hardcoded player-facing strings has been migrated.
 
-## What's explicitly NOT yet migrated
+## Phase 3 -- `_push_event()` message strings
 
-- `game_economy.gd`'s `_push_event()` message strings (the toast/
-  snackbar text surfaced to the player on a rejected or completed
-  action, drained by `hud.gd` -- see this doc's Related section) -- a
-  large, free-text surface (dozens of call sites), deliberately not
-  folded into the mechanical sweep above.
-- Any dynamically-composed string built with `%` interpolation
-  elsewhere in the codebase not listed above.
+`game_economy.gd`'s ~48 `_push_event()` call sites (the toast/snackbar
+text surfaced to the player via `hud.gd`'s drain -- see this doc's
+Related section) are now fully migrated to namespaced `event.*` CSV
+keys, reusing the `is_rejection` classification already established
+when the toast drain itself was built. Two structural notes worth
+recording:
 
-**Phase 3 plan** (renamed from "Phase 2 remaining scope" now that the
-mechanical sweep is done): migrate `_push_event()`'s message strings.
-This is a separate, larger design question from the sweep above (worth
-resolving alongside the now-closed `ui_action_rejected` audio-wiring
-work in `design/audio/audio-core-gameplay-loop.md`, since both needed
-the same "what does this message mean, structurally" answer that
-`GameEvent.is_rejection` partially answered) -- scope it as its own
-follow-up with its own classification pass, not a continuation of this
-phase's per-file sweep.
+- **Data-driven text stays data-driven, consistently**: any message
+  built from a `GameData` catalogue field (crop/decoration/structure
+  `display_name`, a `ChandaFestivalDef`'s flavor text) keeps that field
+  as a `%s` interpolation, unmigrated -- same boundary every earlier
+  phase already drew for crop/decoration names. One call site
+  (`give_chanda()`'s flavor-text push) is the sole `_push_event()` call
+  left entirely untouched, since its whole message is data-driven with
+  no static wrapper text to extract.
+- **Identical English source strings share one key**: two genuinely
+  different call sites (`plant_host()`'s unaffordable-host rejection and
+  the generic decoration-purchase rejection) both used the literal
+  English text `"Need ₹%d for %s."` -- consolidated into one shared
+  `event.need_coins_for_named_item` key rather than two near-duplicate
+  keys, standard i18n practice for identical source strings.
+
+**Positional-formatting risk, the real hazard of this phase**: Godot's
+`%` string formatting has no `{0}`/`{1}` explicit argument indices --
+placeholders are filled strictly left-to-right by position. A
+translation that reorders a `%s`/`%d` pair from the original English
+argument order doesn't just read oddly, it can crash at runtime
+(feeding a `String` into a `%d` slot raises an error). Every multi-
+argument key here was translated with placeholder order verified
+against the actual `_push_event(tr(&"key") % [...])` call site's real
+argument list, not just written to sound natural in Hindi -- see
+`test_localization.gd`'s `test_hindi_locale_resolves_a_four_argument_
+event_message_in_order()` for a dedicated regression check on the
+highest-arity key (`event.mandi_sold`, 4 arguments).
+
+This completes the ENTIRE localization effort -- Phase 1, 2, and 3 all
+done. Every player-facing string in the Godot port's UI and
+economy-event layer now routes through the CSV-translation pipeline.
+
+## What's explicitly NOT migrated, by design
+
+- Any `GameData` catalogue field (crop/decoration/structure/host/task
+  display names, chanda flavor text) -- these are content data, not UI
+  chrome; migrating them is a separate, larger data-architecture
+  question (would need catalogue definitions to carry translation keys
+  or be restructured around them) deliberately out of scope for all
+  three phases of this effort.
+- Any dynamically-composed string built with `%` interpolation outside
+  `godot/scripts/ui/` and `game_economy.gd`'s `_push_event()` call
+  sites, if any exist elsewhere in the codebase (none found during this
+  pass's own review of both directories).
 
 ## Tests
 
@@ -234,7 +269,15 @@ own doc comment for the full 6-occurrence history across this session.
 Extended once more after the 2 info cards/`worker_assignment_row.gd`
 (the last mechanical-sweep slice, including a regression guard for
 `test_worker_assignment_row.gd`'s exact-text button lookups) --
-578/578, twice, non-flaky.
+578/578, twice, non-flaky. Extended once more for Phase 3
+(`_push_event()`'s ~48 messages) -- including a real CSV-quoting bug
+caught before it shipped: `event.agroforestry_built`'s Hindi
+translation also contained an embedded comma, and only the English
+field had been quoted -- the row silently parsed to 4 fields instead
+of 3 (caught by this pass's own "validate the whole CSV parses to
+exactly 3 fields" check, the same discipline established after the
+first CSV-quoting mistake in the `open_field_tab.gd`/`events_tab.gd`
+slice) -- 581/581, twice, non-flaky.
 
 ## Dependencies
 

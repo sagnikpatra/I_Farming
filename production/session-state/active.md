@@ -4904,3 +4904,55 @@ natural stopping point for localization and pick a different area, or
 start Phase 3 fresh next. Still open and blocked on the user,
 unchanged: pushing accumulated local commits to origin, and the Play
 Console Game Services setup for real cloud-save sign-in.
+
+## 2026-08-22 (Phase 3 localization -- entire localization effort complete)
+
+Migrated `game_economy.gd`'s ~48 `_push_event()` message strings --
+Phase 3 of the localization pipeline, the last remaining item. Reused
+the `is_rejection` classification already built for the GameEvent
+toast drain. Two structural decisions worth recording: (1) any message
+built from `GameData` catalogue data (crop/decoration display names,
+chanda flavor text) keeps that field as an unmigrated `%s`
+interpolation, same boundary every earlier phase drew -- one call site
+(`give_chanda()`'s flavor text) is entirely data-driven and untouched;
+(2) two genuinely different call sites shared the identical English
+source string "Need ₹%d for %s." (an unaffordable host plant, a
+generic decoration purchase) -- consolidated into one shared
+`event.need_coins_for_named_item` key rather than duplicating it.
+
+**The real hazard of this phase, handled deliberately**: Godot's `%`
+string formatting has no explicit argument indices -- placeholders fill
+strictly left-to-right by position. A translation that reorders a
+`%s`/`%d` pair from the original argument order can crash at runtime
+(a String fed into a `%d` slot). Every multi-argument key's Hindi
+translation was checked against its real call site's actual argument
+list, not just written to sound natural -- verified with a dedicated
+test on the highest-arity key (`event.mandi_sold`, 4 arguments) plus
+real end-to-end tests that drive an actual `GameEconomy` action and
+check the drained `GameEvent.message`, not just a synthetic `tr()` call.
+
+Caught a second real CSV-quoting bug the same way as before (validate
+the whole CSV parses to exactly 3 fields before re-importing):
+`event.agroforestry_built`'s Hindi translation also had an embedded
+comma, and only the English field had been quoted.
+
+Full suite: 581/581 (up from 578/578), run twice, non-flaky. Updated
+localization-pipeline.md (marked all 3 phases complete, documented the
+positional-formatting hazard explicitly) and the roadmap (rewrote the
+Localization bullet cleanly, fixed a second stale note in the M8
+summary table that still said "Localization was not selected").
+
+**This closes the entire localization effort for this session.** 163
+CSV keys total across all 3 phases. Every player-facing UI and
+economy-event string in the Godot port is now localized; only
+`GameData` catalogue content stays data-driven, a deliberate, clearly
+documented boundary, not an oversight.
+
+**Next step**: no forced next step -- localization is done. Still open
+and blocked on the user, unchanged: pushing the many accumulated local
+commits to origin, and the Play Console Game Services setup for real
+cloud-save sign-in. Worth the user's attention: this session produced
+a large number of local commits across cloud-save Phase 1/2, the
+lamp-fix test, localization (all 3 phases), the GameEvent toast
+feature, and test-infrastructure hygiene -- none pushed, per this
+project's standing rule.

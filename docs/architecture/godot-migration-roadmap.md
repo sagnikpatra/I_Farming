@@ -114,25 +114,23 @@ stays the owner's regardless of how much of this list gets done.
       available this session) — recommended before considering this
       fully closed. Report: `production/qa/accessibility/
       village-board-and-management-sheets-audit-2026-08-21.md`.
-- [x] Localization — Phase 1 done 2026-08-22: Godot's native CSV-translation
-      pipeline (`godot/locales/ui_strings.csv`), English/Hindi locales,
-      `AccessibilitySettings.locale` as the persisted player preference
-      (new language-toggle row in the Accessibility sheet), applied live
-      via `TranslationServer.set_locale()` from `village_board.gd`. Proven
-      with a real migrated slice (`hud.gd`'s 3 buttons/labels, the full
-      `accessibility_sheet.gd`) rather than left as untested scaffolding —
-      558/558 GUT passing, up from 545/545. The rest of the UI's hardcoded
-      strings (every remaining `*_tab.gd`/`*_card.gd`/`*_picker.gd`, plus
-      `game_economy.gd`'s `_push_event()` message strings) remain
-      unmigrated by design — see `docs/architecture/
-      localization-pipeline.md`'s own Phase 2 plan, not silently assumed
-      covered. Phase 2's entire mechanical sweep is now complete, same
-      day: all 7 management sheets, all 3 pickers, both info cards, and
-      `worker_assignment_row.gd` migrated (see `docs/architecture/
-      localization-pipeline.md` for the full file list), 578/578 GUT
-      passing. Only `game_economy.gd`'s `_push_event()` message strings
-      remain -- deliberately scoped as its own Phase 3 design question,
-      not a mechanical-sweep target.
+- [x] Localization — **all 3 phases complete, 2026-08-22**: Godot's
+      native CSV-translation pipeline (`godot/locales/ui_strings.csv`),
+      English/Hindi locales, `AccessibilitySettings.locale` as the
+      persisted player preference (language-toggle row in the
+      Accessibility sheet), applied live via
+      `TranslationServer.set_locale()` from `village_board.gd` (Phase 1
+      -- infrastructure, proven with a real slice, not left as untested
+      scaffolding); every `*_tab.gd`/`*_picker.gd`/`*_card.gd`/
+      `worker_assignment_row.gd` file's hardcoded UI strings (Phase 2 --
+      7 management sheets, 3 pickers, 2 info cards, 1 worker row); and
+      `game_economy.gd`'s ~48 `_push_event()` message strings (Phase 3).
+      163 CSV keys total, real Hindi translations throughout, 581/581
+      GUT passing. Every player-facing UI/economy-event string in the
+      Godot port is now localized; only `GameData` catalogue content
+      (crop/decoration/structure display names) is deliberately
+      excluded, a separate data-architecture question. Full breakdown:
+      `docs/architecture/localization-pipeline.md`.
 - [x] Security/save-integrity audit — done 2026-08-21: `/security-audit
       full` run against the Godot save format and economy logic. **1 HIGH
       finding (SEC-001: save-loaded crop/host/decoration enum ordinals
@@ -197,7 +195,7 @@ Assets: 627 `.obj`/`.mtl` across 4 Kenney kits (13 MB), 31 bundled. **No rigged/
 | M5 — Migration Parity Verification & Cutover | QA/Release | 1.5 wk | M1-M4 | **Complete — cutover decided 2026-08-21, see above** |
 | M6 — Villager Asset Pipeline & Ambient Roaming | Feature | 2–2.5 wk | M1, M2 (gated: villager GDD, CC0 rigged characters) | **Complete** — all 6 characters live in-game with visual variety, measured with no detectable perf cost at the population cap (emulator; real-hardware/formal-budget work stays open project-wide, see below) |
 | M7 — Worker Assignment & Wage Economy | Feature | 1.5–2 wk | M6, M2, M4 (gated: balance pass) | **Complete** — design, economy backend, visual stationing, and assignment UI all built, tested (327/327), and verified live via real touch input — see below |
-| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | **All 4 selected items done** — security audit, QA/smoke pass, accessibility (4 BLOCKING findings fixed), and audio (`/team-audio` core-gameplay-loop pass, code complete, real asset sourcing still open) — see "Release Readiness" above. Localization was not selected. Store readiness remains the owner's own step. |
+| M8 — Post-Migration Hardening | Polish | 1 wk | M5 (+M6/M7 if taken) | **All 5 items done** — security audit, QA/smoke pass, accessibility (4 BLOCKING findings fixed), audio (`/team-audio` core-gameplay-loop pass, code complete, real asset sourcing still open), and localization (all 3 phases complete 2026-08-22, 163 CSV keys, English/Hindi) — see "Release Readiness" above. Store readiness remains the owner's own step. |
 
 **Re-baselined estimate**: 10–13 weeks to parity (M0–M5), +3.5–4.5 weeks for villagers/workers (M6–M7), +1 week hardening (M8). Total 14.5–18.5 weeks — higher than ADR-0001's original 8–14 week estimate, mainly due to the character-asset gap and the test-suite work the ADR's own risk analysis requires but didn't budget. Re-baseline again after M0 and after M2.
 

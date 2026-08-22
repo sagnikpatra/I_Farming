@@ -179,6 +179,55 @@ func test_english_locale_worker_row_button_text_is_unchanged() -> void:
 
 
 # ---------------------------------------------------------------------------
+# game_economy.gd's _push_event() message strings (Phase 3) -- the highest-
+# risk slice of this whole migration: Godot's `%` string formatting is
+# strictly POSITIONAL (no {0}/{1} explicit indices), so a translation that
+# reorders a %s/%d pair from the original English argument order doesn't
+# just read wrong -- feeding a String into a %d slot raises a real runtime
+# error. These tests exercise the real multi-argument keys through real
+# GameEconomy actions (not just CSV lookups) specifically to catch that
+# class of mistake, not just confirm text length/presence.
+# ---------------------------------------------------------------------------
+
+func test_hindi_locale_resolves_a_four_argument_event_message_in_order() -> void:
+	# event.mandi_sold: [units_sold(%d), display_name(%s), pct(%d), total_value(%d)]
+	TranslationServer.set_locale("hi")
+	var text := tr(&"event.mandi_sold") % [5, "गेहूं", 92, 450]
+	assert_eq(text, "मंडी ने 5 गेहूं को 92% बाज़ार दर पर ₹450 में खरीदा")
+
+
+func test_hindi_locale_resolves_a_real_rejection_event_from_game_economy() -> void:
+	# The real end-to-end path: a genuine blocked GameEconomy action's
+	# message, drained exactly as hud.gd's toast would show it -- not a
+	# synthetic tr() call in isolation. Cost computed via the real
+	# GameData function rather than a hardcoded guess, so this doesn't
+	# silently drift if the constant ever changes.
+	TranslationServer.set_locale("hi")
+	var economy := GameEconomy.new(GameState.new())
+	economy.state.coins = 0
+	var expected_cost := GameData.polyhouse_cost(GameData.is_subsidy_unlocked(economy.state.total_harvests))
+
+	economy.buy_polyhouse()
+
+	var event := economy.pop_event()
+	assert_eq(event.message, "पॉलीहाउस बनाने के लिए ₹%d चाहिए।" % expected_cost)
+	assert_true(event.is_rejection)
+	TranslationServer.set_locale("en")
+
+
+func test_english_locale_still_resolves_a_real_success_event_from_game_economy() -> void:
+	TranslationServer.set_locale("en")
+	var economy := GameEconomy.new(GameState.new())
+	economy.state.coins = 1_000_000
+
+	economy.buy_polyhouse()
+
+	var event := economy.pop_event()
+	assert_eq(event.message, "🏠 Polyhouse built! Colored Capsicum and Dutch Rose are now available.")
+	assert_false(event.is_rejection)
+
+
+# ---------------------------------------------------------------------------
 # AccessibilitySettings.locale
 # ---------------------------------------------------------------------------
 

@@ -5537,3 +5537,29 @@ needed for this piece.
 flagged as open-but-low-risk is now closed. Ready for further
 direction, or will continue scanning for the next genuine target per
 the standing "don't stop" instruction.
+
+## 2026-08-23 (cont'd) -- proactive live sweep catches a real Congregating moment
+
+Phone briefly locked mid-sweep (personal lock screen content
+accidentally captured in one screenshot) -- stopped all device
+interaction immediately, deleted that screenshot from both the device
+and local scratchpad, and did not analyze or act on anything it showed.
+Resumed only after the user explicitly said "phone on," and verified
+the game was actually in foreground (`dumpsys window` check) before
+taking another screenshot.
+
+Rather than re-read code further, watched the live board over 8
+screenshots ~2s apart -- the same technique that would have caught the
+original walking-animation bug, applied proactively this time instead
+of reactively. Caught a genuine Congregating idle-pause in progress:
+two villagers stopped near each other, held the pose across several
+frames with visibly changing arm position (not frozen), then resumed
+walking apart on their own. This is real, live confirmation that the
+loop_mode fix covers the *idle*-clip path too, not just the walk-clip
+path the original bug report was specifically about -- extended
+`villagers.md`'s Acceptance Criteria with this evidence
+(`production/qa/evidence/villager-idle-congregate-loop-fix.png`).
+
+**Next step**: continuing to scan for further genuine targets per the
+standing instruction -- no new gap found in this pass beyond the
+extended confirmation above.

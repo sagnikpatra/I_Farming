@@ -274,7 +274,15 @@ with all 6 zones unlocked gets `clamp(2 + 4, 2, 6) = 6` villagers (the cap).
       showing villagers' stride pose genuinely changing frame-to-frame,
       not just their position — see
       `production/qa/evidence/villager-walk-loop-fix-frame1.png`/
-      `frame2.png`.
+      `frame2.png`. **Extended (2026-08-23)**: a proactive live sweep (not
+      chasing a specific report, just watching the board over several
+      screenshots) caught a real Congregating idle-pause in progress —
+      two villagers stopped near each other, held that idle pose across
+      multiple frames with their arm position visibly changing (not
+      frozen), then resumed walking apart on their own. Confirms the fix
+      covers the idle-clip path live, not just the walk-clip path the
+      original report was about — see
+      `production/qa/evidence/villager-idle-congregate-loop-fix.png`.
 - [x] Villagers survive a `village_board.gd` `rebuild()` without
       disappearing, duplicating, or crashing — `ActorLayer` is untouched
       by `rebuild()` by construction; population resyncs only when the

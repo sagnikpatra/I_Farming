@@ -4833,3 +4833,38 @@ user:// path in one place) rather than continuing to patch each new
 occurrence locally. Still open and blocked on the user, unchanged:
 pushing accumulated local commits to origin, and the Play Console Game
 Services setup for real cloud-save sign-in.
+
+## 2026-08-22 (test-infrastructure hygiene)
+
+Acted on the "worth considering as a real future task" note from the
+last several entries: built `godot/tests/unit/test_helpers/
+real_save_paths.gd` (`RealSavePaths.wipe_all()`), a single shared
+utility that deletes every real persisted `user://` path this project's
+production code writes to (`SaveSystem.SAVE_PATH`,
+`AccessibilitySettings.SAVE_PATH` -- read directly off those classes'
+own public constants, so it can't silently drift out of sync). Its own
+doc comment records the full history: this exact bug class was found
+and fixed 6 separate times this session, escalating from a single field
+to a genuinely global singleton (`TranslationServer`).
+
+Retrofitted the 3 places where a test file's existing fix was literally
+"delete the same real file" already (`test_localization.gd`,
+`test_village_board.gd`'s locale test, `test_toast_drain.gd`'s
+`_build_wired_hud()`) to call the shared utility instead -- a safe,
+mechanical swap with no behavior change for the first two, and an
+upgrade from targeted two-field resets to a full pre-load wipe for the
+third (more robust: can't miss a third field a future test there starts
+relying on). Deliberately left `test_growing_info_card.gd`'s and
+`test_gems_daily_tasks.gd`'s existing fixes alone -- their reset shapes
+genuinely differ (mutating specific fields on an already-loaded
+instance mid-test, not wiping the file before an initial load), and
+they already work; refactoring working, already-tested code for pure
+consolidation with no concrete bug driving it wasn't worth the risk.
+
+Full suite: 576/576, run three times, non-flaky.
+
+**Next step**: continue Phase 2 localization with the 2 info cards and
+`worker_assignment_row.gd`, or consider Phase 2 "good enough for now."
+Still open and blocked on the user, unchanged: pushing accumulated
+local commits to origin, and the Play Console Game Services setup for
+real cloud-save sign-in.

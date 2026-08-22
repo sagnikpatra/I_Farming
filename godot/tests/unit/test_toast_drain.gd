@@ -73,19 +73,20 @@ func test_declining_a_chanda_visit_is_not_classified_as_a_rejection() -> void:
 
 ## Defensively normalize first: VillageBoardScene.instantiate() loads the
 ## real, persisted user://save.tres (same disk-persistence test-isolation
-## bug class found repeatedly earlier this session -- see
-## test_growing_info_card.gd's own "Defensively normalize first" comment).
-## Every test below relies on buy_polyhouse()/buy_agroforestry() actually
-## reaching their rejection branch, which silently no-ops instead if an
-## earlier test's real purchase left has_polyhouse/has_agroforestry=true on
-## disk -- reset both explicitly rather than trusting a fresh load.
+## bug class found repeatedly this session -- see RealSavePaths' own doc
+## comment for the full history). Wiping the real file BEFORE instantiating
+## guarantees a genuinely fresh GameState (every test below relies on
+## buy_polyhouse()/buy_agroforestry() actually reaching their rejection
+## branch, which silently no-ops instead if an earlier test's real purchase
+## left has_polyhouse/has_agroforestry=true on disk) -- more robust than
+## resetting only the two fields this file happens to touch, since it
+## can't miss a third field a future test here starts relying on.
 func _build_wired_hud() -> Hud:
+	RealSavePaths.wipe_all()
 	var parent: Node = add_child_autofree(Node.new())
 	var board: VillageBoard = VillageBoardScene.instantiate()
 	board.name = "VillageBoard"
 	parent.add_child(board)
-	board.get_economy().state.has_polyhouse = false
-	board.get_economy().state.has_agroforestry = false
 	var hud: Hud = HudScene.instantiate()
 	parent.add_child(hud)
 	return hud

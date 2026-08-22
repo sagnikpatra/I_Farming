@@ -15,31 +15,23 @@ const TEST_SAVE_PATH: String = "user://test_locale_accessibility.tres"
 ## tests call set_locale() on bare AccessibilitySettings.new() instances
 ## without a test-only path -- so beyond the in-memory
 ## TranslationServer.set_locale("en") reset, the REAL persisted file must
-## also be wiped, or ANY later test in the suite that instantiates a fresh
-## VillageBoard (which loads AccessibilitySettings.load_or_default() from
-## that same real path in _ready() and immediately applies its locale to
-## the global TranslationServer) silently inherits a contaminated locale --
-## a real, reproducible failure this exposed in test_seed_picker.gd,
-## a file that never even touches locale itself. Same disk-persistence
-## test-isolation bug class found repeatedly this session, this time
-## leaking through a genuinely global singleton rather than a per-instance
-## field -- see test_growing_info_card.gd's own "Defensively normalize
-## first" comment for the precedent.
-func _reset_real_accessibility_file() -> void:
-	if FileAccess.file_exists(AccessibilitySettings.SAVE_PATH):
-		DirAccess.remove_absolute(AccessibilitySettings.SAVE_PATH)
-
-
+## also be wiped (RealSavePaths.wipe_all(), see that file's own doc comment
+## for the full history), or ANY later test in the suite that instantiates a
+## fresh VillageBoard (which loads AccessibilitySettings.load_or_default()
+## from that same real path in _ready() and immediately applies its locale
+## to the global TranslationServer) silently inherits a contaminated locale
+## -- a real, reproducible failure this exposed in test_seed_picker.gd, a
+## file that never even touches locale itself.
 func before_each() -> void:
 	TranslationServer.set_locale("en")
-	_reset_real_accessibility_file()
+	RealSavePaths.wipe_all()
 	if FileAccess.file_exists(TEST_SAVE_PATH):
 		DirAccess.remove_absolute(TEST_SAVE_PATH)
 
 
 func after_each() -> void:
 	TranslationServer.set_locale("en")
-	_reset_real_accessibility_file()
+	RealSavePaths.wipe_all()
 	if FileAccess.file_exists(TEST_SAVE_PATH):
 		DirAccess.remove_absolute(TEST_SAVE_PATH)
 

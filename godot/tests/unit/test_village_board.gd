@@ -75,12 +75,11 @@ func test_changing_the_accessibility_locale_applies_it_to_translation_server() -
 	# set_locale() above just save()d "hi" to the real default
 	# user://accessibility.tres, which a LATER test's fresh VillageBoard
 	# would otherwise silently inherit via its own _ready() (see
-	# test_localization.gd's matching "Defensively normalize first" comment
-	# for the full rationale -- this is the same disk-persistence class of
-	# bug, this time via a genuinely global singleton).
+	# RealSavePaths' own doc comment for the full rationale -- this is the
+	# same disk-persistence class of bug found repeatedly this session, this
+	# time via a genuinely global singleton).
 	TranslationServer.set_locale("en")
-	if FileAccess.file_exists(AccessibilitySettings.SAVE_PATH):
-		DirAccess.remove_absolute(AccessibilitySettings.SAVE_PATH)
+	RealSavePaths.wipe_all()
 
 
 func test_lamps_are_off_when_phase_is_explicitly_not_night() -> void:

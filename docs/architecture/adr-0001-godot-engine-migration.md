@@ -10,7 +10,7 @@ Accepted
 
 ## Last Verified
 
-2026-08-18
+2026-08-22 -- Validation Criteria synced against `godot-migration-roadmap.md`'s real EPIC-M0–M7 completion status (see that section's own 2026-08-22 update note)
 
 ## Decision Makers
 
@@ -336,17 +336,37 @@ deleted by this decision alone.
 
 ## Validation Criteria
 
-- [ ] `CLAUDE.md`/`technical-preferences.md` updated to name Godot 4
-- [ ] Godot version pinned via `/setup-engine`
-- [ ] Migration roadmap (epics/stories) exists and is approved
-- [ ] Full feature parity reached and verified on-device (economy, village
-      board interactions, decorations, LiveOps)
-- [ ] The four original scale/art causes are resolved in the Godot
+**Update (2026-08-22)**: this checklist had gone stale relative to
+`docs/architecture/godot-migration-roadmap.md`, which shows EPIC-M0
+through M7 all Complete and cutover already decided (2026-08-21). Synced
+below against that roadmap's own real status rather than left silently
+unchecked.
+
+- [x] `CLAUDE.md`/`technical-preferences.md` updated to name Godot 4 --
+      both now describe Godot 4.7.1 as the migration target throughout.
+- [x] Godot version pinned via `/setup-engine` -- 4.7.1, pinned
+      2026-08-18, see `docs/engine-reference/godot/VERSION.md`.
+- [x] Migration roadmap (epics/stories) exists and is approved --
+      `godot-migration-roadmap.md`, EPIC-M0–M7.
+- [x] Full feature parity reached and verified on-device (economy, village
+      board interactions, decorations, LiveOps) -- EPIC-M5 (Migration
+      Parity Verification & Cutover), Complete, cutover decided
+      2026-08-21.
+- [x] The four original scale/art causes are resolved in the Godot
       implementation (bounded/compact layout, filled tiles, flat/cartoonish
-      shading)
-- [ ] Villager roaming + worker-assignment system implemented per its design
-      brief
-- [ ] First formal performance budgets established and met
+      shading) -- EPIC-M1 (Village Board: Layout, Scale & Art Direction),
+      Complete.
+- [x] Villager roaming + worker-assignment system implemented per its design
+      brief -- EPIC-M6/M7, both Complete (327/327 passing at M7 close;
+      545/545 as of the latest commit on this branch).
+- [ ] First formal performance budgets established and met -- **stays
+      open, deliberately**: real measurements now exist on both AVD and
+      real hardware (`technical-preferences.md`'s Performance Budgets
+      section -- 49–51fps steady, 33–49ms process time, ~59MB static
+      memory, 468ms cold load, ~31MB debug APK), but adopting an explicit
+      numeric pass/fail gate from that data is recorded there as "a
+      product decision still open" -- not something to unilaterally
+      close by checking a box.
 
 ## GDD Requirements Addressed
 

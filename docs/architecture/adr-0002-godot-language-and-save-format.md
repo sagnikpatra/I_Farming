@@ -10,7 +10,8 @@ Accepted
 
 ## Last Verified
 
-2026-08-18
+2026-08-22 -- Validation Criteria synced against real EPIC-M2 completion
+status (see that section's own 2026-08-22 update note)
 
 ## Decision Makers
 
@@ -189,11 +190,23 @@ progresses costs only the EPIC-M0 setup work, not any economy-layer code.
 
 ## Validation Criteria
 
-- [ ] EPIC-M2's `PlotState` variant-pattern translation documented and
-      covered by tests
-- [ ] EPIC-M2's automated test suite covers every formula in
+**Update (2026-08-22)**: synced against real EPIC-M2 completion status
+(`godot-migration-roadmap.md` shows M2 Complete) -- both items below are
+done, not left silently unchecked.
+
+- [x] EPIC-M2's `PlotState` variant-pattern translation documented and
+      covered by tests -- `godot/scripts/economy/plot_state.gd` implements
+      option (b) from this ADR's own analysis (a single tagged `Kind`-
+      discriminant `Resource`, constructed only via its three static
+      factories), documented inline with the full reasoning, and covered
+      by `godot/tests/unit/test_plot_state.gd` plus 10 other test files
+      that exercise real `PlotState` transitions.
+- [x] EPIC-M2's automated test suite covers every formula in
       `design/gdd/crop-economy.md` (and its sibling docs once written),
-      given it is now the primary regression safety net
+      given it is now the primary regression safety net -- `crop-economy.md`
+      exists and the economy layer's GUT coverage (545/545 passing as of
+      the latest commit on this branch) is the project's sole regression
+      safety net for it, per this ADR's own decision.
 
 ## GDD Requirements Addressed
 

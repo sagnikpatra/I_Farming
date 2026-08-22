@@ -547,7 +547,34 @@ regenerable, was previously uncovered.
    is confirmed, delete the spike probe in favor of the ADR's actual
    chosen shape (`PgsSnapshotProvider : CloudSaveProvider`, Phase 2+).
 
-**Phase 2 — Backup-only (one-way, the safest useful increment)**
+**Phase 2 — Backup-only (one-way, the safest useful increment) --
+`PgsSnapshotProvider` built and tested (2026-08-22), not yet wired into
+the live save flow**: implemented the ADR's actual chosen
+`CloudSaveProvider` backend (`godot/scripts/economy/
+pgs_snapshot_provider.gd`), scoped to exactly this phase --
+`sign_in_silent()` (delegates to `PlayGamesSignInClient.is_authenticated()`)
+and `upload()` (JSON-encodes the payload, calls
+`PlayGamesSnapshotsClient.save_game()`) are real; `download()`/
+`resolve_conflict()` stay the inherited Phase-0 no-ops until Phase 4 by
+design ("no download path at all" is this phase's whole safety
+property). Dependency-injected (takes the plugin's `PlayGamesSignInClient`/
+`PlayGamesSnapshotsClient` Node instances in its constructor, per
+coding-standards.md's DI-over-singletons rule) rather than reaching for
+`GodotPlayGameServices` itself, which is what makes it unit-testable
+without the native plugin at all. 9 new GUT tests
+(`tests/unit/test_pgs_snapshot_provider.gd`) instantiate the plugin's
+real client classes directly rather than fakes -- a bare `Node.new()`
+never added to a SceneTree never runs `_ready()`, so this is safe and
+its signals can be emitted manually to simulate the plugin firing them;
+wrapped in GUT's `autofree()` after the first run flagged real orphan
+nodes. Full suite: 484/484 (475 + 9), zero regressions. Confirmed the
+new script doesn't break the real Gradle export/launch pipeline either
+(same on-device verification as every other step this session).
+`NullCloudSaveProvider` remains the actual default everywhere save
+flows read from -- constructing this class changes no live behavior yet.
+Real wiring (calling `upload()` on app pause, the settings-screen sync
+indicator) is intentionally deferred until Phase 1's sign-in
+verification passes with a real Game Services ID.
 7. Upload on app pause. No download path at all.
 8. A settings-screen indicator showing last successful sync.
    *Verify: on-device, snapshot visible in Play Games; airplane-mode play is

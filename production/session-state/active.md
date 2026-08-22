@@ -3918,15 +3918,101 @@ This is very likely the actual limit of what's verifiable without the
 project owner's Play Console action -- everything else in step 6
 ("signs in") requires a real Game Services ID by definition.
 
+## 2026-08-22 (cont'd) -- Extracted the debug SHA-1 fingerprint the
+project owner will need for Play Console, so nothing blocks on hunting
+for it later
+
+User said "continue" again after the commits above; the only remaining
+Phase 1 work is genuinely the project owner's Play Console action, so
+found one more piece of local, no-Play-Console-needed prep: the actual
+SHA-1 fingerprint Play Console setup will ask for.
+
+Found Godot uses its **own** dedicated debug keystore, not the generic
+Android SDK one -- `editor_settings-4.7.tres`:
+`export/android/debug_keystore = "C:/Users/sagni/AppData/Roaming/Godot/
+keystores/debug.keystore"` (password `android`, created 2026-08-18).
+Extracted via `keytool -list -v`:
+
+- **SHA-1**: `6A:08:6E:43:C0:45:9B:37:53:03:ED:65:03:B1:65:CD:52:90:5B:9E`
+- **SHA-256**: `D8:6E:35:AF:BE:4E:62:86:71:9D:4B:F8:C7:D5:30:C6:35:F4:D0:
+  1F:10:C3:7D:7B:FB:D6:DC:B4:10:A9:BA:07`
+- **Package name**: `com.zonkrik.ifarming.godot`
+
+Gave the user the general shape of the Play Console flow (create/link a
+Game Services project, add an Android OAuth client with the
+package+SHA-1 above, note the numeric Project/Application ID it
+returns) but flagged honestly that exact Play Console click-paths are
+outside verifiable knowledge the same way Godot 4.7.1 APIs are --
+current official Google docs are the source of truth, not this
+assistant's memory of the UI.
+
+## 2026-08-22 (cont'd) -- Built the real Phase 2 CloudSaveProvider
+(PgsSnapshotProvider), test-first, not yet wired live
+
+User pushed back hard on the question cadence ("why are you asking so
+many questions? please complete the game"). Fair -- the two real
+external blockers (Play Console needing their Google account; commits
+needing their word per this project's own written rule) don't change by
+asking again, so stopped re-litigating those and found the next real,
+unblocked increment instead: Phase 2 itself doesn't need live
+credentials to *build and test* -- only to wire live and verify on a
+real account, matching exactly how Phase 0 built `CloudSaveProvider`/
+`NullCloudSaveProvider` before any backend was chosen.
+
+Wrote the test file first
+(`godot/tests/unit/test_pgs_snapshot_provider.gd`, 9 tests), then
+`godot/scripts/economy/pgs_snapshot_provider.gd` -- the ADR's actual
+named `CloudSaveProvider` backend. Scoped tight to Phase 2 ("upload on
+app pause, no download path at all"): `sign_in_silent()` and `upload()`
+are real; `download()`/`resolve_conflict()` deliberately left as the
+inherited no-ops until Phase 4. Constructor-injects the plugin's
+`PlayGamesSignInClient`/`PlayGamesSnapshotsClient` (DI over singletons,
+per coding standards) rather than reaching for `GodotPlayGameServices`
+directly -- that's what makes it unit-testable at all without the
+native plugin.
+
+Hit and fixed two real, ordinary issues, not glossed over:
+1. First test run: `Identifier "PgsSnapshotProvider" not declared` --
+   new `class_name` globals only register during an editor filesystem
+   scan, which the plain `-s gut_cmdln.gd` script-mode test run never
+   triggers on its own. Fixed with one `--headless --editor
+   --quit-after 20` pass to force the rescan (confirmed via its own
+   log: `update_scripts_classes | PgsSnapshotProvider`).
+2. Once picking up: tests passed (484/484) but GUT flagged real orphan
+   nodes -- `PlayGamesSignInClient.new()`/`PlayGamesSnapshotsClient.new()`
+   are `Node`-derived and never freed. Fixed with GUT's `autofree()`
+   (not `add_child_autofree()` -- these are deliberately never added to
+   a tree, so `_ready()`'s native-signal wiring never runs, keeping
+   tests pure). Re-ran clean: 484/484, zero orphans, zero leaks.
+
+Final check matching this whole session's pattern: exported + installed
++ launched on the OnePlus device to confirm the new script doesn't
+break the real Gradle build. Clean boot, identical to every prior run,
+no crash.
+
+`NullCloudSaveProvider` is still the actual default everywhere -- this
+class exists and is tested but isn't wired into any live save-flow call
+site yet. That wiring (upload on app pause + a settings sync indicator)
+is the real remaining Phase 2 work, deferred until Phase 1's sign-in
+verification passes for the same reason it always was: shipping a cloud
+call path before it can succeed would be pointless, not because the
+code isn't ready.
+
 ## Next Step
 
-1. **Real blocker, needs the project owner specifically**: create a
-   Google Play Console Game Services project (or confirm one already
-   exists), register an OAuth client, and register this build's SHA-1
-   signing fingerprint. Only once that exists can actual silent sign-in
-   (ADR-0003 Phase 1 step 6's last remaining piece) be verified
-   on-device -- swap the placeholder `godot_play_game_services/game_id`
-   in `export_presets.cfg` for the real one at that point.
+1. **Real blocker, needs the project owner specifically**: use the
+   SHA-1/package name above to create a Google Play Console Game
+   Services project (or confirm one already exists) and register an
+   OAuth client. Only once that exists, and the numeric Project/
+   Application ID is handed back, can actual silent sign-in (ADR-0003
+   Phase 1 step 6's last remaining piece) be verified on-device --
+   swap the placeholder `godot_play_game_services/game_id` in
+   `export_presets.cfg` for the real one at that point, rebuild, and
+   re-run the sign-in probe.
+2. Once sign-in is verified: wire `PgsSnapshotProvider.upload()` to an
+   actual app-pause call site plus a settings-screen last-sync
+   indicator (ADR-0003 Phase 2 steps 7-8) -- the provider class itself
+   is already built and tested, this is just the wiring.
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)

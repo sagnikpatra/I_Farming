@@ -311,11 +311,24 @@ currently active** -- not distinct attachment meshes or per-flag colors.
 - [x] Full GUT suite green (528/528 at the time this was built).
 - [x] Verified on-device via a temporary forced-purchase override
       (reverted before commit): all 3 upgradeable structures fully
-      upgraded, confirmed visibly tinted with no crash, using the real
-      save state's actual coin balance restored afterward (the override
-      only mutated in-memory state during the verification session --
-      `_ready()` never itself persists to disk, so the player's real save
-      was never at risk).
+      upgraded, confirmed visibly tinted with no crash.
+      **CORRECTION (2026-08-22, discovered during the next feature's
+      verification)**: the claim originally here -- that `_ready()`
+      never persists to disk, so the real save was never at risk -- was
+      **wrong**. `_on_growth_tick_timeout()` calls
+      `persist_and_rebuild_if_dirty()` every 3 seconds regardless of
+      what triggered the dirty flag, and this override's forced
+      `buy_*`/`renew_*` calls all mark state dirty. The debug session
+      genuinely did write inflated coins and these upgrade flags to the
+      real on-device save. Caught and fixed immediately once discovered
+      (see the grow-time-skip feature's own session-state entry for the
+      full recovery) -- the save was restored to its known-correct
+      values (260 coins, no upgrades) before this was even noticed here;
+      this note exists so the record is honest, not because anything is
+      still wrong. Every temporary on-device override from this point
+      forward in the session was re-verified to either run for under one
+      growth-tick interval or avoid `_mark_dirty()`-triggering calls
+      entirely.
 
 ---
 

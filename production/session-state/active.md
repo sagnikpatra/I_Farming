@@ -5765,3 +5765,43 @@ full suite re-run to confirm zero impact: 632/632, unchanged.
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- much bigger find: directory-structure.md never mentioned godot/ at all
+
+Kept pulling the stale-docs thread into `.claude/docs/` more broadly.
+Found something significantly bigger than the small comment fixes above:
+`.claude/docs/directory-structure.md` -- loaded into **every session** via
+CLAUDE.md's `@.claude/docs/directory-structure.md` include -- still
+described the pre-migration Kotlin/Gradle layout as the primary project
+structure and never mentioned `godot/` anywhere, despite ADR-0001 being
+Accepted and the migration roadmap recording cutover on 2026-08-21
+("`godot/` is the active codebase for all new work"). Every session since
+cutover, including this one, has been silently fed an outdated directory
+map at startup.
+
+Rewrote it to describe the real current structure: `godot/` as the
+primary source root (with its real `scripts/{economy,village_board,ui,
+audio,accessibility}/`, `scenes/`, `tests/unit/`, `addons/`, `assets/`,
+`locales/` layout), `app/`/`core/` reframed as explicitly frozen (per
+ADR-0001, not deleted but no new work), `design/{gdd,audio,balance,art}/`
+and `docs/{architecture,engine-reference}/` filled in (both were "mostly
+empty"/"not applicable" placeholders in the old version -- now real,
+populated directories), and `v2.md` reframed as "substantially superseded
+by design/gdd/'s 14 individual GDDs" rather than "not yet migrated" (every
+major v2.md section -- core loop, all 4 cultivation tiers, the Farmhouse,
+Mandi, LiveOps, the living-world art direction -- now has a real,
+individually-tracked GDD).
+
+Verified two specific claims before writing them rather than assuming:
+confirmed `app/src/test`/`app/src/androidTest` exist but contain only
+Android Studio's default placeholder `ExampleUnitTest.kt`/
+`ExampleInstrumentedTest.kt` (not real tests, so the "Kotlin stack has no
+test suite" framing stays accurate, worded precisely rather than
+overclaimed), and confirmed `godot/android/` really is gitignored (per
+`godot/.gitignore`'s own `android/` line, added the same ADR-0003 Phase 1
+session that generated it).
+
+Docs-only, full suite re-run to confirm zero impact: 632/632, unchanged.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

@@ -6292,3 +6292,57 @@ geometry, decoration density, and any remaining `DirectionalLight3D`/
 focus, per the still-open items listed in the visual-direction doc. Continuing
 autonomously per the standing "don't stop, continue until credits run out"
 instruction.
+
+## 2026-08-23 (cont.) — Track B audit: already substantially complete
+
+Following the lighting pass above, audited every remaining Track B item in
+`design/art/ui-visual-direction-2026-08.md` by reading the actual current
+code (`village_fixture_data.gd`, `village_board.gd`, and their tests)
+rather than trusting the doc's own stale checklist:
+
+- **Terrain texture**: done (`_build_terrain_texture()`), landed in
+  `4f36cdd`, predates this doc's most recent revision.
+- **Zone building variety**: done — Aquaculture (watermill), Vertical Farm
+  (windmill), Agroforestry (hedge-large) all have real `model_path`s wired;
+  Polyhouse's translucent-glass interim (`use_translucent_placeholder`,
+  `POLYHOUSE_GLASS_ALPHA`) is implemented exactly as the doc recommended.
+  On-device screenshot (`board_review.png`, reviewed then deleted) confirmed
+  the translucent colored boxes visible in-game are the deliberate
+  *locked-zone* ghost-box state (`LOCKED_ZONE_PLACEHOLDER_COLOR`), not a
+  leftover flat-color-cube bug — this save simply hadn't unlocked those
+  zones yet.
+- **Crop growth-stage geometry**: done for Wheat (real stages) and
+  Tomato/Capsicum (shared leafy stand-in). Considered wiring Sandalwood to
+  a generic tree model (mechanically safe — `_footprint_scale_factor()`
+  auto-scales any mesh to tile size) but found
+  `tests/unit/test_village_fixture_data.gd`'s
+  `test_crops_with_no_reasonable_model_fit_return_empty_string()`, which
+  documents this was already deliberately decided against — Paddy/Dutch
+  Rose/Sandalwood/Makhana/Pond Fish/Saffron intentionally get no model
+  rather than a bad content-accuracy fit (rice paddy ≠ corn stalks,
+  sandalwood sapling ≠ generic oak). Did NOT touch this — respected the
+  existing, correct, tested decision rather than re-litigating it.
+- **Decoration density**: done — `TREE_RING_MODELS`, `AMBIENT_CLUTTER_MODELS`,
+  `DECORATION_DIRT_PATH_MODEL` all wired and visible on-device.
+
+**Net finding**: essentially all of Track B was already implemented in
+prior session work (`4f36cdd` "Indian-theme the village board" and
+neighboring commits), well before this segment started. The direction doc
+just never had its own checklist corrected after that work landed. Rewrote
+§1.2 (marked historical), §3 (each bullet now DONE/dated with what's
+genuinely still open), §4 (sequencing note), and the header status line to
+reflect ground truth, so a future session doesn't re-attempt already-solved
+work or accidentally undo the deliberate crop-model-fit decision.
+
+**Genuinely still open** (real gaps, not busywork): the warmer-directional-
+light golden-hour idea (COC-style warmth) and any per-phase lighting tuning
+beyond today's Dawn/Day/Dusk/Night presets — both need on-device isolation
+testing the same way the glow bug was found, not just a spec value; and a
+true re-sourcing pass for Paddy/Dutch Rose/Sandalwood/Makhana/Pond
+Fish/Saffron crop geometry, which needs new asset sourcing (not present in
+the currently-checked-out `assets_3d/` library), out of scope for a
+curate-only pass.
+
+Cleaned up `board_review.png` from scratchpad after review (nothing
+committed from it — screenshot-based verification only, evidence already
+covered by the git-history citations above).

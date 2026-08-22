@@ -127,6 +127,11 @@ inspiration image 3)
 ### 1.2 3D board (`m1-rootcause4-shading.png`, `m4-hud-ondevice.png` vs.
 inspiration images 1/2)
 
+**Historical record — this diagnosis describes the board's state as of
+2026-08-21.** Every item below has since been addressed; see §3's "DONE"
+markers (added 2026-08-23) for current status and what changed. Left as-is
+here rather than rewritten, since it's the record of what prompted Track B.
+
 - **Sparse dressing even where content exists.** The board is one flat olive
   plane with a boundary fence, two real buildings (Farmhouse, Mandi), and a
   handful of crop-plot tiles — no trees, no paths, no ambient clutter. Image
@@ -298,41 +303,44 @@ it. **Not blocked** — per the correction above, the full 627-model library
 already exists at `assets_3d/`; the items below are a curate-and-copy task
 into `godot/assets_3d/`, not a from-the-internet sourcing pass.
 
-- **Terrain texture, no new binary asset needed.** The ground is currently
-  one flat-color `PlaneMesh`. Recommend a subtle furrow/soil-speckle texture
-  generated procedurally at runtime via `Image`/`ImageTexture`, the same
-  technique `village_board.gd` already uses for the rangoli and
-  ready-to-harvest badge decals (`_build_rangoli_texture()`,
-  `_build_ready_badge_texture()`). Applied as an unshaded/toon albedo
-  texture, this is GLES3-safe by construction (same technique already
-  verified on this exact pinned build) and needs zero new asset sourcing —
-  **not blocked by question 4**, could proceed independently.
-- **Zone building variety — use the mapping that's already documented but
-  never executed.** `assets_3d/README.md`'s own "Suggested mapping" table
-  proposes `fantasy-town-kit`'s watermill for Aquaculture, windmill for
-  Vertical Farm, `hedge*` for Agroforestry's grid border, and stall variants
-  for Mandi (already done). None of these are wired in except Mandi.
-  Recommend actually assigning them — these specific models are confirmed
-  present in `assets_3d/` (see correction above); the work is copying them
-  into `godot/assets_3d/` and wiring `village_fixture_data.gd`, not sourcing.
-  Polyhouse
-  is the one confirmed gap — the README states no kit here has a greenhouse
-  shape. Interim step needing zero new sourcing: swap Polyhouse's current
-  *opaque* tinted `BoxMesh` for a translucent one
-  (`StandardMaterial3D.transparency` + existing toon shading), which reads
-  as "glass structure" immediately.
-- **Crop plot readability.** Recommend sourcing genuine per-growth-stage
-  crop geometry (the `crops_bambooStageA`/`B` naming convention already in
-  the codebase suggests the source kit likely has other staged-crop models
-  worth checking during a re-sourcing pass) so Growing/Ready states change
-  silhouette, not just tint.
-- **Decoration density.** Recommend a targeted curate-and-copy pass (from
-  the already-present `assets_3d/` library, not new sourcing) prioritizing:
-  `tree_*` models for a canopy/edge ring along the
-  boundary fence (echoing image 1's tree border), additional `flower_*`
-  variants (only `flower_yellowA` exists on disk today), `bush_*`/`rock_*`
-  for ambient clutter, and using the already-wired
-  `DECORATION_DIRT_PATH_MODEL` as a pre-laid path between zones by default.
+- **Terrain texture — DONE.** `_build_terrain_texture()` generates a
+  procedural furrow/soil-speckle albedo texture at runtime via
+  `Image`/`ImageTexture` (same technique as the rangoli/ready-badge decals),
+  wired to the ground `PlaneMesh`. Landed in commit `4f36cdd` ("Indian-theme
+  the village board"), predating this doc's most recent update.
+- **Zone building variety — DONE (verified 2026-08-23 by reading
+  `village_fixture_data.gd`/`village_board.gd` directly, not assumed from
+  this doc).** `AQUACULTURE_MODEL` (watermill), `VERTICAL_FARM_MODEL`
+  (windmill), and `AGROFORESTRY_MODEL` (hedge-large) are all wired and in
+  use; Mandi (`MANDI_MODEL`) was already done. Polyhouse's translucent-glass
+  interim (`use_translucent_placeholder` + `POLYHOUSE_GLASS_ALPHA`) is
+  implemented exactly as recommended below — a locked zone still renders as
+  a dim ghost box (`LOCKED_ZONE_PLACEHOLDER_COLOR`), which is a deliberate,
+  separate visual state, not a leftover placeholder bug.
+- **Crop plot readability — DONE for the crops that have a genuine model
+  fit, and deliberately NOT force-fit for the rest.**
+  `VillageFixtureData.crop_stage_model_path()` gives Wheat real
+  Growing/Ready stage geometry (`crops_wheatStageA`/`B`) and Tomato/Capsicum
+  a shared leafy stand-in (`crops_leafsStageA`/`B`). Paddy, Dutch Rose,
+  Sandalwood, Makhana, Pond Fish, and Saffron are **deliberately** left
+  unmapped (return `""`, falling back to the dirt-mesh+tint rendering) —
+  confirmed via `tests/unit/test_village_fixture_data.gd`'s
+  `test_crops_with_no_reasonable_model_fit_return_empty_string()`, which
+  exists specifically to catch a future regression that force-fits a
+  bad-match model (e.g. a generic tree standing in for a sandalwood
+  sapling, or corn stalks standing in for rice paddy) onto one of these.
+  Closing this the "honest" way needs genuine new asset sourcing (a rice
+  paddy, a sandalwood sapling, a saffron crocus) — out of scope for a
+  curate-from-what's-already-sourced pass; tracked here as a real, open,
+  future re-sourcing item, not a wiring gap.
+- **Decoration density — DONE.** `TREE_RING_MODELS` (tree_default/tree_fat/
+  tree_oak) ring the boundary fence, `AMBIENT_CLUTTER_MODELS` scatter
+  bush/rock variety across the field, and `DECORATION_DIRT_PATH_MODEL` lays
+  a default path — all confirmed wired in `village_board.gd` and visible
+  on-device (see `board_review.png`-class evidence from the 2026-08-23
+  lighting-pass session). Only `flower_yellowA` originally existed on disk;
+  `flower_yellowB`/`flower_yellowC` were added since and are wired too
+  (`DECORATION_SUNFLOWER_MODEL_B`/`_C`).
 - **Lighting — elevated to a main focus (2026-08-23 user directive: "design,
   UI and lightings, just like COC, custom").** On-device empirical pass
   completed against `village_board.tscn`'s `WorldEnvironment`:
@@ -360,6 +368,11 @@ into `godot/assets_3d/`, not a from-the-internet sourcing pass.
 ---
 
 ## 4. Sequencing Recommendation
+
+**Update (2026-08-23): both tracks below are now substantially complete** —
+Track A per its own header note, Track B per §3's "DONE" markers. This
+section is kept as the historical rationale for why A went first, not as an
+indication either track is still pending.
 
 1. **UI chrome first (Track A).** Self-contained — touches only
    `godot/scripts/ui/*.gd` plus the Kenney texture import. No 3D-board or

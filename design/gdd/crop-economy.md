@@ -305,11 +305,9 @@ tuned, not placeholder.
       other 4 economy docs' own `/balance-check` recommendations are
       still individually open — not done as part of this pass.
 - [ ] Decide the two open questions above
-- [ ] Consider an ADR for "lazy/read-time growth resolution over a live
-      ticking timer" — a real architectural decision with no ADR yet
-      (confirmed: no existing ADR covers this specifically — ADR-0003
-      only mentions it in passing as a constraint, not as its own
-      documented decision)
+- [x] Consider an ADR for "lazy/read-time growth resolution over a live
+      ticking timer" — written 2026-08-22:
+      `docs/architecture/adr-0004-lazy-read-time-growth-resolution.md`
 
 ---
 

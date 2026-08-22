@@ -88,7 +88,19 @@ Adopting an explicit numeric budget (e.g. "≥30 FPS, ≤X MB" as a release gate
 ## Architecture Decisions Log
 
 <!-- Quick reference linking to full ADRs in docs/architecture/ -->
-- [No ADRs written yet -- the LibGDX migration, the 2D-to-3D village board rewrite, and the free/open-source-only constraint were all real architectural decisions made during earlier sessions but never captured as formal ADRs. Worth retroactively documenting with `/architecture-decision` -- see the adoption plan.]
+**Update (2026-08-22)**: this note had gone stale — 4 ADRs now exist:
+- `adr-0001-godot-engine-migration.md` (Accepted) — LibGDX/native-Android → Godot 4 full migration
+- `adr-0002-godot-language-and-save-format.md` (Accepted) — GDScript, clean Resource-based save format
+- `adr-0003-cloud-save-and-player-accounts.md` (Proposed) — Google Play Games Services Snapshots, offline-first
+- `adr-0004-lazy-read-time-growth-resolution.md` (Accepted, retroactive) — lazy read-time growth/state resolution over a live ticking timer
+
+Still genuinely un-documented as formal ADRs, per this note's original
+flag: the 2D-to-3D village board rewrite (predates the Godot migration
+entirely — a Kotlin/LibGDX-era decision) and the free/open-source-only
+constraint (a project-wide policy, not a single architectural choice
+with alternatives to weigh — may not need a full ADR at all). Worth a
+look with `/architecture-decision` if either ever needs the same
+retroactive treatment ADR-0004 got.
 
 ## Engine Specialists
 

@@ -5983,3 +5983,34 @@ rather than assumed).
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- session-start.sh's code-health check was also silently dead
+
+Same rigor applied to the rest of `.claude/hooks/`: read `session-start.sh`
+in full and tested it empirically (not just read-and-assumed) via
+`bash .claude/hooks/session-start.sh`. Its sprint/milestone/BUG-ticket
+checks (`production/sprints/`, `production/milestones/`, `BUG-*.md`)
+correctly no-op for this project -- confirmed those directories/files
+genuinely don't exist anywhere, matching this project's own deliberate
+choice (already documented in directory-structure.md) to use the
+continuous `active.md` journal instead of sprint/milestone/ticket files.
+Not a bug, correctly inert.
+
+The "Code health" TODO/FIXME check WAS the same real bug pattern found
+repeatedly today: `if [ -d "src" ]` -- this project's real code lives in
+`godot/scripts/`, so the check always silently found nothing to report,
+even on a day this session confirmed (earlier in this exact stretch)
+`godot/scripts/` genuinely has zero TODO/FIXME markers -- a real,
+positive fact the hook was never able to surface. Fixed to check both
+`src/` (template-default compatibility) and `godot/scripts/`. Verified
+with both a negative control (re-ran after the fix, confirmed still no
+output -- correct, since the real count is genuinely zero) and a
+positive control (temporarily appended a real `TODO` comment to
+`game_data.gd`, confirmed the hook now reports "1 TODOs, 0 FIXMEs",
+then reverted via `git checkout --` and confirmed clean via `git diff`).
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction. Remaining `.claude/hooks/` files
+(`detect-gaps.sh`, `validate-*.sh`, `notify.sh`, `pre/post-compact.sh`,
+`log-agent*.sh`, `session-stop.sh`) not yet given this same
+read-and-empirically-test treatment.

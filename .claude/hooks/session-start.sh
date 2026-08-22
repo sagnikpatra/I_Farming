@@ -44,14 +44,22 @@ if [ "$BUG_COUNT" -gt 0 ]; then
     echo "Open bugs: $BUG_COUNT"
 fi
 
-# Code health quick check
-if [ -d "src" ]; then
-    TODO_COUNT=$(grep -r "TODO" src/ 2>/dev/null | wc -l)
-    FIXME_COUNT=$(grep -r "FIXME" src/ 2>/dev/null | wc -l)
-    if [ "$TODO_COUNT" -gt 0 ] || [ "$FIXME_COUNT" -gt 0 ]; then
-        echo ""
-        echo "Code health: ${TODO_COUNT} TODOs, ${FIXME_COUNT} FIXMEs in src/"
+# Code health quick check. Update (2026-08-23): this project's real
+# source root is godot/scripts/, not the template-default src/ -- the
+# original check silently never fired, the same root-cause class of bug
+# found and fixed across .claude/rules/*.md and statusline.sh today.
+# Checks both, so this stays correct for a template-default project too.
+TODO_COUNT=0
+FIXME_COUNT=0
+for src_dir in src godot/scripts; do
+    if [ -d "$src_dir" ]; then
+        TODO_COUNT=$((TODO_COUNT + $(grep -r "TODO" "$src_dir/" 2>/dev/null | wc -l)))
+        FIXME_COUNT=$((FIXME_COUNT + $(grep -r "FIXME" "$src_dir/" 2>/dev/null | wc -l)))
     fi
+done
+if [ "$TODO_COUNT" -gt 0 ] || [ "$FIXME_COUNT" -gt 0 ]; then
+    echo ""
+    echo "Code health: ${TODO_COUNT} TODOs, ${FIXME_COUNT} FIXMEs"
 fi
 
 # --- Active session state recovery ---

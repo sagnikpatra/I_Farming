@@ -42,10 +42,12 @@ to notice mechanically — closer to background birdsong than a minigame.
 
 ## 3. Detailed Rules
 
-1. **No player interaction.** Tapping a villager does nothing in this
-   phase — no info card, no dialogue, no selection state. (A future
-   flavor-text greeting on tap is a plausible later addition, not
-   committed to here — see §7 in Tuning Knobs for why it's deferred.)
+1. **v1 baseline (superseded 2026-08-22, kept as history)**: tapping a
+   villager did nothing — no info card, no dialogue, no selection state.
+   **Update**: this is no longer current — see rule 8 below and Tuning
+   Knobs' "Tap interaction" row for the real, shipped shape (a read-only
+   flavor-text greeting card, decided and built, not deferred any
+   longer).
 2. **No persistence.** Villagers are not part of `GameState` and are not
    saved. Positions/count re-randomize fresh each time the village board
    scene loads. This is a deliberate scope boundary, not an oversight — it
@@ -71,11 +73,14 @@ to notice mechanically — closer to background birdsong than a minigame.
    see that document, not this one, for the current standing-idle
    behavior (this section stays as the historical v1 baseline it was
    written against).
-5. **Villagers ignore the player entirely.** No pathing around the
-   player's camera, no reacting to taps elsewhere on the board, no
-   awareness of game economy state (a villager doesn't "go to" the Mandi
-   when the player sells crops, etc.) — any such behavior is explicitly
-   future scope, not this document's.
+5. **Villagers ignore the player entirely, except the tap greeting in
+   rule 8.** No pathing around the player's camera, no awareness of game
+   economy state (a villager doesn't "go to" the Mandi when the player
+   sells crops, etc.) — that broader kind of reactivity is still
+   explicitly future scope. The one narrow exception is the read-only
+   tap card (rule 8), which shows information but never changes a
+   villager's behavior, path, or state — a villager tapped mid-walk
+   keeps walking exactly as it would have, unaffected.
 6. **Villagers survive a board rebuild.** `village_board.gd`'s `rebuild()`
    only touches `StaticLayer`; villagers live in the pre-existing
    `ActorLayer`, which `rebuild()` already documents as untouched. A
@@ -92,6 +97,25 @@ to notice mechanically — closer to background birdsong than a minigame.
    One accepted exception: `rogue_hooded`'s hood is sculpted into its
    Head mesh, not a separate prop, so it keeps a hooded silhouette —
    judged an acceptable look (a farmer wearing a hood), not a defect.
+8. **Tap interaction (decided and built 2026-08-22)**: a roaming
+   (unassigned) villager gets its own pickable `Area3D`, added as a
+   sibling of its `Villager` child inside `VillagerRoamer` so it moves
+   automatically with the villager (no manual repositioning needed,
+   unlike the static zone/decoration `PickArea`s). Tapping it opens a
+   small, read-only card — the same `BottomSheet` primitive every other
+   info card/sheet in this project already uses, not a new UI
+   primitive — showing the character's emoji, its class display name
+   (`Villager.CHARACTER_DISPLAY_NAMES`, the same names
+   `worker_assignment_row.gd` already shows for an *assigned* villager,
+   moved to `Villager` itself so both files share one source instead of
+   duplicating the dictionary), and a localized "Namaste! 🙏" greeting.
+   No action button, no selection highlight (matches
+   `decoration_info_card.gd`'s precedent: purely informational taps
+   don't get the zone/plot footprint-highlight treatment). A villager
+   currently stationed at a `WorkerStation` (an assigned worker) is a
+   **different scene entirely**, not a `VillagerRoamer` — explicitly out
+   of scope for this pass; tapping one falls through to whatever
+   zone/plot is underneath, unchanged from before.
 
 ## 4. Formulas
 
@@ -206,7 +230,7 @@ with all 6 zones unlocked gets `clamp(2 + 4, 2, 6) = 6` villagers (the cap).
 | Walk speed | 0.8–2.0 tiles/sec | Player-fantasy "feel" (too slow reads as sluggish, too fast reads as frantic/unnatural for a farm) | Needs on-device visual tuning, not a formula-derived value |
 | Exclusion margin | 0.3–0.7 tiles | Whether villagers visibly clip through buildings/crops vs. look like they're avoiding a wider berth than necessary | Needs on-device visual tuning |
 | Character roster size | 6 (all sourced characters, current) | Visual variety | All 6 visually confirmed 2026-08-21 with prop-hiding + accent-recolor applied (side-by-side render, then live on the real board) — see `godot/scripts/village_board/villager.gd`'s `_KEEP_MESH_SUFFIXES`. Sourcing a 7th+ character remains open future work, not required. |
-| Tap interaction | Off (current) | Whether villagers become an interactive system at all | Deliberately deferred — turning this on is a scope decision for a later document revision, not a knob to flip casually, since it starts turning a cosmetic system into a mechanical one (EPIC-M7 territory) |
+| Tap interaction | **On, cosmetic-only (2026-08-22)** | Whether villagers become an interactive system at all | **Decision made**: tapping a roaming (unassigned) villager shows a small, read-only greeting card — emoji + class display name + "Namaste! 🙏", localized (English/Hindi, per `docs/architecture/localization-pipeline.md`). Deliberately stays purely cosmetic, not mechanical: no reward, no new `GameState` field, nothing persisted, no action button — the same boundary EPIC-M7's worker system already exists on the other side of. A stationed `WorkerStation` villager is explicitly **not** in scope for this pass (a different node/scene entirely, not `VillagerRoamer`) — tapping one still falls through to whatever the underlying zone/plot resolves to, unchanged. See §3 Detailed Rules for the full shape. |
 
 ## 8. Acceptance Criteria
 
@@ -226,10 +250,20 @@ with all 6 zones unlocked gets `clamp(2 + 4, 2, 6) = 6` villagers (the cap).
 - [x] No new fields added to `GameState` or the save format for this
       system — `VillagerSpawner` re-randomizes fresh each `sync()`, no
       persistence anywhere in the chain
-- [x] Tapping a villager has no effect — true by construction (no
-      `PickArea`/collision layer registered for villagers in
-      `BoardInteractor`'s ray-picking), not yet separately confirmed with
-      an on-device tap test specifically
+- [x] **Superseded 2026-08-22** — this criterion described the v1
+      baseline (no `PickArea` registered at all). Tap interaction is now
+      built (rule 8, §3) — see the new criteria immediately below for
+      its own acceptance bar, which replaces this one rather than
+      contradicting it.
+- [x] Tapping a roaming villager opens a real, localized greeting card
+      (emoji + class name + "Namaste! 🙏"), verified via a real headless
+      test that drives the actual `PickArea`/`BoardInteractor` dispatch
+      path, not just the card's own construction in isolation
+- [x] Tapping a villager never changes its walk state, target, or
+      position — the greeting is purely informational
+- [x] A `WorkerStation`-stationed (assigned) villager is unaffected —
+      confirmed it's a different scene/node entirely, not routed through
+      this new tap path at all
 - [x] On-device frame time with the maximum villager count (6) measured:
       no detectable difference vs. zero villagers on the Medium_Phone AVD
       emulator (55-57 FPS either way). **Caveat, not fully closed**: this

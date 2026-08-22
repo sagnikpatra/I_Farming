@@ -35,19 +35,6 @@ const WOOD_BROWN_LIGHT := UiTheme.WOOD_BROWN_MID
 const FIELD_GREEN := UiTheme.FIELD_GREEN
 const SAFFRON_DARK := UiTheme.SAFFRON_DARK
 
-## villager.gd's CHARACTER_SCENES keys -> a display name for the picker.
-## Kept here rather than reusing Villager.CHARACTER_SCENES.keys() directly
-## so this file doesn't need to know that class's internal structure, just
-## the key strings GameEconomy.assign_worker() expects.
-const CHARACTER_DISPLAY_NAMES: Dictionary = {
-	"barbarian": "Barbarian",
-	"knight": "Knight",
-	"mage": "Mage",
-	"ranger": "Ranger",
-	"rogue": "Rogue",
-	"rogue_hooded": "Hooded Rogue",
-}
-
 var _economy: GameEconomy
 var _village_board: VillageBoard
 var _plot_kind: PlotKind.Kind
@@ -98,7 +85,7 @@ func _build_assigned_row(assignment: WorkerAssignment) -> HBoxContainer:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 8)
 
-	var display_name: String = CHARACTER_DISPLAY_NAMES.get(assignment.character_key, assignment.character_key)
+	var display_name: String = Villager.CHARACTER_DISPLAY_NAMES.get(assignment.character_key, assignment.character_key)
 	var status_label := UiTheme.make_title_label(tr(&"worker_row.status") % display_name, 13, Color.WHITE, false)
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -118,8 +105,8 @@ func _build_unassigned_row() -> HBoxContainer:
 
 	_option_button = OptionButton.new()
 	_option_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for key in CHARACTER_DISPLAY_NAMES.keys():
-		_option_button.add_item(CHARACTER_DISPLAY_NAMES[key])
+	for key in Villager.CHARACTER_DISPLAY_NAMES.keys():
+		_option_button.add_item(Villager.CHARACTER_DISPLAY_NAMES[key])
 	_style_option_button(_option_button)
 	row.add_child(_option_button)
 
@@ -131,7 +118,7 @@ func _build_unassigned_row() -> HBoxContainer:
 
 
 func _on_assign_pressed() -> void:
-	var keys: Array = CHARACTER_DISPLAY_NAMES.keys()
+	var keys: Array = Villager.CHARACTER_DISPLAY_NAMES.keys()
 	var selected_index: int = _option_button.selected if _option_button.selected >= 0 else 0
 	var selected_key: String = keys[selected_index]
 	_economy.assign_worker(_plot_kind, selected_key)

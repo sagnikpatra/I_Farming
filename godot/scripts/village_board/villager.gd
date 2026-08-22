@@ -38,6 +38,19 @@ const CHARACTER_SCENES: Dictionary = {
 	"rogue_hooded": "res://assets_3d/kaykit-adventurers/glTF/Characters/Rogue_Hooded.glb",
 }
 
+## CHARACTER_SCENES' keys -> a display name, moved here 2026-08-22 (was
+## duplicated as a private copy in worker_assignment_row.gd) so that file
+## and villager_info_card.gd (the new tap-interaction card, see
+## design/gdd/villagers.md rule 8) share one source instead of drifting.
+const CHARACTER_DISPLAY_NAMES: Dictionary = {
+	"barbarian": "Barbarian",
+	"knight": "Knight",
+	"mage": "Mage",
+	"ranger": "Ranger",
+	"rogue": "Rogue",
+	"rogue_hooded": "Hooded Rogue",
+}
+
 ## Both animation-library files share the "Rig_Medium" skeleton/bone naming
 ## with every character above (verified 2026-08-21 -- see session state);
 ## MovementBasic is the one with roaming-relevant clips (Walking_A/B/C,

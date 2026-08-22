@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
-Feature: M8 - Post-Migration Hardening. All 4 user-selected items (security audit, QA pass, accessibility, audio) now done. EPIC-M8 complete for this session's scope. Session paused here at user's request ("will continue later").
-Task: Security audit done (1 HIGH + 2 LOW found, HIGH+one LOW fixed and verified live). QA/smoke pass done (found+closed one real test-coverage gap). Accessibility audit done (4 BLOCKING fixed, 5 HIGH/1 MEDIUM/1 LOW/1 ADVISORY/1 DEFERRED open) -- on-device visual check still pending. Audio pass done via full /team-audio pipeline (5 agents: audio-director, sound-designer, accessibility-specialist, technical-artist, godot-specialist, gameplay-programmer) -- AudioManager + 40-event catalogue + bus routing + AccessibilitySheet volume controls all implemented and wired, 350/350 GUT passing (independently re-verified). Zero real audio ASSET files exist yet (deliberate ResourceLoader.exists()-gated no-op until sourced) -- separate follow-up task. All EPIC-M8 code committed and pushed (commits 2dcc4d6, 36d19fc on feature/isometric-village-view). Verified live on the user's physical Android phone (Vivo, com.zonkrik.ifarming.godot) via a fresh debug export/install -- confirmed rendering correctly. Cleared a real device-side mixup: the phone also had the OLD pre-migration native app (com.zonkrik.ifarming) installed, which the user mistook for an outdated build; uninstalled it. The apparent "outdated" look after that was actually just a brand-new save file on the phone (fresh install = default GameState, 3 starting plots) vs. the emulator's session-long accumulated save -- not a bug. Copied the emulator's save.tres onto the phone (byte-verified, 13446 bytes) so both devices now show matching progress.
+Feature: Post-M8 continued development. Pushed all accumulated work (master + feature/isometric-village-view) to GitHub origin per explicit user instruction, then resumed active feature development.
+Task: Villager tap interaction shipped (design/gdd/villagers.md rule 8) -- PickArea on VillagerRoamer, VillagerInfoCard greeting card, CHARACTER_DISPLAY_NAMES dedup, localization key, 9 new tests, 592/592 GUT passing (verified twice, non-flaky). About to commit. Continuing development per standing "don't stop" instruction.
 <!-- /STATUS -->
 
 # Active Session State
@@ -5196,3 +5196,74 @@ that same scrutiny across cleanup candidates (declined -- not mine to
 delete), a second historical ADR (declined -- no verifiable git history
 to document honestly), and session-state consolidation (declined -- a
 real risk to historical continuity, not safe unilateral cleanup).
+
+## 2026-08-22 (pushed to GitHub; villager tap interaction shipped)
+
+User gave explicit authorization: "push everything to main github and
+then start again developing the game." Executed both halves.
+
+**Push**: triaged the working tree before pushing -- committed real,
+required evidence (105 `production/qa/evidence/*.png`, 71MB, this
+project's own Testing Standards require them) and pre-existing drift
+(`.idea/*`, `.claude/scheduled_tasks.lock`, a genuine uncommitted
+`test_villager_roamer.gd` test that was already complete and passing).
+Added `godot_builds/` (2.0GB disposable debug-APK/log output) and
+`Steps/` (pre-adoption bootstrap material) to `.gitignore` rather than
+committing them. Fast-forward merged `master` up to
+`feature/isometric-village-view` (master was a strict 100-commit-behind
+ancestor, zero master-only commits, so `--ff-only` was safe/lossless).
+Pushed both `master` and `feature/isometric-village-view` to the real
+GitHub remote (`sagnikpatra/I_Farming`).
+
+**New feature -- villager tap interaction** (design/gdd/villagers.md
+rule 8): the GDD's own Tuning Knobs table required "a later document
+revision" before enabling tap interaction on roaming villagers, so
+updated the GDD first (Tuning Knobs row, Detailed Rules rule 5/new rule
+8, Acceptance Criteria) before writing any code. Decision: cosmetic-
+only (an emoji/name/"Namaste!" greeting card, no gameplay effect) --
+roaming villagers have no persistent identity at all (never part of
+`GameState`), so there's nothing stateful to expose.
+
+Implementation:
+- `VillagerRoamer` now builds its own `PickArea` (`Area3D`, new
+  `VillageBoard.PICK_LAYER_VILLAGERS = 8` bitmask) as a direct sibling
+  child, not nested under the visual `Villager` child -- required so
+  the pick area moves with the roamer's own transform. Fixed a
+  self-assignment shadowing bug in `setup()` along the way
+  (`character_key = character_key` was a no-op; needed `self.`).
+- `board_interactor.gd`'s tap dispatch mask extended to include the new
+  layer; new `_open_villager_info_card()` opens a new `VillagerInfoCard`
+  (new scene+script) in the existing shared `BottomSheet`, same pattern
+  as decoration/growing info cards.
+- Deduplicated `CHARACTER_DISPLAY_NAMES` out of
+  `worker_assignment_row.gd` (private) into `Villager` (public, its
+  natural home) since the new card needed the same lookup.
+- New localization key `villager_info.greeting` ("Namaste! 🙏" /
+  "नमस्ते! 🙏") added to the CSV pipeline.
+- 9 new tests: 2 in `test_villager_roamer.gd` (PickArea construction +
+  meta, and that it moves with the roamer not the visual child), 5 in
+  new `test_villager_info_card.gd` (display name, emoji, greeting,
+  unknown-key fallback, and a consistency guard over every
+  `Villager.CHARACTER_SCENES` key), 2 real end-to-end tests in new
+  `test_villager_tap_interaction.gd` driving the actual
+  `_open_villager_info_card()` dispatch path on a wired
+  VillageBoard+HUD scene, confirming the real BottomSheet shows the
+  real tapped character and that a second tap replaces the first card's
+  content rather than stacking.
+
+**Hit and recovered from one real mistake**: while diagnosing why the
+new CSV row wasn't resolving via `tr()`, deleted
+`godot/locales/ui_strings.csv.import` trying to force a reimport --
+this broke the resource's UID registration entirely. Recovered via
+`git checkout HEAD -- godot/locales/ui_strings.csv.import`, then used
+the correct flag (`--headless --editor --import`, which blocks until
+imports actually finish, unlike `--quit-after N` which can exit before
+a reimport completes) -- full 163-step reimport succeeded, confirmed
+`tr("villager_info.greeting")` resolves correctly.
+
+Full GUT suite run twice to confirm non-flaky: **592/592 passing**,
+both runs, 2505 asserts, ~16.4s.
+
+**Next step**: commit this feature, then continue identifying further
+development targets per the standing "continue developing the game"
+instruction -- do not stop to ask what's next.

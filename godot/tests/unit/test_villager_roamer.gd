@@ -32,6 +32,41 @@ func test_setup_spawns_a_villager_child_with_an_animation_player() -> void:
 	assert_not_null(roamer.get_villager().get_animation_player())
 
 
+## design/gdd/villagers.md rule 8 (tap interaction, 2026-08-22) --
+## confirms setup() actually builds the real PickArea board_interactor.gd
+## depends on, with the exact meta shape it reads (board_kind="villager",
+## board_id=character_key -- no persistent id exists to look up, see
+## villager_roamer.gd's own _build_pick_area() comment).
+func test_setup_builds_a_villager_pick_area_with_the_real_character_key() -> void:
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+
+	roamer.setup(grid, Vector2i(0, 0), 3, 3, 1.0, "mage")
+
+	var pick_area := roamer.get_node("PickArea") as Area3D
+	assert_not_null(pick_area, "setup() must build a real PickArea, not just store character_key")
+	assert_eq(pick_area.collision_layer, VillageBoard.PICK_LAYER_VILLAGERS)
+	assert_eq(pick_area.get_meta("board_kind"), "villager")
+	assert_eq(pick_area.get_meta("board_id"), "mage")
+	assert_eq(roamer.character_key, "mage")
+
+
+## The PickArea is a sibling of the Villager child (both added directly
+## under VillagerRoamer), not nested inside it -- so it moves for free
+## with whatever _process() does to this node's own `position`, with no
+## manual repositioning code anywhere (unlike village_board.gd's static
+## zone/decoration PickAreas, which do need that).
+func test_villager_pick_area_moves_with_the_roamer_not_the_villager_child() -> void:
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.setup(grid, Vector2i(0, 0), 3, 3, 1.0)
+
+	var pick_area := roamer.get_node("PickArea")
+	assert_eq(pick_area.get_parent(), roamer, "PickArea must be a direct child of the roamer, so it inherits the roamer's own moving transform")
+
+
 func test_roamer_moves_toward_its_target_over_time() -> void:
 	# Two-tile grid: only one possible target, so movement is deterministic.
 	var grid := WalkableGrid.new(2, 1, [])

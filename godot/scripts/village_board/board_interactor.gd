@@ -45,6 +45,7 @@ const OpenFieldTabScene := preload("res://scenes/ui/open_field_tab.tscn")
 const AgroPlantPickerScene := preload("res://scenes/ui/agro_plant_picker.tscn")
 const GrowingInfoCardScene := preload("res://scenes/ui/growing_info_card.tscn")
 const DecorationInfoCardScene := preload("res://scenes/ui/decoration_info_card.tscn")
+const VillagerInfoCardScene := preload("res://scenes/ui/villager_info_card.tscn")
 
 ## Screen-space movement (px) below which a released touch counts as a tap,
 ## not a drag.
@@ -322,9 +323,16 @@ func _release_primary_touch() -> void:
 				TapDispatch.NORMAL_PICK:
 					var pick := _pick(
 						_touch_last_screen_pos,
-						VillageBoard.PICK_LAYER_ZONES | VillageBoard.PICK_LAYER_PLOTS | VillageBoard.PICK_LAYER_DECORATIONS
+						VillageBoard.PICK_LAYER_ZONES | VillageBoard.PICK_LAYER_PLOTS | VillageBoard.PICK_LAYER_DECORATIONS | VillageBoard.PICK_LAYER_VILLAGERS
 					)
-					if pick.get("kind") == "decoration":
+					if pick.get("kind") == "villager":
+						# design/gdd/villagers.md rule 8 -- purely informational,
+						# same "no selection highlight" treatment decorations get
+						# just below. board_id carries the character key directly
+						# (see villager_roamer.gd's _build_pick_area()), not a
+						# lookup ID -- nothing to look up, the key IS the info.
+						_open_villager_info_card(pick.get("id", "ranger"))
+					elif pick.get("kind") == "decoration":
 						# No selection highlight for decorations -- matches the
 						# Kotlin original (GdxSelection's info card IS the
 						# feedback, no separate highlight box). Handled before
@@ -878,6 +886,19 @@ func _open_decoration_info_card(decoration_id: int) -> void:
 		return  # Stale pick racing a tick-driven rebuild -- nothing to show.
 	var card: DecorationInfoCard = DecorationInfoCardScene.instantiate()
 	card.configure(decoration.type, decoration_id, economy, _village_board, hud.get_bottom_sheet())
+	hud.get_bottom_sheet().open(card)
+
+
+## design/gdd/villagers.md rule 8 -- purely informational, no economy
+## lookup needed (unlike _open_decoration_info_card() above): a roaming
+## villager has no persistent id, so `character_key` alone (already read
+## straight off the PickArea's meta) is genuinely all this card needs.
+func _open_villager_info_card(character_key: String) -> void:
+	var hud := get_tree().get_first_node_in_group("hud") as Hud
+	if hud == null:
+		return
+	var card: VillagerInfoCard = VillagerInfoCardScene.instantiate()
+	card.configure(character_key)
 	hud.get_bottom_sheet().open(card)
 
 

@@ -55,6 +55,12 @@ const GATE_COL: int = 4
 const PICK_LAYER_ZONES: int = 1
 const PICK_LAYER_PLOTS: int = 2
 const PICK_LAYER_DECORATIONS: int = 4
+## design/gdd/villagers.md rule 8 (2026-08-22) -- the tap-interaction
+## PickArea villager_roamer.gd adds to each roaming (unassigned) villager.
+## Not built here, unlike the other 3 -- villagers move continuously, so
+## their PickArea is a child of VillagerRoamer itself (moves automatically
+## with it) rather than something VillageBoard builds/repositions.
+const PICK_LAYER_VILLAGERS: int = 8
 
 # Sun-baked field green -- warmer/more olive than the original placeholder
 # (root cause #4: was a cooler, more temperate-lawn grass green). This is

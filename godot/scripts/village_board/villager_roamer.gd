@@ -40,6 +40,11 @@ var _tile_size: float = 1.0
 var _grid_cols: int = 1
 var _grid_rows: int = 1
 var _villager: Villager
+## Public (not underscore-prefixed) -- board_interactor.gd's tap dispatch
+## reads this off the picked PickArea's owning roamer (see setup() below)
+## to look up Villager.CHARACTER_DISPLAY_NAMES for villager_info_card.gd.
+## design/gdd/villagers.md rule 8.
+var character_key: String = "ranger"
 var _current_tile: Vector2i
 var _pending_path: Array[Vector2i] = []
 var _rng := RandomNumberGenerator.new()
@@ -92,11 +97,44 @@ func setup(
 	_current_tile = start_tile
 	position = _tile_to_world(start_tile)
 
+	self.character_key = character_key  # parameter shadows the member var of the same name
 	_villager = VILLAGER_SCENE.instantiate()
 	add_child(_villager)
 	_villager.setup(character_key)
+	_build_pick_area()
 
 	_pick_new_target()
+
+
+## design/gdd/villagers.md rule 8 -- a sibling of _villager, not a child of
+## it, so it moves automatically with this node's own position (the thing
+## _process() actually updates each frame) rather than needing manual
+## repositioning the way village_board.gd's static zone/decoration
+## PickAreas do. Sized as a rough human-proportioned box, not a tight mesh
+## fit -- generous enough to tap reliably on a real touchscreen, same
+## practical bar every other PickArea in this project already meets.
+const _PICK_BOX_SIZE := Vector3(0.5, 1.8, 0.5)
+
+func _build_pick_area() -> void:
+	var pick_area := Area3D.new()
+	pick_area.name = "PickArea"
+	pick_area.collision_layer = VillageBoard.PICK_LAYER_VILLAGERS
+	pick_area.collision_mask = 0
+	pick_area.monitoring = false
+	pick_area.monitorable = false
+	pick_area.set_meta("board_kind", "villager")
+	# No persistent villager ID exists (design/gdd/villagers.md rule 2 --
+	# roaming villagers are never part of GameState), so board_id just
+	# carries the character key itself -- genuinely all the info this
+	# purely-cosmetic card needs, not a real lookup key into anything.
+	pick_area.set_meta("board_id", character_key)
+	var shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = _PICK_BOX_SIZE
+	shape.shape = box_shape
+	shape.position.y = _PICK_BOX_SIZE.y / 2.0
+	pick_area.add_child(shape)
+	add_child(pick_area)
 
 
 func _process(delta: float) -> void:

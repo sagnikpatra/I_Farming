@@ -111,6 +111,7 @@ worker_row.header,👤 Worker,👤 मजदूर
 worker_row.status,%s is working this zone.,%s इस क्षेत्र में काम कर रहा है।
 worker_row.unassign_button,Unassign,नियुक्ति हटाएं
 worker_row.assign_button,Assign,नियुक्त करें
+villager_info.greeting,Namaste! 🙏,नमस्ते! 🙏
 event.premium_pass_no_festival,The Premium Pass can only be bought during an active festival.,प्रीमियम पास केवल सक्रिय उत्सव के दौरान ही खरीदा जा सकता है।
 event.premium_pass_need_coins,Need ₹%d for the Premium Pass.,प्रीमियम पास के लिए ₹%d चाहिए।
 event.premium_pass_activated,🎫 Premium Pass activated for this festival!,🎫 इस उत्सव के लिए प्रीमियम पास सक्रिय हो गया!

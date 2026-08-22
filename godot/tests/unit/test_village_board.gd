@@ -156,3 +156,48 @@ func test_a_resolved_visit_does_not_spawn_a_visitor_on_the_next_cycle_start() ->
 	board._sync_chanda_visitor_if_needed(next_cycle_start)
 
 	assert_not_null(board._chanda_visitor_node, "the next cycle's fresh visit must spawn its own board NPC")
+
+
+## design/gdd/real-time-day-night.md's "smooth crossfade between phases"
+## future stretch, decided and built 2026-08-22. Deliberately does NOT
+## try to assert on the tween's actual frame-by-frame animation progress
+## (a "Feel"/timing quality this project's own coding-standards.md
+## explicitly excludes from automation) -- only the LOGIC decision of
+## which code path ran (instant snap vs. a crossfade that hasn't
+## processed a frame yet), which is a legitimate, deterministic thing to
+## test.
+func test_the_first_application_snaps_instantly_to_the_correct_preset() -> void:
+	RealSavePaths.wipe_all()
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+	# _ready() already called _apply_time_of_day_if_needed() once with the
+	# real current time; recompute the same call board.gd itself makes so
+	# this test isn't guessing at the real system's timezone/season.
+	var tz: Dictionary = Time.get_time_zone_from_system()
+	var hour := TimeOfDay.local_hour(0, int(tz.get("bias", 0)))
+	var phase := TimeOfDay.phase_for_hour(hour)
+	var month := TimeOfDay.local_month(0, int(tz.get("bias", 0)))
+	var season := TimeOfDay.season_for_month(month)
+	var expected_preset := TimeOfDay.preset_for_phase_and_season(phase, season)
+	board._last_time_of_day_phase = -1  # precondition: "never applied," matching _ready()'s own starting state
+
+	board._apply_time_of_day_if_needed(0)
+
+	assert_eq(board._world_environment.environment.background_color, expected_preset["sky_color"], "the very first application must land on the correct color immediately, not mid-crossfade from the scene's authored default")
+
+
+func test_a_real_phase_transition_does_not_snap_instantly() -> void:
+	RealSavePaths.wipe_all()
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+	board._apply_time_of_day_if_needed(0)  # establishes whatever phase now=0 really maps to as "previous"
+	var color_before_transition := board._world_environment.environment.background_color
+
+	# Force the next call to be treated as a real transition (not the
+	# first-ever application) by making _last_time_of_day_phase disagree
+	# with what phase_for_hour(now=0) will recompute to the exact same
+	# value again -- isolates "instant snap vs. crossfade," not a guess at
+	# the real system's timezone.
+	board._last_time_of_day_phase = (board._last_time_of_day_phase + 1) % 4
+
+	board._apply_time_of_day_if_needed(0)
+
+	assert_eq(board._world_environment.environment.background_color, color_before_transition, "a real transition must start a crossfade, not snap the color instantly -- the tween hasn't processed a frame yet within this same synchronous call")

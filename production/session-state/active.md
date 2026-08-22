@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
 Feature: Post-M8 continued development. Pushed all accumulated work to GitHub origin per explicit user instruction, then resumed active feature development.
-Task: Villager tap interaction shipped (592/592). Doc-accuracy sweep closed stale Acceptance Criteria across 6 GDDs. Chanda Visit's on-board visitor NPC ("future stretch" from festival-visiting-npcs.md) designed and shipped: stationary ChandaVisitor beside the Farmhouse, tap opens the real Events sheet, 607/607 GUT passing (twice, non-flaky), verified live on a real device. About to commit. Continuing development per standing "don't stop" instruction.
+Task: Villager tap interaction, a 6-GDD doc-accuracy sweep, Chanda Visit's on-board visitor NPC, and the real-time day/night smooth crossfade all shipped this stretch -- three "future stretch" items from earlier GDDs closed out. 609/609 GUT passing (twice, non-flaky). About to commit the crossfade. Continuing development per standing "don't stop" instruction.
 <!-- /STATUS -->
 
 # Active Session State
@@ -5326,3 +5326,43 @@ cards all present -- proof it's the same shared sheet, not a duplicate
 **Next step**: commit both pieces, then continue identifying further
 development targets. No forced stopping point -- per the standing "don't
 stop" instruction, proceeding directly rather than pausing to summarize.
+
+## 2026-08-22 (real-time day/night's smooth crossfade shipped)
+
+Third "future stretch" item closed this stretch. real-time-day-night.md's
+Tuning Knobs had flagged "a smooth crossfade between phases instead of an
+instant swap" as future work when the feature first shipped. Built it:
+`_apply_time_of_day_if_needed()` now animates real phase transitions
+(Dawn->Day, Day->Dusk, etc.) over `TIME_OF_DAY_CROSSFADE_SECONDS` (3.0s)
+via a parallel `Tween` on all 5 lighting properties, mirroring
+`AudioManager.AMBIENCE_CROSSFADE_SECONDS`'s already-established pattern
+for cosmetic transitions in this project. The very first application
+(board `_ready()`, nothing applied yet) still snaps instantly -- crossfading
+from the scene's authored default would recreate the exact "flash of Day
+before the first tick" bug this function was originally written to
+prevent, so that one case is deliberately excluded from the new tween
+path. Villager lamp energy stays un-crossfaded on purpose (a lamp
+switching on reads correctly, not as a defect).
+
+2 new tests, deliberately scoped to the LOGIC decision (does a real
+transition start a tween instead of snapping instantly) rather than the
+tween's actual frame-by-frame animation progress -- the latter is a
+"Feel"/timing quality this project's own coding-standards.md explicitly
+excludes from automation. Full suite run twice: 609/609, non-flaky.
+Verified on-device: fresh debug export installs and boots cleanly with
+the Tween-based crossfade active, no crash, no Tween-related logcat
+errors. Did not attempt to capture the crossfade mid-animation via a
+timed screenshot -- low value given the already-strong headless proof
+plus a clean boot, and inherently hard to time precisely against a
+3-second window through `adb screenshot`'s own latency.
+
+**Session total, this stretch: pushed to GitHub (per explicit
+instruction) + 3 commits** (villager tap interaction, a 6-GDD doc-accuracy
+sweep, Chanda Visit's on-board visitor NPC) **+ this crossfade commit
+next.** All 3 "future stretch"/deferred items flagged across this
+session's own GDDs (villager tap interaction, the Chanda board NPC, the
+day/night crossfade) are now closed. 609/609 GUT tests passing.
+
+**Next step**: commit this crossfade, then continue looking for further
+genuine development targets -- no forced stopping point, continuing per
+the standing "don't stop" instruction.

@@ -8,6 +8,11 @@ green, and on-device verification (see
 `time-of-day-natural.png`, `lamp-lighting-day-no-regression.png`)
 **Update (2026-08-22)**: this document's Acceptance Criteria checkboxes
 had gone stale — left unchecked even after the feature shipped. Corrected.
+**Update (2026-08-22, cont'd)**: the last open "future stretch" (smooth
+crossfade between phases) is now also decided and built — see Tuning
+Knobs and the new "Smooth Crossfade" Acceptance Criteria section.
+609/609 GUT tests passing, run twice non-flaky, boot-verified on a real
+device.
 ---
 
 ## 1. Overview
@@ -239,8 +244,19 @@ other phase. Position offset from the structure's footprint center:
   offset/range formulas -- in `village_board.gd`.
 - Every stretch goal originally deferred from this pass (Option B/the
   seasonal palette, villager lamp-lighting) has now been built.
-- **Future stretch**: a smooth crossfade between phases instead of an
-  instant swap on the next tick.
+- **Smooth crossfade — decided and built (2026-08-22)**: real phase
+  transitions (Dawn→Day, Day→Dusk, etc.) now animate over
+  `TIME_OF_DAY_CROSSFADE_SECONDS` (3.0s) via a parallel `Tween` on all 5
+  properties (sky/ambient color+energy, sun color+energy), the same
+  duration/pattern `AudioManager.AMBIENCE_CROSSFADE_SECONDS` already
+  established as this project's precedent for cosmetic transitions. The
+  very first application (board `_ready()`, nothing applied yet) still
+  snaps instantly — crossfading from the scene's authored default would
+  recreate the exact "flash of Day before the first tick" bug this
+  function was originally written to prevent. Villager lamp energy is
+  NOT crossfaded (an `OmniLight3D` popping on/off at Night reads as a
+  lamp switching on, not a defect — see the Villager Lamp-Lighting
+  stretch goal's own framing).
 
 ## 8. Acceptance Criteria
 
@@ -344,3 +360,25 @@ other phase. Position offset from the structure's footprint center:
       light pooling on the ground near them, clearly distinct from the
       unlit board, no crash. A second screenshot after reverting
       confirms zero visual regression to the normal daytime look.
+
+### Smooth Crossfade (2026-08-22)
+
+- [x] The very first application (board `_ready()`) lands on the correct
+      preset immediately, not mid-crossfade from the scene's authored
+      default — `test_the_first_application_snaps_instantly_to_the_correct_preset`.
+- [x] A real phase transition does not snap instantly — a `Tween` is
+      started instead, verified by confirming the color hasn't reached
+      its target within the same synchronous call (before the tween has
+      processed a frame) — `test_a_real_phase_transition_does_not_snap_instantly`.
+      Deliberately does not assert on the tween's actual frame-by-frame
+      progress or exact visual smoothness — a "Feel"/timing quality this
+      project's own coding-standards.md excludes from automation; only
+      the logic decision (which code path ran) is tested.
+- [x] Full GUT suite green — 609/609 (up from 607), run twice, non-flaky.
+- [x] Verified on-device: fresh debug export installs and boots cleanly
+      with the Tween-based crossfade active, no crash, no `Tween`-related
+      errors in logcat. Capturing the crossfade mid-animation via a timed
+      screenshot was not attempted — low value given the already-strong
+      headless proof of correct branching plus a clean real-device boot,
+      and inherently hard to time precisely through `adb screenshot`'s
+      own latency against a 3-second window.

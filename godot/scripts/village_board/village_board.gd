@@ -82,6 +82,14 @@ const LOCKED_ZONE_PLACEHOLDER_COLOR := Color(0.97, 0.93, 0.84, 0.30)
 # each structure's NightLamp OmniLight3D energy at Night; 0.0 (off) at every
 # other phase. See _apply_night_lamps_to_current_state().
 const NIGHT_LAMP_ENERGY: float = 1.5
+
+## design/gdd/real-time-day-night.md's "smooth crossfade between phases"
+## future stretch, decided and built 2026-08-22 -- same duration/pattern as
+## AudioManager.AMBIENCE_CROSSFADE_SECONDS (a real, already-accepted
+## precedent for "cosmetic transition, no dedicated test needed" in this
+## project, per coding-standards.md's Testing Standards excluding "Feel"
+## qualities like transition timing from automation).
+const TIME_OF_DAY_CROSSFADE_SECONDS: float = 3.0
 # design/gdd/land-and-structures.md's sub-upgrade visual cue stretch goal --
 # a warm emissive boost applied to a structure's own building material,
 # scaling with ZoneFixture.active_upgrade_count. See _apply_upgrade_tint().
@@ -1844,11 +1852,33 @@ func _apply_time_of_day_if_needed(now: int) -> void:
 	var season := TimeOfDay.season_for_month(month)
 	var preset := TimeOfDay.preset_for_phase_and_season(phase, season)
 	var env := _world_environment.environment
-	env.background_color = preset["sky_color"]
-	env.ambient_light_color = preset["ambient_color"]
-	env.ambient_light_energy = preset["ambient_energy"]
-	_directional_light.light_color = preset["sun_color"]
-	_directional_light.light_energy = preset["sun_energy"]
+	if previous_phase == -1:
+		# The very first application (this board's _ready(), never applied
+		# before) must land on the correct phase immediately -- crossfading
+		# from whatever Day-ish default the .tscn's Environment/
+		# DirectionalLight3D authored would recreate exactly the "flash of
+		# Day before the first tick" bug this function's own _ready() call
+		# site was written to prevent. Only real phase *transitions* (Dawn
+		# -> Day, etc.) get the smooth crossfade below.
+		env.background_color = preset["sky_color"]
+		env.ambient_light_color = preset["ambient_color"]
+		env.ambient_light_energy = preset["ambient_energy"]
+		_directional_light.light_color = preset["sun_color"]
+		_directional_light.light_energy = preset["sun_energy"]
+	else:
+		# design/gdd/real-time-day-night.md's "smooth crossfade" stretch --
+		# set_parallel(true) so all 5 properties animate together over
+		# TIME_OF_DAY_CROSSFADE_SECONDS, not sequentially one after another
+		# (Tween's default chaining behavior). No explicit kill of a prior
+		# in-flight tween -- same simplicity AudioManager's own
+		# _crossfade_ambience_layer() already accepts, safe here too since
+		# phase changes are infrequent (at most a few per day), never rapid.
+		var tween := create_tween().set_parallel(true)
+		tween.tween_property(env, "background_color", preset["sky_color"], TIME_OF_DAY_CROSSFADE_SECONDS)
+		tween.tween_property(env, "ambient_light_color", preset["ambient_color"], TIME_OF_DAY_CROSSFADE_SECONDS)
+		tween.tween_property(env, "ambient_light_energy", preset["ambient_energy"], TIME_OF_DAY_CROSSFADE_SECONDS)
+		tween.tween_property(_directional_light, "light_color", preset["sun_color"], TIME_OF_DAY_CROSSFADE_SECONDS)
+		tween.tween_property(_directional_light, "light_energy", preset["sun_energy"], TIME_OF_DAY_CROSSFADE_SECONDS)
 
 	# design/gdd/richer-ambient-villagers.md's Night population thinning --
 	# only resync on the two transitions that actually change the thinning

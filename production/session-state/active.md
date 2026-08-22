@@ -6157,3 +6157,41 @@ to scan for other genuine gaps per the standing instruction --
 implementations) are the two remaining large config surfaces not yet
 given this treatment, though their sheer volume (dozens of files each)
 makes a full sweep a bigger undertaking than what's been done so far.
+
+## 2026-08-23 (cont'd) -- checked project-stage-detect's skill, then stopped the agents/skills sweep deliberately
+
+Checked whether the same `src/`-blind-spot bug existed in
+`project-stage-detect/SKILL.md` (the skill `detect-gaps.sh` itself
+recommends running) -- it does, structurally: its stage-classification
+table also keys "Pre-Production"/"Production" off `src/` source-file
+counts. But its own workflow (step 2) already checks
+`production/stage.txt` FIRST, before falling back to the src/-based
+heuristic -- meaning the `stage.txt` file created earlier in this
+session (as the detect-gaps.sh/statusline.sh fix) already resolves this
+skill's real-world behavior too, for free. Left the skill's own prose
+unedited rather than making a low-value edit: `directory-structure.md`
+(already corrected today) sits in context for any session that runs
+this skill, and an intelligent agent reading stale `src/`-only
+instructions alongside accurate real-structure context is a
+self-correcting failure mode, unlike a rigid shell script that
+mechanically executes exactly what's written with no judgment.
+
+Found 15 more `.claude/agents/`/`.claude/skills/` files referencing
+`src/` via a broader grep, out of 122 total agent+skill files. Made a
+deliberate scope decision not to sweep all of them: these are prose
+instruction files interpreted by an intelligent agent (softer, self-
+correcting failure mode), unlike the hooks/rules/docs already fixed
+today (rigid shell scripts and auto-attached rule files with zero
+judgment, where a wrong path is a hard, silent failure). The
+highest-risk file in this set -- the one directly tied to a bug already
+found and fixed -- has been checked and its practical impact is already
+resolved via `stage.txt`. Continuing to exhaustively edit the remaining
+15+ prose files for a softer, already-largely-mitigated risk class would
+be materially lower value than the concrete, hard-failure bugs already
+closed this session. Noting this as a deliberate, reasoned stopping
+point for this specific thread, not an oversight.
+
+**Next step**: the `.claude/` config-accuracy thread (docs/rules/hooks,
+now this partial agents/skills check) is done for this session. Looking
+for the next genuine target -- game code, game content, or further
+device-based verification once the phone is free again.

@@ -263,8 +263,13 @@ M1 Board Art    M2 Economy Port  ◄── (4 economy GDDs + TR registry, gated 
 
 ## EPIC-M6 — Villager Asset Pipeline & Ambient Roaming
 
-**Status**: In progress. Asset sourcing (the epic's named blocking gap since
-M0) is done and import-verified. Scene/behavior work has not started.
+**Status**: **Complete** (this line corrected 2026-08-22 — it used to say
+"in progress... scene/behavior work has not started," this section's own
+*starting* state, never updated after implementation finished). All 6
+characters live in-game with visual variety, real-hardware performance
+measured with no detectable cost at the population cap (see this
+section's own ending below). The narrative in between is kept as the
+real history of the asset-sourcing/implementation process, not rewritten.
 
 **Asset decision (2026-08-21)**: `KayKit — Character Pack: Adventurers`
 (Free tier) by Kay Lousberg, CC0 1.0, glTF/GLB — see
@@ -578,9 +583,13 @@ the game to, not a measurement gap.
 
 ## EPIC-M7 — Worker Assignment & Wage Economy
 
-**Status**: Design drafted (`design/gdd/worker-economy.md`), awaiting
-user review. No code written — the user explicitly chose "design doc
-first, build after review" when this epic kicked off.
+**Status**: **Complete** (this line corrected 2026-08-22 — it used to say
+"design drafted, awaiting user review, no code written," this section's
+own *starting* state, never updated after implementation finished). See
+this section's own ending below: "EPIC-M7 is now complete... every
+layer... is built, tested (327/327), and proven working in the actual
+running game." The narrative in between is kept as the real history of
+how the design process kicked off, not rewritten.
 
 **Why this needed a real conversation first, unlike M6**: M6 had a real
 source-material anchor (`v2.md`'s "living world" pillar) to design

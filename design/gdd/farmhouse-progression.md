@@ -201,7 +201,9 @@ and should be validated together, not independently).
 **Definition of Done**:
 - [x] Full tier table documented with formulas
 - [x] All three dependent systems' consumption of these multipliers cross-referenced
-- [ ] Balance concern in §5 resolved via `/balance-check`
+- [x] Balance concern in §5 resolved via `/balance-check` — run 2026-08-22,
+      confirmed not an outlier (see `design/balance/balance-check-
+      farmhouse-progression-2026-08-22.md`)
 
 ---
 
@@ -212,8 +214,11 @@ None blocking — this system is small, closed, and fully consistent with its
 source design doc.
 
 ### Flagged Follow-Up Work
-- [ ] Run `/balance-check` on the cost curve alongside Sandalwood's payout
-      and the structure-tier costs (see `land-and-structures.md`)
+- [x] Run `/balance-check` on the cost curve — done 2026-08-22 (see above).
+      Cross-referencing against Sandalwood's payout and structure-tier
+      costs together, as originally requested here, is still open —
+      those live in `land-and-structures.md`, checked separately in this
+      same sweep.
 - [ ] Consider whether a next-tier bonus preview belongs in a future UX doc
 
 ---
@@ -226,7 +231,8 @@ source design doc.
 
 ---
 
-**Next Steps**: Draft `mandi-trading.md`, `liveops-events.md` next.
+**Next Steps** (update 2026-08-22): ~~Draft `mandi-trading.md`,
+`liveops-events.md` next~~ — done, both exist.
 
 **Related Skills**: `/balance-check`, `/architecture-decision`
 

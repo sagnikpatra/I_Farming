@@ -340,13 +340,24 @@ currently active** -- not distinct attachment meshes or per-flag colors.
    - Option A: Leave as-is — pure layout preference, no validation here
    - Option B: Add a basic overlap check at this layer too, so it's
      enforced regardless of which rendering layer (LibGDX or Godot) is active
+   - **Resolved (confirmed 2026-08-22, via the EPIC-M3 Godot rebuild)**:
+     Option B — `village_board.gd`'s `try_commit_zone_move()` calls
+     `_zone_fits()` on every drag-commit, rejecting an overlapping or
+     out-of-bounds move and snapping the visual back. A separate
+     startup-time check (`_find_overlapping_tiles()`) also asserts no
+     overlap exists at all, logging "overlap check passed" (the message
+     visible throughout this project's own GUT test output). This was
+     an engineering choice made during the rebuild, not a formal design
+     sign-off on Option B specifically, but the question this doc asked
+     genuinely has a real, current answer now, not just an open choice.
 
 ### Flagged Follow-Up Work
-- [ ] Run `/balance-check` across land cost + all 4 structure economies
+- [x] Run `/balance-check` across land cost + all 4 structure economies
+      — done 2026-08-22, see `design/balance/balance-check-
+      land-and-structures-2026-08-22.md`
 - [ ] Confirm `MAX_PLOTS = 16` is a deliberate final cap
-- [ ] Resolve the collision-validation open question, especially relevant
-      now given the Godot migration's EPIC-M3 (board interaction) is being
-      rebuilt from scratch
+- [x] Resolve the collision-validation open question — resolved, see
+      above.
 
 ---
 
@@ -358,7 +369,8 @@ currently active** -- not distinct attachment meshes or per-flag colors.
 
 ---
 
-**Next Steps**: Draft `farmhouse-progression.md`, `mandi-trading.md`, `liveops-events.md` next.
+**Next Steps** (update 2026-08-22): ~~Draft `farmhouse-progression.md`,
+`mandi-trading.md`, `liveops-events.md` next~~ — done, all exist.
 
 **Related Skills**: `/balance-check`, `/architecture-decision`
 

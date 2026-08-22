@@ -182,8 +182,14 @@ deliberately chosen to keep Mandi prices in a bounded, non-exploitable range.
   a full sell history, to confirm the Mandi is actually more profitable on
   average (its whole value proposition) rather than a coin-flip.
 
-**Recommended Balance Pass**: `/balance-check` comparing Mandi vs. direct
-sale expected value across typical play patterns.
+**Recommended Balance Pass**: ✅ Run 2026-08-22 —
+`design/balance/balance-check-mandi-trading-2026-08-22.md`. Confirmed
+healthy: Mandi averages ~14.5% above direct sale for protected-
+cultivation crops (worst case nearly break-even) and ~2.5% above for
+Open Field crops, though Open Field's worst-case demand roll (-15%)
+*can* underperform flat direct sale — a real, intentional-reading
+"gamble" for that tier, matching the design's own "alternative to Sell
+All, not a replacement" framing. No values changed.
 
 ---
 
@@ -214,7 +220,8 @@ sale expected value across typical play patterns.
 
 ### Flagged Follow-Up Work
 - [ ] Resolve the Grade-A bonus question above
-- [ ] Run `/balance-check` comparing Mandi vs. direct-sale expected value
+- [x] Run `/balance-check` comparing Mandi vs. direct-sale expected value
+      — done 2026-08-22, confirmed healthy, see §5.
 
 ---
 

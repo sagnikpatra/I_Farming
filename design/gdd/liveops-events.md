@@ -210,9 +210,17 @@ premium").
   cadences were chosen against actual expected session-length data, not
   arbitrarily.
 
-**Recommended Balance Pass**: `/balance-check` on event cadence vs. the
-project's stated session-length targets (`v2.md`'s "1-5 minute short loop /
-15+ minute long loop" model).
+**Recommended Balance Pass**: ✅ Run 2026-08-22 —
+`design/balance/balance-check-liveops-events-2026-08-22.md`. The cadence-
+vs-session-length question above needs real player session data this
+single-player, no-backend/no-analytics game doesn't collect, so it stays
+genuinely open — not something a formula-level balance pass can resolve
+on its own. The pass instead found a different, concrete issue: the
+**Festival Premium Pass has negative expected value unless the player
+reaches the top reward tier in the same 8-hour occurrence they bought
+it for** (it resets every occurrence, confirmed in
+`_with_fresh_event_occurrence()`) — see the report for the full ₹
+breakdown. Monsoon's own numbers confirmed clean, no finding there.
 
 ---
 
@@ -249,7 +257,10 @@ done" for the shipped feature):
 
 ### Flagged Follow-Up Work
 - [ ] Resolve both questions above
-- [ ] Run `/balance-check` on event cadence vs. session-length targets
+- [x] Run `/balance-check` on event cadence vs. session-length targets —
+      done 2026-08-22; the cadence question itself stays open (needs
+      real session data this game doesn't collect), but the pass found
+      a concrete, different issue instead — see §5.
 - [ ] If Option B is chosen for the Premium Pass, this touches
       `crop-economy.md`'s grow-speed formula and would need a coordinated
       update there too

@@ -250,9 +250,15 @@ tuned, not placeholder.
   otherwise imply "wait-timer skip" purchases exist.
 
 **Recommended Balance Pass**:
-- Run `/balance-check` on the full crop table once land-and-structures.md and
-  farmhouse-progression.md exist, since grow-time and sell-price multipliers
-  compound across all three docs.
+- ✅ Run 2026-08-22 — `design/balance/balance-check-crop-economy-2026-08-22.md`.
+  Cross-tier progression confirmed healthy (every Tier 2+ crop out-earns
+  every Open Field crop per-second, matching §1's stated design intent).
+  One new finding, not previously documented here: **within** Open
+  Field, Wheat's ₹/sec strictly dominates both Paddy's and Tomato's
+  (Tomato is the single worst ₹/sec crop in the entire 9-crop
+  catalogue) — flagged as a real pattern needing an explicit call (leave
+  as an intentional ₹/tap-vs-₹/sec tradeoff, or retune), not resolved
+  here. See the report for the full numbers and reasoning.
 
 ---
 
@@ -292,13 +298,18 @@ tuned, not placeholder.
    - Option B: Flag as a real gap for a future economy pass
 
 ### Flagged Follow-Up Work
-- [ ] Draft `land-and-structures.md`, `farmhouse-progression.md`,
-      `mandi-trading.md`, `liveops-events.md` (this doc cross-references all
-      four but doesn't own their content)
-- [ ] Run `/balance-check` once all five economy docs exist
+- [x] Draft `land-and-structures.md`, `farmhouse-progression.md`,
+      `mandi-trading.md`, `liveops-events.md` — all 4 exist
+- [x] Run `/balance-check` on this doc's own crop table — done 2026-08-22,
+      see `design/balance/balance-check-crop-economy-2026-08-22.md`. The
+      other 4 economy docs' own `/balance-check` recommendations are
+      still individually open — not done as part of this pass.
 - [ ] Decide the two open questions above
 - [ ] Consider an ADR for "lazy/read-time growth resolution over a live
       ticking timer" — a real architectural decision with no ADR yet
+      (confirmed: no existing ADR covers this specifically — ADR-0003
+      only mentions it in passing as a constraint, not as its own
+      documented decision)
 
 ---
 
@@ -310,11 +321,13 @@ tuned, not placeholder.
 
 ---
 
-**Next Steps**:
-1. Draft `land-and-structures.md` next (land expansion + all 4 structure
-   tiers) — most other docs reference it
-2. Then `farmhouse-progression.md`, `mandi-trading.md`, `liveops-events.md`
-3. Run `/balance-check` once the full economy is documented
+**Next Steps** (update 2026-08-22 — steps 1-2 done, this list had gone
+stale):
+1. ~~Draft `land-and-structures.md`~~ — done, exists
+2. ~~Then `farmhouse-progression.md`, `mandi-trading.md`,
+   `liveops-events.md`~~ — done, all exist
+3. `/balance-check` run on this doc (2026-08-22); still open for the
+   other 4 economy docs individually
 
 **Related Skills**:
 - `/balance-check` — validate formulas and progression

@@ -57,13 +57,14 @@
 ## flag check, save, clear flag) -- the same established save-triggering
 ## convention, not a new one invented here.
 ##
-## KNOWN GAP, explicitly not addressed by this file: nothing in the live
-## scene graph calls GameEconomy.resolve_growth_completions() on a timer, so
-## Growing plots never lazily resolve to READY_TO_HARVEST during a live play
-## session -- only tests call it today. HUD's refresh Timer was deliberately
-## NOT used to paper over this (that would conflate "HUD refresh" with
-## "economy simulation tick" ownership); flagged for a future task to
-## resolve deliberately.
+## GAP CLOSED (EPIC-M4 slice 2, before this file's own 2026-08-22 toast-drain
+## pass -- this note is corrected here since it had gone stale): a
+## GrowthTickTimer in village_board.gd (see that file's class doc and its
+## own _on_growth_tick_timeout()) now drives
+## GameEconomy.resolve_growth_completions() during real play, deliberately
+## NOT via HUD's own refresh Timer (that would conflate "HUD refresh" with
+## "economy simulation tick" ownership -- the two stayed separate on
+## purpose).
 ##
 ## GAP CLOSED, 2026-08-22 (docs/architecture/localization-pipeline.md's
 ## Related section): GameEconomy.pending_events was produced throughout

@@ -1,7 +1,16 @@
 # UI & 3D Board Visual Direction — 2026-08
 
-Status: **Approved direction** (2026-08-21) — decisions below made by the
-user via `AskUserQuestion`; implementation not yet started.
+Status: **Approved direction** (2026-08-21). **Track A (UI Chrome) is now
+implemented** — see `godot/scripts/ui/ui_theme.gd` (Fantasy UI Borders +
+UI Pack: RPG Expansion textures, Fredoka font, designed icon set, gutters,
+disabled-button states all live) — this doc's original "implementation not
+yet started" applied only briefly; do not treat Track A as still-open.
+**Update (2026-08-23)**: user directive elevates lighting from Track B's
+original "optional, low-priority" framing to a **main focus, alongside
+design and UI, explicitly benchmarked against Clash of Clans (custom, not
+literal-copy) aesthetics** — see §3's Lighting bullet for the resulting
+on-device findings. Track B's model-variety/crop-geometry/decoration-density
+items remain open, not yet started.
 Owner: art-director (draft), user (decisions)
 Related: `docs/architecture/adr-0001-godot-engine-migration.md`,
 `docs/architecture/adr-0002-godot-language-and-save-format.md`,
@@ -324,11 +333,29 @@ into `godot/assets_3d/`, not a from-the-internet sourcing pass.
   variants (only `flower_yellowA` exists on disk today), `bush_*`/`rock_*`
   for ambient clutter, and using the already-wired
   `DECORATION_DIRT_PATH_MODEL` as a pre-laid path between zones by default.
-- **Lighting.** No required change — optional, low-priority
-  `technical-artist` verification item: a slightly warmer directional light
-  color temperature might better match both inspiration images' golden-hour
-  warmth, but needs an on-device check under `gl_compatibility`, not a spec
-  value in this document.
+- **Lighting — elevated to a main focus (2026-08-23 user directive: "design,
+  UI and lightings, just like COC, custom").** On-device empirical pass
+  completed against `village_board.tscn`'s `WorldEnvironment`:
+  - **`Environment.glow_enabled` is unsafe on this project's pinned
+    `gl_compatibility` renderer** — breaks the entire scene into a garish,
+    blown-out blue even at conservative settings. Confirmed root cause via
+    isolated on-device testing; full writeup in
+    `docs/engine-reference/godot/breaking-changes.md`'s "Project-Specific
+    Findings" section. Do not re-attempt glow without a fresh isolation
+    test.
+  - **`adjustment_enabled` (brightness 1.0, contrast 1.03, saturation 1.06)
+    confirmed safe and shipped** — a modest global color-grade multiply,
+    tested clean on-device at Night phase (the darker, more failure-prone
+    end of the day/night range) and via the full GUT suite (632/632, twice).
+    Landed in `village_board.tscn`.
+  - **Still open, not yet attempted**: the original warmer-directional-light
+    color-temperature idea (for golden-hour COC-style warmth) and any
+    per-phase (`time_of_day.gd` preset) tuning beyond the current
+    Dawn/Day/Dusk/Night values — glow being unsafe removes the most
+    COC-typical "premium bloom" tool from consideration, so remaining
+    lighting polish likely comes from `DirectionalLight3D` color/energy
+    tuning and `Environment.ambient_light_*` values instead, evaluated the
+    same on-device-isolation way.
 
 ---
 

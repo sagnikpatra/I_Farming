@@ -6228,3 +6228,67 @@ Evidence saved:
 
 **Next step**: continuing to watch for further genuine work per the
 standing instruction.
+
+## 2026-08-23 — Lighting pass (COC-inspired, per user's "design, UI, lightings" directive)
+
+User's new standing priority: **"main focus should be design , UI and
+lightings . Just like COC . custom"** — pivots primary focus to visual/
+creative polish, benchmarked against Clash of Clans aesthetics (explicitly
+"custom" — original take, not a literal copy of Supercell assets/branding).
+
+**Track A (UI Chrome) status check**: confirmed already substantially
+implemented (`godot/scripts/ui/ui_theme.gd`, 382 lines) — Fantasy UI Borders
++ UI Pack: RPG Expansion textures, Fredoka variable font, 7 designed icon
+textures, gutters, disabled-button states all real and live. The visual
+direction doc's own header claiming "implementation not yet started" was
+stale; corrected in `design/art/ui-visual-direction-2026-08.md`.
+
+**Lighting pass, on `village_board.tscn`'s `WorldEnvironment`** — empirical,
+isolate-one-variable-at-a-time, on-device (real device `5bc7f547`) testing,
+per this project's standing "verify before trusting this HIGH-risk engine
+version" discipline:
+
+1. v1: `tonemap_mode=FILMIC` + `glow_enabled=true` (intensity 0.7) +
+   `adjustment_enabled=true` (contrast 1.08, saturation 1.18) together →
+   **broken** — entire scene rendered as garish, blown-out, oversaturated
+   bright blue.
+2. v2: dropped tonemap, reduced glow (intensity 0.5) and adjustment
+   (contrast 1.03, saturation 1.06) → **still broken**, same symptom. Rules
+   out tonemap and rules out "values too strong" as the sole cause.
+3. v3: `glow_enabled=false`, nothing else → **fixed**. Conclusively isolates
+   `glow_enabled` as the root cause on this project's pinned
+   `gl_compatibility` renderer.
+4. v4 (final/kept): `glow_enabled=false`, `adjustment_enabled=true`
+   (brightness 1.0, contrast 1.03, saturation 1.06) → confirmed safe
+   on-device at Night phase. Adjustment is a post-process color-grade
+   multiply, not part of the HDR/bloom pipeline that broke, so it's a
+   categorically different (and lower) risk than glow.
+
+**Verification**: full GUT suite run twice after landing v4 in
+`village_board.tscn` — 632/632 passing both runs (non-flaky, scene-only
+change as expected had zero test impact).
+
+**Documented**: the glow-on-`gl_compatibility` finding is written up in
+`docs/engine-reference/godot/breaking-changes.md`'s new "Project-Specific
+Findings (Empirical, On-Device)" section — this is exactly the class of
+discovery `VERSION.md` warns won't be in any doc for this
+past-training-cutoff engine version, so it needed a durable home rather
+than living only in conversation. Also updated
+`design/art/ui-visual-direction-2026-08.md`: corrected the stale
+"implementation not yet started" header, and elevated Track B's lighting
+bullet from "optional, low-priority" to reflect the user's new prioritization
+plus the actual findings above.
+
+**Cleanup**: deleted `lighting_v1.png`–`lighting_v4.png` from device sdcard
+and scratchpad; deleted `lighting-v1.apk`–`lighting-v4.apk` and other
+now-stale verification screenshots (`verify_1-4.png`, `tap_check.png`,
+`farmhouse_tap.png`, `live-verify.apk`) from scratchpad.
+
+**Next**: commit + push this lighting change (mirror `master` +
+`feature/isometric-village-view`, per this session's established pattern),
+then begin Track B 3D-board work (zone model variety, crop growth-stage
+geometry, decoration density, and any remaining `DirectionalLight3D`/
+`ambient_light_*` warmth tuning) — the "design" component of the user's new
+focus, per the still-open items listed in the visual-direction doc. Continuing
+autonomously per the standing "don't stop, continue until credits run out"
+instruction.

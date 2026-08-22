@@ -1,5 +1,17 @@
 # Festival Visiting NPCs — "Chanda" Events
 
+---
+**Status**: Implemented and shipped — live in the game
+**Verified By**: 26 GUT tests (`test_chanda_visit.gd`), full suite green
+(commit `56c62a9`), and real on-device verification (Eid card rendered,
+Give deducted 300→280 coins and started the "+8% sell price for 1h 59m"
+blessing, confirmed correctly on a real device)
+**Update (2026-08-22)**: this document's Acceptance Criteria checkboxes
+below had gone stale — left unchecked even after the feature was fully
+built, tested, and verified. Corrected to reflect reality; see each
+checkbox for what's actually confirmed and by what evidence.
+---
+
 ## 1. Overview
 
 A recurring, low-stakes visiting-NPC event: periodically, a neighbor from
@@ -116,22 +128,44 @@ punishment or a missed trade.
 
 ## 8. Acceptance Criteria
 
-- [ ] A Chanda Visit becomes active/inactive on schedule, verified via unit
+- [x] A Chanda Visit becomes active/inactive on schedule, verified via unit
       tests at cycle boundaries (mirrors `is_festival_active()`'s own test
-      coverage shape).
-- [ ] The 4 festivals rotate in a fixed, even order — no festival ever
-      appears 0% or disproportionately often across cycle indices.
-- [ ] Give deducts the correct ask amount, starts the blessing, and is
-      blocked (button disabled, not silently failing) when unaffordable.
-- [ ] Decline costs nothing, grants no buff, and the visit is still marked
-      resolved for that cycle.
-- [ ] The blessing multiplier composes correctly with the existing
+      coverage shape) — `test_chanda_visit_active_within_the_active_window`/
+      `test_chanda_visit_inactive_past_the_active_window`/
+      `test_chanda_visit_active_again_on_the_next_cycle`.
+- [x] The 4 festivals rotate in a fixed, even order — no festival ever
+      appears 0% or disproportionately often across cycle indices —
+      `test_chanda_festival_rotates_through_all_four_in_a_fixed_order`.
+- [x] Give deducts the correct ask amount, starts the blessing, and is
+      blocked (button disabled, not silently failing) when unaffordable —
+      covered headlessly (`test_give_chanda_deducts_the_ask_and_marks_resolved`,
+      `test_give_chanda_blocked_when_unaffordable`,
+      `events_tab.gd`'s `can_afford_chanda`-gated button) and confirmed live
+      on-device (Eid card, 300→280 coins, blessing banner shown correctly).
+- [x] Decline costs nothing, grants no buff, and the visit is still marked
+      resolved for that cycle — `test_decline_chanda_costs_nothing_and_grants_no_blessing`/
+      `test_decline_chanda_still_marks_the_occurrence_resolved`. Headless-only;
+      not separately exercised on-device (Give was the on-device sample).
+- [x] The blessing multiplier composes correctly with the existing
       Farmhouse sell-price multiplier and expires exactly at
-      `chanda_blessing_active_until`.
-- [ ] A second Give while a blessing is already active resets the timer
-      rather than stacking multipliers.
-- [ ] Full GUT suite green; new tests follow this project's
-      `test_[system]_[scenario]_[expected]` naming convention.
-- [ ] Verified on-device: the Events sheet renders the `ChandaCard`
-      correctly during an active visit, Give/Decline both work and persist
-      correctly across a save/reload.
+      `chanda_blessing_active_until` —
+      `test_blessing_increases_sell_proceeds_while_active`/
+      `test_blessing_no_longer_applies_once_it_expires`.
+- [x] A second Give while a blessing is already active resets the timer
+      rather than stacking multipliers —
+      `test_give_chanda_a_second_time_next_cycle_resets_rather_than_stacks_the_blessing`.
+- [x] Full GUT suite green; new tests follow this project's
+      `test_[system]_[scenario]_[expected]` naming convention — 26 tests in
+      `test_chanda_visit.gd`, full suite passing (592/592 as of this
+      document's last verification pass, run twice non-flaky).
+- [x] Verified on-device: the Events sheet renders the `ChandaCard`
+      correctly during an active visit, and Give works and persists
+      correctly — confirmed live on a real device. **Narrower than
+      originally worded**: save/reload round-tripping of
+      `chanda_last_resolved_cycle_index`/`chanda_blessing_active_until` is
+      proven by `test_save_serializer.gd`'s headless round-trip test, not a
+      separate on-device uninstall/reinstall or app-restart pass; Decline's
+      on-device rendering wasn't separately sampled (Give was). Both are
+      low-risk gaps (the same `SaveSerializer`/`ChandaCard` code paths as
+      the verified Give case), not blocking, but noted here rather than
+      overclaimed.

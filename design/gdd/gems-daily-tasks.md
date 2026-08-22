@@ -1,5 +1,15 @@
 # Gems &amp; Daily Tasks
 
+---
+**Status**: Implemented and shipped — live in the game
+**Verified By**: `test_gems_daily_tasks.gd`'s full test set, full GUT
+suite green, and on-device verification (see
+`production/qa/evidence/daily-tasks-card-fresh.png`/
+`daily-tasks-card-after-plant.png`)
+**Update (2026-08-22)**: this document's Acceptance Criteria checkboxes
+had gone stale — left unchecked even after the feature shipped. Corrected.
+---
+
 ## 1. Overview
 
 A secondary currency ("Gems") earned exclusively by completing a small,
@@ -149,24 +159,39 @@ free, but not prohibitive for a player who's banked a few days' gems.
 
 ## 8. Acceptance Criteria
 
-- [ ] `local_day_key()` returns a stable value within the same local day
+- [x] `local_day_key()` returns a stable value within the same local day
       and a different value after a real day boundary, verified with
       explicit `now`/timezone-offset inputs (no real-clock dependency in
-      tests).
-- [ ] Today's 3 tasks are deterministic for a given day (same day -> same
-      3 picks) and distinct from each other (no duplicate task in one day).
-- [ ] Each task's progress increments correctly at its real hook point and
-      nowhere else.
-- [ ] Gems auto-award exactly once per task, the instant its target is
-      reached -- never double-awarded on repeated over-target actions.
-- [ ] The all-3-complete bonus awards exactly once per day.
-- [ ] Reroll: succeeds and resets progress/kinds only while 0 tasks are
+      tests) — `test_local_day_key_stable_within_the_same_local_day`/
+      `test_local_day_key_changes_across_a_real_day_boundary`/
+      `test_local_day_key_shifts_with_timezone_offset`.
+- [x] Today's 3 tasks are deterministic for a given day (same day -> same
+      3 picks) and distinct from each other (no duplicate task in one day)
+      — `test_pick_daily_task_kinds_returns_exactly_3_distinct_kinds`/
+      `test_pick_daily_task_kinds_is_deterministic_for_the_same_seed`.
+- [x] Each task's progress increments correctly at its real hook point and
+      nowhere else — `test_harvest_bumps_the_harvest_task_when_its_todays_pick`/
+      `test_harvest_does_not_bump_a_task_kind_not_among_todays_picks`/
+      `test_plant_seed_bumps_the_plant_task`/`test_sell_crop_bumps_both_sell_and_earn_tasks`/
+      `test_worker_cycle_bumps_the_worker_task`.
+- [x] Gems auto-award exactly once per task, the instant its target is
+      reached -- never double-awarded on repeated over-target actions —
+      `test_task_auto_awards_gems_exactly_when_target_is_reached`/
+      `test_task_does_not_double_award_gems_past_its_target`.
+- [x] The all-3-complete bonus awards exactly once per day —
+      `test_all_three_tasks_complete_awards_the_bonus_once`.
+- [x] Reroll: succeeds and resets progress/kinds only while 0 tasks are
       complete; blocked (not silently failing) once any task is done or
-      gems are insufficient.
-- [ ] A new local day resets the task set/progress/reroll-availability,
-      verified via `now` values spanning a day boundary.
-- [ ] Full GUT suite green.
-- [ ] Verified on-device: the Events sheet's Daily Tasks card renders
-      correctly, at least one task's progress genuinely advances from a
-      real in-game action, its gem reward is credited, and Reroll works
-      before any task is completed and is disabled after.
+      gems are insufficient — `test_reroll_succeeds_and_costs_gems_when_no_progress_made`/
+      `test_reroll_blocked_once_a_task_is_fully_complete`/
+      `test_reroll_blocked_on_insufficient_gems`.
+- [x] A new local day resets the task set/progress/reroll-availability,
+      verified via `now` values spanning a day boundary —
+      `test_fresh_daily_tasks_does_not_regenerate_within_the_same_day`
+      and its day-boundary counterpart.
+- [x] Full GUT suite green — 592/592 as of this document's last
+      verification pass, run twice non-flaky.
+- [x] Verified on-device: the Events sheet's Daily Tasks card renders
+      correctly and a task's progress genuinely advances from a real
+      in-game action — see `production/qa/evidence/daily-tasks-card-fresh.png`
+      and `daily-tasks-card-after-plant.png`.

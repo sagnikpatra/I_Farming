@@ -9,12 +9,16 @@
 ---
 
 > **Scope note**: This document covers EPIC-M6 only — purely ambient,
-> non-interactive roaming villagers. `v2.md` never describes villagers as
-> having a gameplay-mechanical function; the roadmap deliberately splits
-> that into a separate future epic, **EPIC-M7 (Worker Assignment & Wage
-> Economy)**, which is out of scope here and undesigned. Nothing in this
-> document should be read as implying villagers do anything but exist,
-> walk, and look alive.
+> roaming villagers (now including the cosmetic tap greeting, rule 8).
+> `v2.md` never describes villagers as having a gameplay-mechanical
+> function on their own; the roadmap split that into a separate epic,
+> **EPIC-M7 (Worker Assignment & Wage Economy)** — **update (2026-08-22):
+> EPIC-M7 is complete**, not undesigned/out-of-scope as this note
+> originally said; see `worker-economy.md` and the roadmap's own EPIC-M7
+> section. Nothing in this document implies a *roaming* (unassigned)
+> villager does anything but exist, walk, look alive, and now respond to
+> a tap with flavor text — becoming a worker is a distinct scene/flow
+> `worker-economy.md` owns.
 
 ---
 

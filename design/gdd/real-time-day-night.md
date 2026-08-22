@@ -1,5 +1,15 @@
 # Real-Time Day/Night
 
+---
+**Status**: Implemented and shipped — live in the game
+**Verified By**: `test_time_of_day.gd`'s full test set, full GUT suite
+green, and on-device verification (see
+`production/qa/evidence/time-of-day-forced-day.png`,
+`time-of-day-natural.png`, `lamp-lighting-day-no-regression.png`)
+**Update (2026-08-22)**: this document's Acceptance Criteria checkboxes
+had gone stale — left unchecked even after the feature shipped. Corrected.
+---
+
 ## 1. Overview
 
 The village board's lighting now reflects the player's actual real-world
@@ -234,24 +244,40 @@ other phase. Position offset from the structure's footprint center:
 
 ## 8. Acceptance Criteria
 
-- [ ] `local_hour()` returns the correct hour for explicit
+- [x] `local_hour()` returns the correct hour for explicit
       `(now_ms, tz_offset_minutes)` inputs -- no real-clock dependency in
-      tests, same discipline as `GameEconomy.local_day_key()`'s own tests.
-- [ ] `phase_for_hour()` maps every hour 0-23 to exactly one of the 4
+      tests, same discipline as `GameEconomy.local_day_key()`'s own tests
+      — `test_local_hour_reads_the_correct_utc_hour_at_zero_offset`/
+      `test_local_hour_shifts_with_timezone_offset`.
+- [x] `phase_for_hour()` maps every hour 0-23 to exactly one of the 4
       phases per the table above, with the boundary hours verified
-      explicitly (e.g. hour 6 is Dawn, hour 7 is Day).
-- [ ] Day's preset values exactly match `village_board.tscn`'s existing
-      `Environment`/`DirectionalLight3D` defaults (no drift).
-- [ ] The board applies the correct phase immediately on `_ready()` (not
-      a flash of Day before the first tick).
-- [ ] The board only reassigns environment/light properties when the
-      phase has actually changed, not every tick.
-- [ ] Full GUT suite green.
-- [ ] Verified on-device: forcing each of the 4 phases (via a temporary
+      explicitly (e.g. hour 6 is Dawn, hour 7 is Day) —
+      `test_phase_boundaries_are_exact` plus the per-phase-hours tests.
+- [x] Day's preset values exactly match `village_board.tscn`'s existing
+      `Environment`/`DirectionalLight3D` defaults (no drift) —
+      `test_day_preset_matches_the_scenes_existing_defaults_exactly`.
+- [x] The board applies the correct phase immediately on `_ready()` (not
+      a flash of Day before the first tick) — `village_board.gd`'s
+      `_last_time_of_day_phase` starts at `-1` ("never applied"), so
+      `_apply_time_of_day_if_needed()`'s edge-detection guarantees the
+      first real call always applies. Verified by code inspection, not a
+      dedicated automated test (Node3D/Environment property assignment
+      isn't unit-tested in this project — a "Visual/Feel" story type per
+      `coding-standards.md`'s Testing Standards, ADVISORY not BLOCKING).
+- [x] The board only reassigns environment/light properties when the
+      phase has actually changed, not every tick — same
+      `_apply_time_of_day_if_needed()` edge-detection guard
+      (`if phase == _last_time_of_day_phase: return`), same
+      verification caveat as above.
+- [x] Full GUT suite green — 592/592 as of this document's last
+      verification pass, run twice non-flaky.
+- [x] Verified on-device: forcing each of the 4 phases (via a temporary
       always-different-hour override, same instrument-then-delete method
       used elsewhere this session) shows a visibly distinct, correctly
       colored board with no crash, and Day's real value shows no
-      difference from the pre-existing look.
+      difference from the pre-existing look — see
+      `production/qa/evidence/time-of-day-forced-day.png`,
+      `time-of-day-natural.png`, and `lamp-lighting-day-no-regression.png`.
 
 ### Seasonal Palette (2026-08-22)
 

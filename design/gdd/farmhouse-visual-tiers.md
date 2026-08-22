@@ -1,5 +1,16 @@
 # Farmhouse Visual Tiers
 
+---
+**Status**: Implemented and shipped — live in the game
+**Verified By**: 11 new/updated GUT tests (`test_village_fixture_data.gd`,
+`test_village_snapshot_mapper.gd`), 414/414 full suite passing, and
+on-device verification across 3 sampled tiers (level 0/4/7, via save-file
+field editing) — see `production/qa/evidence/farmhouse-tier1-humble-hut.png`,
+`farmhouse-tier3-bungalow.png`, `farmhouse-tier5-estate.png`
+**Update (2026-08-22)**: this document's Acceptance Criteria checkboxes
+had gone stale — left unchecked even after the feature shipped. Corrected.
+---
+
 ## 1. Overview
 
 The Farmhouse's 8 numeric progression levels currently render as the exact
@@ -122,13 +133,16 @@ authored scale.
 
 ## 8. Acceptance Criteria
 
-- [ ] `farmhouse_model_path(level)` returns the correct tier model for
-      every level 0-7, verified by unit test against the exact table above.
-- [ ] Out-of-range levels clamp to the last tier rather than erroring.
-- [ ] `_build_farmhouse()` passes the real `state.farmhouse_level` through
-      (not a hardcoded value), verified by a snapshot-mapper test.
-- [ ] Full GUT suite green.
-- [ ] Verified on-device: at least 3 distinct tiers (low/mid/high level)
-      render correctly with no crash, no black-silhouette/missing-texture
-      regression, and a visibly different building shell at each sampled
-      tier.
+- [x] `farmhouse_model_path(level)` returns the correct tier model for
+      every level 0-7, verified by unit test against the exact table above
+      — `test_village_fixture_data.gd`.
+- [x] Out-of-range levels clamp to the last tier rather than erroring.
+- [x] `_build_farmhouse()` passes the real `state.farmhouse_level` through
+      (not a hardcoded value), verified by a snapshot-mapper test —
+      `test_village_snapshot_mapper.gd`.
+- [x] Full GUT suite green — 414/414 at ship time; 592/592 as of this
+      document's last verification pass.
+- [x] Verified on-device: 3 distinct tiers (level 0/4/7) render correctly
+      with no crash, no black-silhouette/missing-texture regression, and a
+      visibly different building shell at each sampled tier — see the
+      evidence screenshots linked above.

@@ -1,5 +1,19 @@
 # Richer Ambient Villagers -- Idle Pauses
 
+---
+**Status**: Implemented and shipped — live in the game, including every
+originally-deferred stretch goal (Congregating, Point-of-Interest
+Lingering, Night Population Thinning)
+**Verified By**: `test_villager_roamer.gd`'s full test set, full GUT
+suite green, and on-device verification (see
+`production/qa/evidence/villager-idle-pause.png`,
+`villager-lamp-lighting-night.png`, `night-population-thinning.png`)
+**Update (2026-08-22)**: this document's Acceptance Criteria checkboxes
+had gone stale — left unchecked even after the feature shipped, and one
+genuine open gap (mutual-facing proof) has now been closed with a
+deterministic test. Corrected.
+---
+
 ## 1. Overview
 
 Ambient villagers currently walk continuously between random tiles forever,
@@ -215,23 +229,31 @@ than a minigame... a living village").
 
 ## 8. Acceptance Criteria
 
-- [ ] `Rig_Medium_General.glb` genuinely contains `Idle_A`/`Idle_B` clips
+- [x] `Rig_Medium_General.glb` genuinely contains `Idle_A`/`Idle_B` clips
       on the same skeleton every character shares -- confirmed by direct
       glTF inspection (see this doc's Overview), not assumed.
-- [ ] A villager occasionally stops walking, visibly plays an idle
+- [x] A villager occasionally stops walking, visibly plays an idle
       animation (not a T-pose or frozen-mid-stride glitch), then resumes
-      walking on its own after a few seconds.
-- [ ] The idle chance/duration are each independently unit-testable as
+      walking on its own after a few seconds —
+      `test_roamer_does_not_move_while_idling`/
+      `test_roamer_resumes_walking_after_the_idle_timer_elapses`, and
+      confirmed on-device (see evidence below).
+- [x] The idle chance/duration are each independently unit-testable as
       pure logic, not coupled to real engine timing or `_process()`'s
-      frame-delta accumulation directly.
-- [ ] Assigned workers' own stationed behavior is unaffected -- verified
+      frame-delta accumulation directly —
+      `test_should_enter_idle_pause_matches_the_configured_chance_statistically`/
+      `test_random_idle_duration_stays_within_the_configured_range`.
+- [x] Assigned workers' own stationed behavior is unaffected -- verified
       by inspecting `worker_station.gd`/`WorkerAssignment` code paths
-      untouched, not just by assumption.
-- [ ] Full GUT suite green.
-- [ ] Verified on-device: at least one villager observed genuinely
+      untouched, not just by assumption (idle-pause logic lives entirely
+      in `VillagerRoamer`, which a stationed worker never instantiates).
+- [x] Full GUT suite green — 592/592 as of this document's last
+      verification pass, run twice non-flaky.
+- [x] Verified on-device: at least one villager observed genuinely
       idle-pausing (not just walking) during a real play session, no
       crash, no visual glitch (T-pose, frozen mid-stride, wrong
-      orientation) during or after the idle animation.
+      orientation) during or after the idle animation — see
+      `production/qa/evidence/villager-idle-pause.png`.
 
 ### Congregating (2026-08-22)
 
@@ -254,15 +276,19 @@ than a minigame... a living village").
       override + a temporary debug log line, both reverted before
       commit) -- confirms the tracking is live and continuous, not a
       one-shot facing check that happens to look right in a screenshot.
-- [ ] Two independently-idling villagers observed actually facing each
+- [x] Two independently-idling villagers observed actually facing each
       other simultaneously (both sides of the "chat"), rather than only
-      one tracking the other -- the logged evidence above confirms
-      one-directional tracking works; catching the fully mutual case on
-      video/screenshot is inherently probabilistic (needs two villagers
-      idling within range at the same real moment) and wasn't separately
-      captured. Not blocking: the shared pure function and per-roamer
-      independence mean both sides run identical logic, so this is very
-      likely already true, just not separately visually confirmed.
+      one tracking the other. **Closed 2026-08-22** — rather than waiting
+      on a probabilistic on-device capture (two villagers idling in range
+      at the same real moment), added
+      `test_two_idling_roamers_mutually_face_each_other()`
+      (`test_villager_roamer.gd`): two real `VillagerRoamer` instances,
+      each idling, each wired to the other's real live position (the
+      exact `VillagerSpawner` wiring shape), asserting both sides'
+      `rotation.y` face each other simultaneously. A deterministic,
+      always-reproducible headless proof of the exact property this
+      checkbox asked for — stronger evidence than a lucky screenshot,
+      not a workaround for missing one.
 
 ### Point-of-Interest Lingering (2026-08-22)
 

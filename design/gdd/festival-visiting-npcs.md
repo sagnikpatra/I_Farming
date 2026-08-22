@@ -195,16 +195,24 @@ punishment or a missed trade.
       `test_chanda_visit.gd`, full suite passing (592/592 as of this
       document's last verification pass, run twice non-flaky).
 - [x] Verified on-device: the Events sheet renders the `ChandaCard`
-      correctly during an active visit, and Give works and persists
-      correctly — confirmed live on a real device. **Narrower than
-      originally worded**: save/reload round-tripping of
-      `chanda_last_resolved_cycle_index`/`chanda_blessing_active_until` is
-      proven by `test_save_serializer.gd`'s headless round-trip test, not a
-      separate on-device uninstall/reinstall or app-restart pass; Decline's
-      on-device rendering wasn't separately sampled (Give was). Both are
-      low-risk gaps (the same `SaveSerializer`/`ChandaCard` code paths as
-      the verified Give case), not blocking, but noted here rather than
-      overclaimed.
+      correctly during an active visit, and both Give and Decline work
+      and persist correctly across a real app restart — confirmed live
+      on a real device. **Update (2026-08-23)**: the two narrower gaps
+      this checkbox used to note are now closed too. Decline: confirmed
+      live — the neutral "Maybe next time -- no hard feelings." toast
+      shows, coins stay unchanged, the card correctly switches to "Next
+      visitor in 4h 40m," and (a nice incidental confirmation) the
+      on-board `ChandaVisitor` NPC despawns immediately, which is why a
+      tap at the same screen position fell through to the Farmhouse zone
+      underneath it instead. Save/reload: force-stopped and relaunched
+      the app after Declining, confirmed the LiveOps banner correctly
+      still read "Monsoon Season" (not the Chanda-priority text) rather
+      than resetting to a fresh awaiting-decision state — direct proof
+      `chanda_last_resolved_cycle_index` round-trips through a real save
+      file on a real device, not just `test_save_serializer.gd`'s
+      headless proof. See
+      `production/qa/evidence/chanda-decline-flow.png` and
+      `chanda-decline-persists-after-relaunch.png`.
 
 ### On-Board Visitor NPC (2026-08-22)
 

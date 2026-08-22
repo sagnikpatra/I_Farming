@@ -1,7 +1,7 @@
 <!-- STATUS -->
 Epic: Godot Engine Migration
-Feature: Post-M8 continued development, now responding to direct user bug reports.
-Task: User reported "walking animation is not good." Root-caused to every villager walk/idle clip importing with loop_mode=LOOP_NONE, freezing villagers mid-stride for most of each walk leg (VillagerRoamer only calls play_animation() once per leg). Fixed in villager.gd, verified with a real regression test (confirmed to fail without the fix) and 3 on-device screenshots showing continuous stride motion over time. 610/610 GUT passing. About to commit.
+Feature: Post-M8 continued development, responding to direct user bug reports.
+Task: Fixed and pushed the "walking animation is not good" bug (loop_mode fix, villager.gd), re-confirmed live on the user's real phone once it reconnected mid-verification (was briefly using the AVD emulator, switched over immediately). While a device was available, also closed the 2 remaining low-risk gaps festival-visiting-npcs.md had flagged (Chanda Decline on-device, save/reload persistence across a real app restart) -- both confirmed working with real evidence. 610/610 GUT passing. About to commit the doc update + evidence.
 <!-- /STATUS -->
 
 # Active Session State
@@ -5490,3 +5490,50 @@ verification used).
 **Next step**: none forced -- this was a direct, reactive bug fix in
 response to user feedback, now closed and verified both headlessly and
 visually. Ready for further direction.
+
+## 2026-08-23 (cont'd) -- real device reconnected mid-verification; closed 2 more flagged gaps
+
+Booted the `Medium_Phone` AVD for the walking-fix re-verification since
+no physical device was connected at the time. Partway through, the
+user's real phone reconnected -- user asked directly why the emulator
+was in use. Killed the emulator the moment it showed up in `adb
+devices` and switched the rest of the verification to the real device,
+matching this session's own established preference (real hardware over
+emulator whenever available). Re-confirmed the walking-animation fix
+there too: 3 more screenshots, continuous stride motion, no freeze.
+
+With a real device connected and the "don't stop" instruction still
+standing, used the opportunity to close out the 2 remaining low-risk
+gaps `festival-visiting-npcs.md` had explicitly flagged as "narrower
+than originally worded" rather than leave them open indefinitely:
+
+- **Chanda Decline, on-device**: same temporary
+  `CHANDA_ACTIVE_DURATION_MS == CHANDA_CYCLE_MS` override used for the
+  earlier board-NPC verification (reverted immediately after, confirmed
+  clean via `git diff`). Tapped the real `ChandaVisitor` NPC, opened the
+  Events sheet, tapped "Not this time." Confirmed: the neutral "Maybe
+  next time -- no hard feelings." toast, coins unchanged, the card
+  switching to "Next visitor in 4h 40m," and -- an incidental but
+  genuine confirmation of the despawn logic -- a second tap at the same
+  screen coordinate fell through to the Farmhouse zone underneath,
+  since the visitor NPC had already despawned.
+- **Save/reload persistence, on-device**: force-stopped and relaunched
+  the app after Declining. The LiveOps banner correctly still read
+  "Monsoon Season," not the Chanda-priority text a fresh/reset state
+  would show -- direct, real-device proof that
+  `chanda_last_resolved_cycle_index` survives a real save/load round
+  trip, not just `test_save_serializer.gd`'s headless proof.
+
+Both pieces of evidence saved
+(`production/qa/evidence/chanda-decline-flow.png`,
+`chanda-decline-persists-after-relaunch.png`) and
+`festival-visiting-npcs.md`'s Acceptance Criteria updated to reflect
+the closure -- no more caveated/narrowed checkboxes left in that
+document. Docs-only change (the temp override was reverted, confirmed
+identical to the already-committed state) -- no re-run of the GUT suite
+needed for this piece.
+
+**Next step**: none forced. Every gap this session had explicitly
+flagged as open-but-low-risk is now closed. Ready for further
+direction, or will continue scanning for the next genuine target per
+the standing "don't stop" instruction.

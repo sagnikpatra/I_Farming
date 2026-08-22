@@ -1723,7 +1723,15 @@ func _apply_time_of_day_if_needed(now: int) -> void:
 	var previous_phase := _last_time_of_day_phase
 	_last_time_of_day_phase = phase
 
-	var preset := TimeOfDay.preset_for_phase(phase)
+	# design/gdd/real-time-day-night.md's Option B stretch goal -- a loose
+	# seasonal palette tint layered on top of the phase preset. Read fresh
+	# every actual phase change (not on a separate timer): seasons change
+	# on the order of months, so lagging by up to one phase-transition
+	# window (worst case, a few hours) after a season boundary is an
+	# acceptable "loose" tolerance for a cosmetic secondary modifier.
+	var month := TimeOfDay.local_month(now, int(tz.get("bias", 0)))
+	var season := TimeOfDay.season_for_month(month)
+	var preset := TimeOfDay.preset_for_phase_and_season(phase, season)
 	var env := _world_environment.environment
 	env.background_color = preset["sky_color"]
 	env.ambient_light_color = preset["ambient_color"]

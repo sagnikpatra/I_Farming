@@ -4137,6 +4137,55 @@ open for this file) and `feature-scoping-2026-08-22.md`'s summary
 table -- **item 4 (richer ambient villagers) now has zero open stretch
 goals**, the first of the 5 feature-scoping items to reach that state.
 
+## 2026-08-22 (cont'd) -- Seasonal Palette (item 3's Option B) built
+
+Fourth stretch goal this session, moving to item 3 after fully closing
+item 4. The real calendar month now maps to one of India's 3 broad
+seasons (Monsoon Jun-Sep, Winter Oct-Feb, Summer Mar-May), each with a
+small (±15% per channel) multiplicative color tint layered on top of
+whichever day/night phase preset is currently active -- day/night stays
+the dominant visual signal, season a loose secondary modifier, exactly
+matching the original scoping brief's own "loose ambient palette shift"
+framing for Option B.
+
+Added to `time_of_day.gd`: `local_month()` (mirrors `local_hour()`'s
+exact pure-function shape), `Season` enum, `season_for_month()`,
+`season_tint()`, `preset_for_phase_and_season()` -- the existing
+`preset_for_phase()` is untouched, so no existing caller's behavior
+changed. `village_board.gd`'s `_apply_time_of_day_if_needed()` switched
+to the season-aware function, reusing its existing edge-detected
+phase-change check rather than adding a new timer (a season boundary
+lags by at most one phase-transition window, an accepted loose
+tolerance).
+
+Caught and fixed one accuracy issue before it shipped as a wrong claim:
+a first-draft doc comment asserted the season boundaries "match this
+project's existing Monsoon Season liveops event" -- checked, and that's
+false (the existing Monsoon Season is a fully abstracted wall-clock
+cycle with zero real-calendar tie). Corrected the comment to cite only
+the feature-scoping brief's own table.
+
+10 new GUT tests in `test_time_of_day.gd` (including a real
+year-boundary case for `local_month()`, hand-verified epoch math).
+Full suite: 518/518 (508 + 10), zero regressions.
+
+Verified export/install/launch clean on the OnePlus device, screenshot
+captured under the real current month (August -> Monsoon tint applied)
+-- no crash, plausible non-broken board. Did not capture a dedicated
+side-by-side of all 3 seasons: the tint is intentionally subtle by
+design, and the boundary math is what's actually load-bearing, fully
+covered by the unit tests. (Caught and fixed a screenshot-naming slip
+of my own mid-task: initially filed as "...summer.png" before noticing
+the real current month is August, which is Monsoon, not Summer, per the
+just-built table -- renamed before committing rather than leaving
+mislabeled evidence in the repo.)
+
+Updated `real-time-day-night.md` (new Seasonal Palette subsections
+throughout) and `feature-scoping-2026-08-22.md`'s summary table -- item
+3 now has only villager lamp-lighting (structure-adjacent lights at
+Night, deliberately separated out for its own asset/placement
+questions) as an open stretch goal.
+
 ## Next Step
 
 1. **Real blocker, still needs the project owner specifically**: use
@@ -4152,18 +4201,17 @@ goals**, the first of the 5 feature-scoping items to reach that state.
    actual app-pause call site plus a settings-screen last-sync
    indicator (ADR-0003 Phase 2 steps 7-8) -- the provider class itself
    is already built and tested, this is just the wiring.
-3. Item 4 (richer ambient villagers) is fully done -- Idle-Pause,
-   Congregating, Point-of-Interest Lingering, and Night Population
-   Thinning all shipped and tested. Next time a save with decorations
-   exists on-device, capture the still-open on-device visual
-   confirmation for Lingering specifically (see the GDD's Acceptance
-   Criteria).
-4. Remaining stretch goals, all still open/undecided, across the other
-   3 feature-scoping items: Farmhouse footprint growth +
-   other-structure sub-upgrade attachments (item 1), a second gems sink
-   (item 2, real-money purchase explicitly excluded -- needs its own
-   billing-integration decision first), seasonal palette + villager
-   lamp-lighting (item 3).
+3. Item 4 (richer ambient villagers) is fully done. Item 3 (real-world
+   weather) has only villager lamp-lighting left. Next time a save with
+   decorations exists on-device, capture the still-open on-device
+   visual confirmation for Point-of-Interest Lingering (see that GDD's
+   Acceptance Criteria).
+4. Remaining open stretch goals: villager lamp-lighting (item 3 --
+   structure-adjacent `Light3D` nodes active at Night, no new 3D assets
+   strictly required since Godot's built-in light nodes would suffice);
+   Farmhouse footprint growth + other-structure sub-upgrade attachments
+   (item 1); a second gems sink (item 2, real-money purchase explicitly
+   excluded -- needs its own billing-integration decision first).
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)

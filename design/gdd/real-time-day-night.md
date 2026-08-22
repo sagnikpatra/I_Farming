@@ -9,7 +9,9 @@ real local hour. This is Option A from the original scoping brief
 (`docs/architecture/feature-scoping-2026-08-22.md` item 3): purely cosmetic
 presentation, touching zero gameplay math. Monsoon Season keeps its own
 fully independent compressed wall-clock cycle exactly as documented today
--- this is a layer on top, never a modification of it.
+-- this is a layer on top, never a modification of it. Option B (a loose
+seasonal palette tint keyed off the real calendar month) was originally
+deferred from this pass but has since been built -- see §3 below.
 
 ## 2. Player Fantasy
 
@@ -53,6 +55,35 @@ checking in on, not a screen that looks identical 24/7.
   layer with any day/night phase (e.g. a Monsoon-active Night looks like
   Night's lighting, Monsoon's own effects unchanged).
 
+### Seasonal Palette (Option B, built 2026-08-22)
+
+- The real calendar month maps to one of India's **3 broad seasons**
+  (Monsoon/Winter/Summer -- exact boundaries in Formulas), each with a
+  small multiplicative color tint layered on top of whichever phase
+  preset is currently active.
+- **Deliberately loose, not a full re-tint** -- per the original scoping
+  brief's own Option B description. Every tint channel stays within
+  ±15% of neutral (1.0); day/night phase remains the dominant visual
+  signal, season a secondary modifier riding on top of it.
+- The tint is color-only (`sky_color`/`ambient_color`/`sun_color`) --
+  `ambient_energy`/`sun_energy` are never touched by it.
+- Read fresh on every actual phase change (reusing the exact same
+  edge-detected `_last_time_of_day_phase` check above), not a separate
+  timer -- since seasons change on the order of months, lagging by up to
+  one phase-transition window (worst case a few hours) after a real
+  season boundary is an acceptable tolerance for a loose cosmetic
+  modifier, the same latency philosophy the phase system itself already
+  accepts for Dawn/Day/Dusk/Night boundaries.
+- **Deliberately unrelated to this project's existing Monsoon Season
+  liveops event**, despite the name overlap -- that system is a fully
+  abstracted wall-clock cycle with no tie to the real calendar (see this
+  doc's own Overview); this is a real-calendar-month lookup with no
+  connection to that cycle's state.
+- `preset_for_phase()` itself is unchanged and still the exact function
+  every pre-existing caller used -- season is opt-in via the new
+  `preset_for_phase_and_season()`, which `village_board.gd` is the only
+  caller of.
+
 ## 4. Formulas
 
 **Local hour** (pure function, mirrors `GameEconomy.local_day_key()`'s
@@ -88,6 +119,18 @@ values are copied verbatim from `village_board.tscn`'s existing
 `Environment`/`DirectionalLight3D` resources, not re-derived, so there's
 no risk of subtly drifting the already-shipped daytime look.)
 
+**Season boundaries** (`TimeOfDay.season_for_month()`):
+
+| Season | Months | Tint |
+|---|---|---|
+| Monsoon | Jun-Sep (6-9) | `(0.90, 0.95, 1.00)` -- cool, slightly desaturated, overcast |
+| Winter | Oct-Feb (10-12, 1-2) | `(0.95, 0.97, 1.00)` -- cool, pale/hazy |
+| Summer | Mar-May (3-5) | `(1.05, 1.00, 0.92)` -- warm, golden |
+
+`preset_for_phase_and_season(phase, season)` multiplies `sky_color`/
+`ambient_color`/`sun_color` component-wise by the season's tint;
+`ambient_energy`/`sun_energy` pass through unchanged.
+
 ## 5. Edge Cases
 
 - **Device clock/timezone changes mid-session**: recomputed fresh every
@@ -103,14 +146,22 @@ no risk of subtly drifting the already-shipped daytime look.)
 - **Phase boundary crossed exactly during a rebuild caused by something
   else** (e.g. a purchase mid-tick): no special handling needed -- the
   next 3s tick's own check catches it within one cycle either way.
+- **A season boundary crossed without a phase boundary also being
+  crossed nearby**: per Detailed Rules above, the seasonal tint is only
+  re-read on an actual phase change, not its own timer -- worst case, up
+  to one phase-transition window's latency after the real calendar
+  boundary before the new season's tint appears. Accepted, not a defect.
 
 ## 6. Dependencies
 
 - New file: `scripts/village_board/time_of_day.gd` (`TimeOfDay` class --
-  `local_hour()`, `Phase` enum, `phase_for_hour()`, `preset_for_phase()`).
-  Pure, no scene-tree dependency -- lives in the Presentation layer
-  (village-board-specific), not `game_economy.gd`/Foundation, since this
-  is purely a rendering concern with no economy-state involvement.
+  `local_hour()`, `Phase` enum, `phase_for_hour()`, `preset_for_phase()`,
+  plus `local_month()`, `Season` enum, `season_for_month()`,
+  `season_tint()`, `preset_for_phase_and_season()` for the Seasonal
+  Palette stretch goal). Pure, no scene-tree dependency -- lives in the
+  Presentation layer (village-board-specific), not `game_economy.gd`/
+  Foundation, since this is purely a rendering concern with no
+  economy-state involvement.
 - `village_board.gd` (`_ready()` and `_on_growth_tick_timeout()` apply the
   current preset to the existing `WorldEnvironment`/`DirectionalLight3D`
   nodes already in `village_board.tscn` -- no new scene nodes needed).
@@ -119,12 +170,10 @@ no risk of subtly drifting the already-shipped daytime look.)
 
 ## 7. Tuning Knobs
 
-- The exact preset RGB/energy values per phase, and the hour-range
-  boundaries themselves -- all centralized in `time_of_day.gd`.
-- **Future stretch, explicitly out of scope this pass** (per the original
-  scoping brief's Option B): a loose seasonal palette shift keyed off the
-  real calendar month (India's 3 broad seasons). Deferred to keep this
-  pass at Option A's S-complexity, cosmetic-only scope.
+- The exact preset RGB/energy values per phase, the hour-range
+  boundaries, the season tint values, and the month-range boundaries --
+  all centralized in `time_of_day.gd`.
+- Option B (the seasonal palette) has no stretch goals remaining -- built.
 - **Future stretch**: villager lamp-lighting (small light sources active
   near structures at Night) -- the original brief's own recommended path
   bundled this in, but it's a distinct content addition (new
@@ -154,3 +203,30 @@ no risk of subtly drifting the already-shipped daytime look.)
       used elsewhere this session) shows a visibly distinct, correctly
       colored board with no crash, and Day's real value shows no
       difference from the pre-existing look.
+
+### Seasonal Palette (2026-08-22)
+
+- [x] `local_month()` returns the correct real-calendar month for
+      explicit `(now_ms, tz_offset_minutes)` inputs, including across a
+      year boundary -- no real-clock dependency in tests, same
+      discipline as `local_hour()`'s own tests.
+- [x] `season_for_month()` maps every month 1-12 to exactly one of the 3
+      seasons per the table above, with boundary months verified
+      explicitly (month 5 is Summer, month 6 is Monsoon, etc.).
+- [x] Every season's tint stays within the documented ±15% loose-shift
+      bound on every color channel -- confirmed by an explicit bound
+      check, not just eyeballing the chosen values.
+- [x] `preset_for_phase_and_season()` applies the tint multiplicatively
+      to `sky_color`/`ambient_color`/`sun_color` only, leaving
+      `ambient_energy`/`sun_energy` untouched.
+- [x] `preset_for_phase()` alone is unaffected by the new function
+      existing -- confirmed by an explicit test, not just unchanged code.
+- [x] Full GUT suite green (518/518 at the time this was built).
+- [x] Verified on-device: exported, installed, and launched clean (no
+      crash) with the real current month applied (August 2026 -> Monsoon
+      tint); screenshot shows a plausible, non-broken board. A dedicated
+      multi-season side-by-side comparison (forcing each of the 3
+      seasons in turn) was **not** captured separately -- the tint is
+      intentionally subtle by design, and the boundary math itself is
+      what's actually load-bearing here, which the unit tests above
+      cover completely.

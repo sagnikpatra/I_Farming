@@ -823,11 +823,13 @@ func _harvest_plot(plot_id: int) -> void:
 	_village_board.persist_and_rebuild_if_dirty()
 
 
-## Read-only GROWING-plot info card -- see growing_info_card.gd's header
-## comment. Looks the plot up by id directly (GameEconomy has no public
-## single-plot accessor -- _find_plot() is private -- so this mirrors
-## GdxVillageBoard.kt's own `state.plots.find { it.id == id }` rather than
-## adding new economy API surface for a single read-only lookup).
+## GROWING-plot info card -- mostly read-only, plus the one grow-time-skip
+## action feature-scoping-2026-08-22.md item 2 added (see
+## growing_info_card.gd's header comment). Looks the plot up by id
+## directly (GameEconomy has no public single-plot accessor --
+## _find_plot() is private -- so this mirrors GdxVillageBoard.kt's own
+## `state.plots.find { it.id == id }` rather than adding new economy API
+## surface for a single lookup).
 func _maybe_open_growing_info_card(plot_id: int) -> void:
 	if plot_id < 0:
 		return
@@ -845,7 +847,7 @@ func _maybe_open_growing_info_card(plot_id: int) -> void:
 	if plot == null or plot.state.kind != PlotState.Kind.GROWING:
 		return  # Stale pick racing a tick-driven rebuild -- nothing to show.
 	var card: GrowingInfoCard = GrowingInfoCardScene.instantiate()
-	card.configure(plot.state.crop)
+	card.configure(plot_id, plot.state.crop, economy, _village_board, hud.get_bottom_sheet())
 	hud.get_bottom_sheet().open(card)
 
 

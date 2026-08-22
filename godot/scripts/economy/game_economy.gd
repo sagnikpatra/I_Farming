@@ -437,6 +437,50 @@ func reroll_daily_tasks(now: int) -> void:
 	_mark_dirty()
 
 
+## feature-scoping-2026-08-22.md item 2's second gems sink: one capped
+## grow-time skip per real calendar day. Deliberately does NOT bypass
+## resolve_growth_completions()'s own weather/theft/flood risk logic for
+## the target plot -- rewinds planted_at_epoch_ms far enough into the
+## past that the very next resolve_growth_completions() call (already
+## driven by the existing growth tick) treats it as naturally complete
+## and runs through that exact same risk logic unchanged. Paying gems
+## buys instant time, not reduced risk -- see design/gdd/gems-second-sink.md.
+func skip_grow_time(plot_id: int, now: int) -> void:
+	var day_key: int = _current_local_day_key(now)
+	if state.grow_skip_day_key != day_key:
+		state.grow_skip_day_key = day_key
+		state.grow_skip_used_today = false
+	if state.grow_skip_used_today:
+		_push_event("Already used today's grow-time skip.")
+		return
+	if state.gems < GameData.GROW_SKIP_COST_GEMS:
+		_push_event("Need %d gems for a grow-time skip." % GameData.GROW_SKIP_COST_GEMS)
+		return
+	var plot := _find_plot(plot_id)
+	if plot == null or plot.state.kind != PlotState.Kind.GROWING:
+		return  # Stale action racing a tick-driven rebuild -- nothing to skip.
+	state.gems -= GameData.GROW_SKIP_COST_GEMS
+	state.grow_skip_used_today = true
+	plot.state.planted_at_epoch_ms = now - plot.state.effective_grow_seconds * 1000 - 1
+	_push_event("⏩ Grow time skipped!")
+	_mark_dirty()
+
+
+## Whether skip_grow_time() would currently succeed for a GROWING plot --
+## the UI's own read-only check for enabling/disabling the button, never
+## mutates state. Deliberately duplicates skip_grow_time()'s day-key
+## comparison read-only (never writes grow_skip_day_key/grow_skip_used_today)
+## rather than calling a shared mutating helper, so a UI repaint can never
+## itself consume the daily cap.
+func can_skip_grow_time(now: int) -> bool:
+	if state.gems < GameData.GROW_SKIP_COST_GEMS:
+		return false
+	var day_key: int = _current_local_day_key(now)
+	if state.grow_skip_day_key == day_key and state.grow_skip_used_today:
+		return false
+	return true
+
+
 # --- The Ancestral Farmhouse: core progression hub ------------------------------
 
 func storage_capacity() -> int:

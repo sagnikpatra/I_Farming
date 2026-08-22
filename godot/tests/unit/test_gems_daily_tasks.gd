@@ -247,3 +247,121 @@ func test_reroll_blocked_on_insufficient_gems() -> void:
 	eco.state.gems = GameData.DAILY_TASK_REROLL_COST - 1
 	eco.reroll_daily_tasks(now)
 	assert_eq(eco.state.gems, GameData.DAILY_TASK_REROLL_COST - 1)
+
+
+# --- skip_grow_time() -- feature-scoping-2026-08-22.md item 2's second gems sink ------
+
+const ONE_DAY_MS: int = 86_400_000
+
+
+func test_skip_grow_time_succeeds_and_costs_gems() -> void:
+	var now: int = 1787356800000
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS
+	var plot_id := eco.state.plots[0].id
+	eco.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+
+	eco.skip_grow_time(plot_id, now)
+
+	assert_eq(eco.state.gems, 0)
+	assert_true(eco.state.grow_skip_used_today)
+
+
+func test_skip_grow_time_rewinds_planted_at_so_the_plot_resolves_ready_immediately() -> void:
+	# The real end-to-end proof: skip_grow_time() must not itself flip the
+	# plot to READY_TO_HARVEST (that stays resolve_growth_completions()'s
+	# job, unchanged) -- it must rewind planted_at_epoch_ms far enough that
+	# the very next resolve call, at the SAME now, already treats it as
+	# complete.
+	var now: int = 1787356800000
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS
+	var plot_id := eco.state.plots[0].id
+	eco.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+	assert_eq(eco.state.plots[0].state.kind, PlotState.Kind.GROWING)
+
+	eco.skip_grow_time(plot_id, now)
+	assert_eq(eco.state.plots[0].state.kind, PlotState.Kind.GROWING, "skip_grow_time() itself must not resolve the plot -- only rewind its clock")
+
+	eco.resolve_growth_completions(now)
+	assert_eq(eco.state.plots[0].state.kind, PlotState.Kind.READY_TO_HARVEST)
+
+
+func test_skip_grow_time_blocked_on_insufficient_gems() -> void:
+	var now: int = 1787356800000
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS - 1
+	var plot_id := eco.state.plots[0].id
+	eco.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+
+	eco.skip_grow_time(plot_id, now)
+
+	assert_eq(eco.state.gems, GameData.GROW_SKIP_COST_GEMS - 1)
+	assert_false(eco.state.grow_skip_used_today)
+	assert_eq(eco.state.plots[0].state.planted_at_epoch_ms, now)
+
+
+func test_skip_grow_time_blocked_after_first_use_same_day() -> void:
+	var now: int = 1787356800000
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS * 2
+	var plot_id := eco.state.plots[0].id
+	eco.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+	eco.skip_grow_time(plot_id, now)
+	var gems_after_first_skip := eco.state.gems
+
+	# Plant again on the same (now-empty, since it wasn't resolved) plot's
+	# neighbor to have a second real GROWING target for the blocked attempt.
+	var second_plot_id := eco.state.plots[1].id
+	eco.plant_seed(second_plot_id, CropType.Kind.WHEAT, now)
+	eco.skip_grow_time(second_plot_id, now)
+
+	assert_eq(eco.state.gems, gems_after_first_skip, "second skip attempt same day must not spend gems")
+	assert_eq(eco.state.plots[1].state.planted_at_epoch_ms, now, "second plot's clock must be untouched -- the cap blocked the skip")
+
+
+func test_skip_grow_time_resets_on_a_new_calendar_day() -> void:
+	var day_one: int = 1787356800000
+	var day_two: int = day_one + ONE_DAY_MS
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS * 2
+	var plot_id := eco.state.plots[0].id
+	eco.plant_seed(plot_id, CropType.Kind.WHEAT, day_one)
+	eco.skip_grow_time(plot_id, day_one)
+
+	var second_plot_id := eco.state.plots[1].id
+	eco.plant_seed(second_plot_id, CropType.Kind.WHEAT, day_two)
+	eco.skip_grow_time(second_plot_id, day_two)
+
+	assert_eq(eco.state.gems, 0, "a fresh day must allow a second skip, spending gems again")
+	assert_ne(eco.state.plots[1].state.planted_at_epoch_ms, day_two, "day two's skip must have actually rewound the clock")
+
+
+func test_skip_grow_time_does_nothing_for_a_non_growing_plot() -> void:
+	var now: int = 1787356800000
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS
+	var plot_id := eco.state.plots[0].id
+	assert_eq(eco.state.plots[0].state.kind, PlotState.Kind.EMPTY)
+
+	eco.skip_grow_time(plot_id, now)
+
+	assert_eq(eco.state.gems, GameData.GROW_SKIP_COST_GEMS, "nothing growing there -- gems must not be spent")
+	assert_false(eco.state.grow_skip_used_today)
+
+
+func test_can_skip_grow_time_reflects_insufficient_gems() -> void:
+	var now: int = 1787356800000
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS - 1
+	assert_false(eco.can_skip_grow_time(now))
+
+
+func test_can_skip_grow_time_reflects_the_daily_cap_without_mutating_state() -> void:
+	var now: int = 1787356800000
+	eco.state.gems = GameData.GROW_SKIP_COST_GEMS * 2
+	var plot_id := eco.state.plots[0].id
+	eco.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+	assert_true(eco.can_skip_grow_time(now))
+
+	eco.skip_grow_time(plot_id, now)
+
+	assert_false(eco.can_skip_grow_time(now))
+	# The read-only check itself must never have consumed the cap on its
+	# own -- confirmed by the fact skip_grow_time() above still worked
+	# once, which would have failed if an earlier can_skip_grow_time()
+	# call in this test had already marked it used.
+	assert_true(eco.state.grow_skip_used_today, "skip_grow_time() above is what set this, not can_skip_grow_time()'s own reads")

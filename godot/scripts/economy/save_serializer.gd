@@ -66,6 +66,8 @@ static func to_dict(state: GameState) -> Dictionary:
 		"daily_task_progress": _int_keyed_int_dict_to_dict(state.daily_task_progress),
 		"daily_task_claimed": _int_keyed_bool_dict_to_dict(state.daily_task_claimed),
 		"daily_task_bonus_claimed": state.daily_task_bonus_claimed,
+		"grow_skip_day_key": state.grow_skip_day_key,
+		"grow_skip_used_today": state.grow_skip_used_today,
 		"zone_layout": _zone_layout_to_dict(state.zone_layout),
 		"decorations": _decorations_to_array(state.decorations),
 		"next_decoration_id": state.next_decoration_id,
@@ -118,6 +120,8 @@ static func from_dict(data: Dictionary) -> GameState:
 	state.daily_task_progress = _int_keyed_int_dict_from_dict(data["daily_task_progress"])
 	state.daily_task_claimed = _int_keyed_bool_dict_from_dict(data["daily_task_claimed"])
 	state.daily_task_bonus_claimed = bool(data["daily_task_bonus_claimed"])
+	state.grow_skip_day_key = int(data["grow_skip_day_key"])
+	state.grow_skip_used_today = bool(data["grow_skip_used_today"])
 	state.zone_layout = _zone_layout_from_dict(data["zone_layout"])
 	state.decorations = _decorations_from_array(data["decorations"])
 	state.next_decoration_id = int(data["next_decoration_id"])
@@ -139,7 +143,8 @@ static func validate(data: Dictionary) -> bool:
 		"mandi_glut", "event_occurrence_index", "event_points", "event_has_premium_pass",
 		"event_claimed_tier", "chanda_last_resolved_cycle_index", "chanda_blessing_active_until",
 		"gems", "daily_task_day_key", "daily_task_kinds", "daily_task_progress", "daily_task_claimed",
-		"daily_task_bonus_claimed", "zone_layout", "decorations", "next_decoration_id", "worker_assignments",
+		"daily_task_bonus_claimed", "grow_skip_day_key", "grow_skip_used_today",
+		"zone_layout", "decorations", "next_decoration_id", "worker_assignments",
 	]):
 		return false
 
@@ -160,10 +165,11 @@ static func validate(data: Dictionary) -> bool:
 		"total_harvests", "film_expires_at_epoch_ms", "electricity_expires_at_epoch_ms",
 		"event_occurrence_index", "event_points", "chanda_last_resolved_cycle_index",
 		"chanda_blessing_active_until", "gems", "daily_task_day_key", "next_decoration_id",
+		"grow_skip_day_key",
 	]:
 		if not _is_int(data[key]):
 			return false
-	for key in ["has_polyhouse", "has_fan_pad", "has_drip_irrigation", "has_agroforestry", "has_security", "has_aquaculture", "has_vertical_farm", "has_mandi", "has_mandi_terminal", "event_has_premium_pass", "daily_task_bonus_claimed"]:
+	for key in ["has_polyhouse", "has_fan_pad", "has_drip_irrigation", "has_agroforestry", "has_security", "has_aquaculture", "has_vertical_farm", "has_mandi", "has_mandi_terminal", "event_has_premium_pass", "daily_task_bonus_claimed", "grow_skip_used_today"]:
 		if not (data[key] is bool):
 			return false
 	if not _is_int(data["farmhouse_level"]) or int(data["farmhouse_level"]) < 0:

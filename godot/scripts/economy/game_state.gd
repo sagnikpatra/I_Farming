@@ -93,6 +93,12 @@ extends Resource
 @export var daily_task_claimed: Dictionary = {}
 ## Whether today's all-3-complete bonus has already been awarded.
 @export var daily_task_bonus_claimed: bool = false
+## feature-scoping-2026-08-22.md item 2's capped grow-time skip. Same
+## year*10000+month*100+day local-day-key scheme as daily_task_day_key
+## above, -1 = never initialized.
+@export var grow_skip_day_key: int = -1
+## Whether today's one grow-time skip has already been used.
+@export var grow_skip_used_today: bool = false
 ## Custom drag-to-reposition positions for the village board's structure
 ## zones, keyed by zone id (see village_board scripts' zone-id constants).
 ## Missing entries fall back to that zone's default anchor. String zone id ->

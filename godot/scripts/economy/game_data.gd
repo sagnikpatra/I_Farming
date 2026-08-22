@@ -176,6 +176,15 @@ const DAILY_TASK_ALL_BONUS_GEMS: int = 5
 ## How many of the 5-entry pool are drawn each day.
 const DAILY_TASKS_PER_DAY: int = 3
 
+## design/gdd/gems-second-sink.md's capped grow-time skip -- the second
+## gems sink from feature-scoping-2026-08-22.md item 2's own brief
+## ("(b) capped convenience skips, e.g. one grow-time skip per day, hard-
+## capped"). Priced noticeably above DAILY_TASK_REROLL_COST (a full skip
+## is a stronger convenience than a reroll) but still reachable within a
+## few days of ordinary play -- a full day's 3 tasks + the all-3 bonus
+## nets roughly 14-19 gems at most.
+const GROW_SKIP_COST_GEMS: int = 10
+
 static var _daily_task_pool: Array[DailyTaskDef] = []
 
 

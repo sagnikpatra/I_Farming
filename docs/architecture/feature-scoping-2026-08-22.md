@@ -233,7 +233,7 @@ shipped here.
 | # | Feature | Complexity | Key dependency / prerequisite | Status |
 |---|---|---|---|---|
 | 1 | Building upgrades change layout | M (Farmhouse-only) / L (footprint growth + all structures) | Resolves `land-and-structures.md`'s open collision-validation question if footprint grows | **Built (2026-08-22, commit `d03eaee` + a same-day stretch goal)** -- Farmhouse model re-skin, fixed footprint. **Footprint growth decided against, not deferred** (2026-08-22): the brief's own recommendation was fixed-footprint, and growing it would force resolving `land-and-structures.md`'s still-open collision-validation question as a side effect of a visual feature. The other 3 structures' sub-upgrades (Fan & Pad/UV Film/Drip Irrigation/Security/Electricity) shipped same-day as a shared warm-tint visual cue (not per-flag distinct attachments -- no sourced asset exists for any of them) -- item 1 has no open stretch goals left |
-| 2 | Gems via daily tasks | M (grind-only) / L (if real-money purchasable) | Real-money path needs a billing-integration decision first | **Built (2026-08-22, commit `85a0079`)** -- grind-only, as scoped; real-money purchase stays explicitly out of scope (no billing integration exists) |
+| 2 | Gems via daily tasks | M (grind-only) / L (if real-money purchasable) | Real-money path needs a billing-integration decision first | **Built (2026-08-22, commit `85a0079` + a same-day second-sink stretch goal)** -- grind-only, as scoped; real-money purchase stays explicitly out of scope (no billing integration exists). **Second sink also decided and shipped same-day**: a capped grow-time skip (10 gems, once per real calendar day) -- see `design/gdd/gems-second-sink.md`. Gem-exclusive decorations (the brief's other candidate) not pursued -- needs a new sourced 3D asset, deliberately avoided this pass. The skip's economy logic is fully unit-tested; the on-device button press itself was not visually confirmed (see that GDD's Acceptance Criteria) |
 | 3 | Real-world-timezone weather | S/M (cosmetic, recommended) / L (mechanical, not recommended) | New device-timezone read dependency either way | **Built (2026-08-22, commit `81a0d3c` + 2 same-day stretch goals)** -- Option A (cosmetic day/night, S complexity); **both originally-deferred stretch goals now also shipped same-day**: Option B (seasonal palette -- real-calendar-month tint layered on the phase preset) and villager lamp-lighting (one `OmniLight3D` per structure, lit only at Night, no new 3D assets needed) -- item 3 has no open stretch goals left |
 | 4 | Richer ambient villager behavior | M (contingent) / L (if new animation sourcing needed) | Verify `Rig_Medium_General.glb` has a usable idle clip first | **Built (2026-08-22, commits `028c36a` + 3 same-day stretch goals)** -- prerequisite confirmed true (Idle_A/Idle_B exist), idle-pause shipped at M; **all three originally-deferred stretch goals now also shipped same-day**: congregating (villagers turn to face each other), point-of-interest lingering (villagers bias toward decoration-adjacent tiles), and night population thinning (roaming population roughly halves at real-world Night, restores at Dawn) -- item 4 has no open stretch goals left |
 | 5 | Festival chanda visiting-NPCs | L | — | **Built (2026-08-22, commit `56c62a9`)** |
@@ -246,10 +246,21 @@ infrastructure precedent (`local_hour()` mirrors `local_day_key()`'s exact
 pure-function shape). Cloud save is tracked separately in
 `adr-0003-cloud-save-and-player-accounts.md` (Proposed, not yet actioned).
 
-Each item's own stretch goals (footprint growth, a second gems sink,
-seasonal palette/villager lamp-lighting, villager congregating/decoration-
-lingering/night population thinning) remain open, undecided future work --
-not committed to, not scheduled. The project owner's next move, per the
-Collaborative Design Principle, is picking a new direction entirely (one
-of these stretch goals, the cloud-save ADR, or something not on this list
-at all).
+**Update (2026-08-22, later the same day)**: every item's own stretch
+goals have since been decided and, where they didn't need new art
+content, built -- see each row above for the specifics. Two were
+decided *against* rather than built (Farmhouse footprint growth,
+gem-exclusive decorations), both for the same reason: pursuing them
+would have meant either resolving an unrelated open architecture
+question as a side effect of a visual feature, or taking on real new
+3D-asset content-creation scope this pass deliberately stayed out of.
+Nothing on this list remains open or undecided. Two items carry an
+honestly-flagged, narrower residual gap: Point-of-Interest Lingering's
+and the grow-time skip button's on-device visual confirmations weren't
+completed (see their own GDDs' Acceptance Criteria) -- the underlying
+logic is fully unit-tested in both cases, only the "watch it happen on
+the real board" step is outstanding. Cloud save is tracked separately in
+`adr-0003-cloud-save-and-player-accounts.md` (Proposed, not yet
+actioned). The project owner's next move, per the Collaborative Design
+Principle, is a genuinely new direction -- the cloud-save ADR's
+remaining Play Console step, or something not on this list at all.

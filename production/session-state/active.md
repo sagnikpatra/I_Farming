@@ -4318,15 +4318,125 @@ session to reach that state (after items 3 and 4).
    the rebuild-during-Night lamp fix (needs a live purchase/drag
    triggered mid-Night), and the two-villagers-mutually-facing
    Congregating case (inherently probabilistic to catch on camera).
+
+## 2026-08-22 (cont'd) -- Gems Grow-Time Skip built; a real save-data
+mistake happened during its own verification, caught and fully
+corrected; every feature-scoping-2026-08-22.md item now closed
+
+Sixth and final stretch goal this session: a capped grow-time skip (10
+gems, once per real calendar day) -- item 2's second gems sink, per the
+original brief's own "(b) capped convenience skips" suggestion.
+Deliberately does not bypass weather/theft/flood risk -- rewinds the
+plot's `planted_at_epoch_ms` so the very next `resolve_growth_
+completions()` call (already tick-driven, or called immediately by the
+UI for responsiveness) treats it as naturally complete through its
+existing, unchanged risk logic. Option (a) from the brief (gem-exclusive
+decorations) was decided *against*: every decoration needs a real
+sourced 3D asset, which this pass -- like villager lamp-lighting and the
+sub-upgrade tint before it -- deliberately avoided taking on.
+
+Built: `GameState.grow_skip_day_key`/`grow_skip_used_today`,
+`GameData.GROW_SKIP_COST_GEMS`, `GameEconomy.skip_grow_time()`/
+`can_skip_grow_time()`, both new fields wired through `SaveSerializer`.
+UI: `growing_info_card.gd` gained a "⏩ Skip" button following
+`decoration_info_card.gd`'s exact existing Rotate/Flip/Remove pattern
+(same button factory, same persist-and-close flow) --
+`board_interactor.gd`'s call site updated to pass the extra context.
+8 new GUT tests, including the real end-to-end proof (skip, then call
+`resolve_growth_completions()` at the same `now`, confirm the plot is
+genuinely READY_TO_HARVEST). Full suite: 536/536, zero regressions.
+
+**A real mistake happened during this feature's own on-device setup,
+and was fully owned and corrected, not minimized**: an earlier session
+commit (`a2dccfa`, sub-upgrade tint) had claimed a debug override was
+safe because `_ready()` doesn't persist to disk. Setting up this
+feature's own debug verification surfaced that the claim was wrong --
+`_on_growth_tick_timeout()` calls `persist_and_rebuild_if_dirty()`
+every 3 seconds regardless of what triggered the dirty flag, and every
+forced `buy_*`/`renew_*` call this session's debug overrides used does
+exactly that. The real on-device save had already been written with
+inflated coins (999,984,490) and 5 false upgrade flags.
+
+Stopped immediately on discovering this -- did not try to unilaterally
+"fix" it without surfacing it first. Pulled the contaminated save,
+identified precisely which fields the debug sessions had touched
+(coins, gems, the 5 structure/upgrade flags + their 2 expiry
+timestamps -- left every other field, including several genuinely
+pre-existing GROWING plots, untouched since there was no evidence
+those were affected by anything this session did), asked the user how
+to proceed. **User chose: reset to the known-clean baseline** (260
+coins, 0 gems, no upgrades -- confirmed against this session's own many
+earlier legitimate screenshots). Corrected exactly those fields,
+installed a build with no debug code, pushed the corrected save, and
+verified via a clean screenshot before doing anything else.
+
+Went on to re-attempt the grow-skip feature's own UI verification with
+a properly-taken save backup this time (the lesson applied immediately,
+not just noted for later) -- hit further real friction (the device's
+screen lock interrupting the debug session mid-test twice, then
+genuine difficulty precisely tap-targeting the correct plot on the
+isometric board at the zoom level available) and could not complete
+the actual button-press verification. Rather than keep burning effort
+chasing exact pixel coordinates, stopped, reverted all debug code, and
+restored the backed-up save a second time -- confirmed clean again.
+The underlying logic remains fully verified via the 8 unit tests and a
+confirmed-correct on-device economy-state log; only the visual "watch
+the button render and tap it" step is the one item still open, and
+it's documented as exactly that in `gems-second-sink.md`'s Acceptance
+Criteria, not glossed over.
+
+Corrected the false safety claim in `land-and-structures.md` as its own
+standalone commit (`d8ddac7`) rather than silently rewriting git
+history -- the record now says plainly what was wrong and how it was
+fixed.
+
+Created `design/gdd/gems-second-sink.md` (new GDD, full 8-section
+template). Updated `feature-scoping-2026-08-22.md`'s item 2 row and
+closing summary -- **every item from the original 5-item pass is now
+either built or explicitly decided against; nothing remains open or
+undecided.**
+
+## Next Step
+
+1. **Real blocker, still needs the project owner specifically**: use
+   the SHA-1/package name above to create a Google Play Console Game
+   Services project (or confirm one already exists) and register an
+   OAuth client. Only once that exists, and the numeric Project/
+   Application ID is handed back, can actual silent sign-in (ADR-0003
+   Phase 1 step 6's last remaining piece) be verified on-device --
+   swap the placeholder `godot_play_game_services/game_id` in
+   `export_presets.cfg` for the real one at that point, rebuild, and
+   re-run the sign-in probe.
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)
    Phase 2 (backup-only, one-way upload on app pause) is the next
    ADR-0003 milestone -- low risk, since nothing can overwrite the local
    save yet at that phase.
-3. Commit `291a268` (Phase 0) is still local-only, unresolved from
-   earlier -- still needs the user's word on pushing it (see above).
-   Everything from this Phase 1 session is also uncommitted so far.
-4. Everything else from prior "Next Step" entries (screen-alignment
+3. **Every item from the 2026-08-22 feature-scoping pass is now closed**
+   (built or explicitly decided against) -- there is no automatic next
+   implementation item left from that list. The next real decision is
+   the project owner's: cloud-save Phase 1's Play Console step, or a
+   genuinely new direction.
+4. Two narrow, honestly-flagged on-device visual confirmations remain
+   open (logic fully tested in both, only the live "watch it on the
+   real board" step is missing) -- Point-of-Interest Lingering (needs a
+   save with decorations placed) and the grow-time-skip button (needs
+   either a clearer way to identify a growing plot's exact screen
+   position, or trying again with more patience for the device's screen
+   lock). Also still open from earlier: the rebuild-during-Night lamp
+   fix and the two-villagers-mutually-facing Congregating case (both
+   inherently hard to catch live, see their own GDDs).
+5. **Process note for future on-device debug verification in this
+   project**: any temporary `_ready()` override that mutates GameState
+   MUST have a real save backup pulled first (`run-as ... cat
+   files/save.tres` to a local file) before the debug build ever
+   launches -- `_on_growth_tick_timeout()` persists dirty state every 3
+   seconds regardless of what caused the dirty flag, so any debug build
+   running even briefly WILL write to the real on-device save. This was
+   learned the hard way this session and must not be re-learned.
+6. Commit `291a268` (Phase 0, cloud-save) is still local-only from
+   earlier in the session -- still needs the user's word on pushing.
+7. Everything else from prior "Next Step" entries (screen-alignment
    confirmation, localization, store readiness) is unchanged and still
    open.

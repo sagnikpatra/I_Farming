@@ -54,6 +54,8 @@ func test_a_richly_populated_state_round_trips_field_for_field() -> void:
 	eco.state.event_claimed_tier = 1
 	eco.give_chanda(now)
 	eco.state.gems = 17
+	eco.state.grow_skip_day_key = 20260822
+	eco.state.grow_skip_used_today = true
 	_set_todays_tasks(now, [DailyTaskKind.Kind.HARVEST, DailyTaskKind.Kind.SELL])
 	eco.state.daily_task_progress[DailyTaskKind.Kind.HARVEST] = 2
 	eco.state.zone_layout["farmhouse"] = ZoneAnchor.new(3.5, 2.0, 90, true)
@@ -89,6 +91,8 @@ func test_a_richly_populated_state_round_trips_field_for_field() -> void:
 	assert_eq(restored.event_claimed_tier, 1)
 	assert_eq(restored.chanda_last_resolved_cycle_index, eco.state.chanda_last_resolved_cycle_index)
 	assert_eq(restored.gems, 17)
+	assert_eq(restored.grow_skip_day_key, 20260822)
+	assert_true(restored.grow_skip_used_today)
 	assert_eq(restored.daily_task_progress[DailyTaskKind.Kind.HARVEST], 2)
 	var restored_anchor: ZoneAnchor = restored.zone_layout["farmhouse"]
 	assert_almost_eq(restored_anchor.tile_x, 3.5, 0.0001)

@@ -5591,3 +5591,28 @@ twice: 614/614 (up from 610), non-flaky.
 
 **Next step**: continuing to scan. This closes the one real test-
 coverage gap found this pass.
+
+## 2026-08-23 (cont'd) -- overlap-detection had only its healthy case tested
+
+Kept scanning for real (not naming-convention-false-alarm) coverage
+gaps. Found one: `_find_overlapping_tiles()` -- the zone/plot footprint
+collision check `village_board.gd`'s own doc comment explicitly calls a
+safety-critical path ("a real player hitting this rare edge case would
+have an unrecoverable 'empty board' save with no error shown to them at
+all") -- only had its NEGATIVE case tested
+(`test_no_footprint_overlap_with_every_zone_unlocked_and_every_plot_slot_full`,
+proving no false positives at the worst-case board state). Nothing
+verified it actually DETECTS a real overlap when one exists.
+
+Added 2 tests to `test_village_snapshot_mapper.gd`: a real zone-to-zone
+footprint collision, and a zone-footprint-to-plot collision, each
+constructing deliberately-overlapping `ZoneFixture`/`PlotFixture`
+fixtures directly and asserting the exact colliding tile is returned.
+Did a genuine negative-control check before trusting them -- temporarily
+made `_find_overlapping_tiles()` always return `[]`, confirmed exactly
+these 2 tests failed (65/67, not some unrelated set), then restored the
+real function and confirmed clean via `git diff`. Full suite run twice:
+616/616 (up from 614), non-flaky.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

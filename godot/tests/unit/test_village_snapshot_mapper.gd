@@ -328,6 +328,41 @@ func test_no_footprint_overlap_with_every_zone_unlocked_and_every_plot_slot_full
 	assert_eq(overlaps, [] as Array[Vector2i])
 
 
+## 2026-08-23: the test above only proves the healthy/no-overlap case --
+## nothing previously verified _find_overlapping_tiles() actually DETECTS
+## a real overlap when one exists, despite its own doc comment explicitly
+## worrying about this exact failure mode ("a real player hitting this
+## rare edge case would have an unrecoverable 'empty board' save with no
+## error shown to them at all"). A safety-critical path with only its
+## negative case tested is a real gap, found and closed here rather than
+## assumed correct because the negative case passed.
+func test_detects_a_real_zone_to_zone_footprint_overlap() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	var color := Color.WHITE
+	var zone_a := ZoneFixture.new("a", "Zone A", "", 2, 2, 2, 2, color)
+	var zone_b := ZoneFixture.new("b", "Zone B", "", 3, 3, 2, 2, color)  # overlaps zone_a at (3,3)
+
+	var overlaps := board._find_overlapping_tiles([zone_a, zone_b])
+
+	assert_eq(overlaps, [Vector2i(3, 3)] as Array[Vector2i])
+
+
+func test_detects_a_zone_footprint_to_plot_overlap() -> void:
+	var board := VILLAGE_BOARD_SCENE.instantiate() as VillageBoard
+	add_child_autofree(board)
+	var color := Color.WHITE
+	var zone_a := ZoneFixture.new("a", "Zone A", "", 2, 2, 2, 2, color)  # occupies (2,2)-(3,3)
+	var plots: Array[PlotFixture] = [PlotFixture.new(3, 3, "plot")]  # lands on zone_a's own tile
+	var zone_b := ZoneFixture.new(
+		"b", "Zone B", "", 10, 10, 1, 1, color, plots
+	)
+
+	var overlaps := board._find_overlapping_tiles([zone_a, zone_b])
+
+	assert_eq(overlaps, [Vector2i(3, 3)] as Array[Vector2i])
+
+
 # --- 10. resolved_anchor() -- EPIC-M5 layout-overlap fix ---------------------------
 
 func test_resolved_anchor_returns_default_when_no_custom_entry() -> void:

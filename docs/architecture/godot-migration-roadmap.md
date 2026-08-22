@@ -65,8 +65,12 @@ stays the owner's regardless of how much of this list gets done.
       no-op until real `.ogg` files are dropped in; sourcing/composing them
       is a separate follow-up task. `agroforestry_tab.gd`/
       `niche_farming_tab.gd` wiring (mechanically identical to the done
-      `polyhouse_tab.gd`) and `ui_action_rejected` (needs a `GameEvent`
-      design decision first) explicitly deferred, not silently skipped.
+      `polyhouse_tab.gd`) was deferred at the time this note was written,
+      then closed the same way in a later session (commit `d268335`) --
+      both tabs now call `_play_audio()` from every purchase handler,
+      confirmed by inspection 2026-08-22. `ui_action_rejected` (needs a
+      `GameEvent` design decision first) remains open, explicitly
+      deferred, not silently skipped.
       Design doc: `design/audio/audio-core-gameplay-loop.md`.
 - [x] QA pass — done 2026-08-21: `/smoke-check` run against the Godot
       build (adapted for this project having no formal `production/
@@ -106,8 +110,19 @@ stays the owner's regardless of how much of this list gets done.
       available this session) — recommended before considering this
       fully closed. Report: `production/qa/accessibility/
       village-board-and-management-sheets-audit-2026-08-21.md`.
-- [ ] Localization: game is English/Hindi-label-mixed by design (`design/
-      gdd/`) but has no real i18n string-table pipeline (`/localize`).
+- [x] Localization — Phase 1 done 2026-08-22: Godot's native CSV-translation
+      pipeline (`godot/locales/ui_strings.csv`), English/Hindi locales,
+      `AccessibilitySettings.locale` as the persisted player preference
+      (new language-toggle row in the Accessibility sheet), applied live
+      via `TranslationServer.set_locale()` from `village_board.gd`. Proven
+      with a real migrated slice (`hud.gd`'s 3 buttons/labels, the full
+      `accessibility_sheet.gd`) rather than left as untested scaffolding —
+      558/558 GUT passing, up from 545/545. The rest of the UI's hardcoded
+      strings (every other `*_tab.gd`/`*_card.gd`/`*_picker.gd`, plus
+      `game_economy.gd`'s `_push_event()` message strings) remain
+      unmigrated by design — see `docs/architecture/
+      localization-pipeline.md`'s own Phase 2 plan, not silently assumed
+      covered.
 - [x] Security/save-integrity audit — done 2026-08-21: `/security-audit
       full` run against the Godot save format and economy logic. **1 HIGH
       finding (SEC-001: save-loaded crop/host/decoration enum ordinals

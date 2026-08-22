@@ -537,7 +537,7 @@ func _build_bottom_left_panel() -> void:
 	_inventory_row.add_theme_constant_override("separation", 8)
 	_bottom_left_panel.add_child(_inventory_row)
 
-	_sell_all_button = _make_chunky_button("Sell All", SAFFRON_DARK)
+	_sell_all_button = _make_chunky_button(tr(&"hud.sell_all"), SAFFRON_DARK)
 	_sell_all_button.pressed.connect(_on_sell_all_pressed)
 	_bottom_left_panel.add_child(_sell_all_button)
 
@@ -549,7 +549,7 @@ func _build_bottom_left_panel() -> void:
 	# Aquaculture/Vertical Farm already embed the same row inside their own
 	# real zone-tap sheets (polyhouse_tab.gd/niche_farming_tab.gd) and don't
 	# need this.
-	_open_field_workers_button = _make_chunky_button("🌾 Field Worker", FIELD_GREEN)
+	_open_field_workers_button = _make_chunky_button(tr(&"hud.field_worker"), FIELD_GREEN)
 	_open_field_workers_button.pressed.connect(_on_open_field_workers_pressed)
 	_bottom_left_panel.add_child(_open_field_workers_button)
 
@@ -608,7 +608,7 @@ func _build_bottom_right_shop() -> void:
 
 	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §5,
 	# HIGH): 12px -> this project's 14px floor.
-	var shop_label := _make_title_label("Shop", 14)
+	var shop_label := _make_title_label(tr(&"hud.shop"), 14)
 	shop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bottom_right_shop.add_child(shop_label)
 

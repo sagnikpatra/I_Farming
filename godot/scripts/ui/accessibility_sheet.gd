@@ -4,7 +4,7 @@
 ## via hud.gd's new gear-icon button (_on_accessibility_pressed()), same
 ## BottomSheet-reuse pattern every other management sheet/picker uses.
 ##
-## Two controls today, matching AccessibilitySettings' two fields:
+## Controls today, matching AccessibilitySettings' fields:
 ## - Text size: cycles AccessibilitySettings.TEXT_SCALE_STEPS (100%/115%/
 ##   130%). Applies to hud.gd's own labels immediately on next HUD build --
 ##   this sheet does NOT live-rebuild HUD's already-constructed containers
@@ -19,11 +19,15 @@
 ##   _on_accessibility_settings_changed()) -- safe to hot-reload because it
 ##   reuses rebuild(), the same call every other board mutation already
 ##   goes through.
-##
-## Audio sliders (Master/Music/SFX/etc, per accessibility-specialist.md's
-## Audio Accessibility standards) are deliberately NOT here yet -- no audio
-## system exists in this codebase at all (see the audit's §7, DEFER). Add
-## them here once EPIC-M8's audio pass lands.
+## - Language (Localization Phase 1, docs/architecture/
+##   localization-pipeline.md): toggles AccessibilitySettings.locale between
+##   "en"/"hi", applied live via TranslationServer.set_locale() from the
+##   same _on_accessibility_settings_changed() hook -- same "already-built
+##   Control trees keep old text until next relaunch" limitation as text
+##   size above, for the same reason.
+## - Audio: 4 per-bus volume sliders + a mute-all toggle, added once EPIC-M8's
+##   audio pass landed (see _build_audio_row() below) -- per
+##   accessibility-specialist.md's Audio Accessibility standards.
 ##
 ## ARCHITECTURE: same "small static shell (Scroll/Body only) + procedural
 ## content built in _populate()" split every other ported sheet in this
@@ -63,9 +67,10 @@ func _populate() -> void:
 	for child in _body.get_children():
 		child.queue_free()
 
-	_body.add_child(_make_title_label("♿ Accessibility", 20, SOIL_BROWN_DARK))
+	_body.add_child(_make_title_label(tr(&"a11y.title"), 20, SOIL_BROWN_DARK))
 	_body.add_child(_build_text_scale_row())
 	_body.add_child(_build_colorblind_row())
+	_body.add_child(_build_language_row())
 	_body.add_child(_build_audio_row())
 
 
@@ -80,15 +85,15 @@ func _build_text_scale_row() -> PanelContainer:
 	box.add_theme_constant_override("separation", 6)
 
 	var percent := roundi(_settings.text_scale * 100.0)
-	box.add_child(_make_title_label("Text Size: %d%%" % percent, 16))
+	box.add_child(_make_title_label(tr(&"a11y.text_size") % percent, 16))
 
-	var cycle_button := _make_chunky_button("Cycle Text Size", FIELD_GREEN)
+	var cycle_button := _make_chunky_button(tr(&"a11y.cycle_text_size"), FIELD_GREEN)
 	cycle_button.pressed.connect(_on_cycle_text_scale_pressed)
 	box.add_child(cycle_button)
 
 	# A11Y fix (§5, HIGH): 12px -> this project's 14px floor.
 	var hint := _make_title_label(
-		"Takes effect next time you open the app.", 14, Color(1.0, 1.0, 1.0, 0.8)
+		tr(&"a11y.text_size_hint"), 14, Color(1.0, 1.0, 1.0, 0.8)
 	)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(hint)
@@ -103,20 +108,43 @@ func _build_colorblind_row() -> PanelContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 6)
 
-	box.add_child(_make_title_label("Colorblind-Safe Palette", 16))
-	var description := _make_title_label(
-		(
-			"Switches Growing/Ready-to-Harvest plot colors to a blue/orange "
-			+ "pair, and applies immediately."
-		),
-		12
-	)
+	box.add_child(_make_title_label(tr(&"a11y.colorblind_title"), 16))
+	var description := _make_title_label(tr(&"a11y.colorblind_description"), 12)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(description)
 
-	var toggle_label := "Turn Off" if _settings.colorblind_safe else "Turn On"
+	var toggle_label := tr(&"a11y.turn_off") if _settings.colorblind_safe else tr(&"a11y.turn_on")
 	var toggle_button := _make_chunky_button(toggle_label, SOIL_BROWN_DARK)
 	toggle_button.pressed.connect(_on_toggle_colorblind_pressed)
+	box.add_child(toggle_button)
+
+	card.add_child(box)
+	return card
+
+
+## Localization Phase 1 (docs/architecture/localization-pipeline.md): a
+## single English/Hindi toggle, same shape as _build_colorblind_row() above
+## (title + one chunky toggle button, no dedicated "off" state since exactly
+## one of the two is always active). AccessibilitySettings.set_locale()
+## persists + emits settings_changed, which VillageBoard's
+## _on_accessibility_settings_changed() picks up to call
+## TranslationServer.set_locale() live -- this sheet's own _populate() call
+## right after (in the handler below) is what makes THIS card's own labels
+## reflect the new language immediately; other already-built UI (HUD, an
+## already-open sheet) stays in the old language until next relaunch, same
+## documented limitation _build_text_scale_row()'s hint already carries.
+func _build_language_row() -> PanelContainer:
+	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 6)
+
+	box.add_child(_make_title_label(tr(&"a11y.language_title"), 16))
+
+	var is_hindi := _settings.locale == "hi"
+	var button_text := tr(&"a11y.language_hindi") if is_hindi else tr(&"a11y.language_english")
+	var toggle_button := _make_chunky_button(button_text, SOIL_BROWN_DARK)
+	toggle_button.pressed.connect(_on_toggle_language_pressed)
 	box.add_child(toggle_button)
 
 	card.add_child(box)
@@ -134,17 +162,17 @@ func _build_audio_row() -> PanelContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 6)
 
-	box.add_child(_make_title_label("🔊 Audio", 16))
+	box.add_child(_make_title_label(tr(&"a11y.audio_title"), 16))
 
-	var mute_label_text := "Unmute Audio" if _settings.audio_muted else "Mute All Audio"
+	var mute_label_text := tr(&"a11y.unmute") if _settings.audio_muted else tr(&"a11y.mute_all")
 	var mute_button := _make_chunky_button(mute_label_text, SOIL_BROWN_DARK)
 	mute_button.pressed.connect(_on_toggle_audio_muted_pressed)
 	box.add_child(mute_button)
 
-	box.add_child(_build_volume_slider_row("Master Volume", _settings.master_volume, _settings.set_master_volume))
-	box.add_child(_build_volume_slider_row("Ambience Volume", _settings.ambience_volume, _settings.set_ambience_volume))
-	box.add_child(_build_volume_slider_row("Sound Effects Volume", _settings.sfx_volume, _settings.set_sfx_volume))
-	box.add_child(_build_volume_slider_row("UI Sounds Volume", _settings.ui_volume, _settings.set_ui_volume))
+	box.add_child(_build_volume_slider_row(tr(&"a11y.master_volume"), _settings.master_volume, _settings.set_master_volume))
+	box.add_child(_build_volume_slider_row(tr(&"a11y.ambience_volume"), _settings.ambience_volume, _settings.set_ambience_volume))
+	box.add_child(_build_volume_slider_row(tr(&"a11y.sfx_volume"), _settings.sfx_volume, _settings.set_sfx_volume))
+	box.add_child(_build_volume_slider_row(tr(&"a11y.ui_volume"), _settings.ui_volume, _settings.set_ui_volume))
 
 	card.add_child(box)
 	return card
@@ -204,6 +232,11 @@ func _on_cycle_text_scale_pressed() -> void:
 
 func _on_toggle_colorblind_pressed() -> void:
 	_settings.toggle_colorblind_safe()
+	_populate()
+
+
+func _on_toggle_language_pressed() -> void:
+	_settings.set_locale("en" if _settings.locale == "hi" else "hi")
 	_populate()
 
 

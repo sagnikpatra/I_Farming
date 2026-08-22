@@ -1,0 +1,22 @@
+keys,en,hi
+hud.sell_all,Sell All,सब बेचें
+hud.field_worker,🌾 Field Worker,🌾 खेत मजदूर
+hud.shop,Shop,दुकान
+a11y.title,♿ Accessibility,♿ सुगम्यता
+a11y.text_size,Text Size: %d%%,टेक्स्ट आकार: %d%%
+a11y.cycle_text_size,Cycle Text Size,टेक्स्ट आकार बदलें
+a11y.text_size_hint,Takes effect next time you open the app.,अगली बार ऐप खोलने पर लागू होगा।
+a11y.colorblind_title,Colorblind-Safe Palette,रंग-अंधता-सुरक्षित पैलेट
+a11y.colorblind_description,"Switches Growing/Ready-to-Harvest plot colors to a blue/orange pair, and applies immediately.","उगते/कटाई के लिए तैयार खेत के रंगों को नीले/नारंगी जोड़े में बदलता है, और तुरंत लागू होता है।"
+a11y.turn_on,Turn On,चालू करें
+a11y.turn_off,Turn Off,बंद करें
+a11y.audio_title,🔊 Audio,🔊 ऑडियो
+a11y.mute_all,Mute All Audio,सभी ऑडियो म्यूट करें
+a11y.unmute,Unmute Audio,ऑडियो अनम्यूट करें
+a11y.master_volume,Master Volume,मुख्य वॉल्यूम
+a11y.ambience_volume,Ambience Volume,परिवेश वॉल्यूम
+a11y.sfx_volume,Sound Effects Volume,साउंड इफेक्ट वॉल्यूम
+a11y.ui_volume,UI Sounds Volume,यूआई ध्वनि वॉल्यूम
+a11y.language_title,Language,भाषा
+a11y.language_english,English,English
+a11y.language_hindi,Hindi,हिन्दी

@@ -37,6 +37,11 @@ window/handheld/orientation=6
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg")
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://locales/ui_strings.en.translation", "res://locales/ui_strings.hi.translation")
+locale/fallback="en"
+
 [layer_names]
 
 3d_physics/layer_1="Board pickable: zones"

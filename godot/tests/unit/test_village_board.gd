@@ -46,6 +46,34 @@ func test_a_rebuild_unrelated_to_day_night_keeps_night_lamps_lit() -> void:
 	assert_almost_eq(new_lamp.light_energy, VillageBoard.NIGHT_LAMP_ENERGY, 0.001, "an unrelated rebuild() must not silently darken a lamp that should still be lit -- the exact bug this session found and fixed")
 
 
+## Localization Phase 1 (docs/architecture/localization-pipeline.md):
+## VillageBoard is the one place that actually calls
+## TranslationServer.set_locale() -- see its _on_accessibility_settings_
+## changed(). Forces the real signal path (mutate the real
+## AccessibilitySettings instance the board loaded, same object identity
+## every UI call site already relies on) rather than calling the engine
+## API directly, so this guards the wiring itself, not just the API.
+func test_changing_the_accessibility_locale_applies_it_to_translation_server() -> void:
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+	TranslationServer.set_locale("en")
+
+	# Defensively normalize first: AccessibilitySettings' setters
+	# (set_locale() included) always save() to the real default
+	# user://accessibility.tres, same as every other setter in that class
+	# (see test_accessibility_settings.gd's own tests, which do the same) --
+	# an earlier test in this run may have left locale="hi" persisted
+	# there, which would make set_locale("hi") below a silent no-op (already
+	# equal) rather than the real transition this test means to exercise.
+	# Direct field assignment (not set_locale()) matches this file's own
+	# "force the state directly" precedent for _last_time_of_day_phase above.
+	board.get_accessibility_settings().locale = "en"
+
+	board.get_accessibility_settings().set_locale("hi")
+
+	assert_eq(TranslationServer.get_locale(), "hi")
+	TranslationServer.set_locale("en")  # reset -- process-global state, see test_localization.gd's own note
+
+
 func test_lamps_are_off_when_phase_is_explicitly_not_night() -> void:
 	# Opposite-direction sanity check for the same rebuild() path -- kept
 	# deliberately independent of the real system clock (this project's

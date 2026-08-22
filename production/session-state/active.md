@@ -4561,3 +4561,69 @@ Services setup remains blocked on the user (SHA-1 and package name
 already handed over); (3) screen-alignment confirmation, localization,
 and store readiness are still open from even earlier in the project and
 untouched this session.
+
+## 2026-08-22 (cont'd yet further)
+
+Picked up EPIC-M8's remaining "Localization" checklist item (unblocked,
+buildable -- unlike "Store readiness," which needs an owner-only Play
+Console account). Built Phase 1 of a real i18n pipeline:
+
+- Godot's native CSV-translation import (`godot/locales/ui_strings.csv`
+  -> generated `.en.translation`/`.hi.translation` resources),
+  `project.godot`'s new `[internationalization]` section.
+- `AccessibilitySettings.locale` (bounded to `["en", "hi"]`) as the
+  persisted player preference -- same shape as every other field in that
+  class, kept out of `GameState`/`save.tres` on purpose (player
+  preference, not game progress/save-integrity surface). New language
+  row in the Accessibility sheet. Applied live via
+  `TranslationServer.set_locale()` from `village_board.gd`'s existing
+  `_on_accessibility_settings_changed()` hook.
+- Proved the pipeline with a real migrated slice: all of `hud.gd`'s
+  candidate strings (Sell All / Field Worker / Shop) and the entire
+  `accessibility_sheet.gd` (which was also carrying a stale class-doc
+  comment claiming audio sliders "aren't here yet" when they'd already
+  shipped in an earlier session -- fixed that too while in the file).
+  Real, good-faith Hindi translations provided for every migrated
+  string, with an explicit accuracy caveat recorded in the new doc
+  (`docs/architecture/localization-pipeline.md`) recommending a native-
+  speaker review pass before shipping.
+- New `test_localization.gd` + an extension to `test_village_board.gd`.
+  Building the latter surfaced (and fixed) a third instance of the same
+  test-isolation bug class found twice earlier this session:
+  `AccessibilitySettings` setters always `save()` to the real default
+  `user://accessibility.tres` unless given a test-only path, so an
+  earlier test's real write left `locale="hi"` on disk for a later
+  test's fresh load to silently inherit. Fixed by forcing the field
+  directly before the assertion, matching this file's own established
+  pattern -- did not touch `test_accessibility_settings.gd`'s
+  pre-existing, harmless version of the same underlying behavior.
+- Full suite: 558/558 (up from 545/545), run twice, non-flaky.
+- Updated the roadmap checklist item and wrote the new architecture doc
+  with an honest, itemized Phase 2 scope (every other `*_tab.gd`/
+  `*_card.gd`/`*_picker.gd`, plus `game_economy.gd`'s `_push_event()`
+  message strings) -- not silently implied as covered.
+
+Also, earlier in this stretch: synced ADR-0001/0002's stale Validation
+Criteria checklists against real EPIC-M0-M7 completion status (commit
+`5b1ee0f`), and fixed a stale roadmap note that still described the
+agroforestry/niche-farming audio wiring as deferred when it had actually
+shipped in a later session (commit `d268335`).
+
+Two background `Agent` dispatches this stretch (localization-lead,
+godot-specialist for a GameEvent-snackbar-drain feature) both stopped
+early with shallow/no real output (research only, no files written) --
+noted as a real limitation of this environment's async agent dispatch
+for substantial multi-step work; both tasks were finished by working
+directly instead. The GameEvent snackbar/toast drain (the deeper issue
+behind `ui_action_rejected`'s audio gap -- `GameEvent.pending_events` is
+produced throughout `game_economy.gd` but never drained by any UI code
+at all, so rejection messages are currently silently lost) is now a
+known, real, scoped-but-not-yet-built gap -- worth its own follow-up
+session, not attempted this stretch given the size already covered.
+
+**Next step**: no forced next step. Two candidate next targets, both
+genuinely unblocked: (1) the GameEvent snackbar/toast drain described
+above; (2) Phase 2 of the localization migration. Still open and
+blocked on the user, unchanged: pushing accumulated local commits to
+origin, and the Play Console Game Services setup for real cloud-save
+sign-in.

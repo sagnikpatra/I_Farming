@@ -40,6 +40,18 @@ const TEXT_SCALE_STEPS: Array[float] = [1.0, 1.15, 1.3]
 @export var ui_volume: float = 1.0
 @export var audio_muted: bool = false
 
+## Localization Phase 1 (docs/architecture/localization-pipeline.md):
+## which locale's `.translation` resource (built from
+## godot/locales/ui_strings.csv) TranslationServer applies. A player
+## preference, same rationale as every other field in this file -- not
+## game progress, so it stays out of GameState/save.tres. Bounded to a
+## known-supported set (same "small deliberately-bounded set" philosophy
+## TEXT_SCALE_STEPS already uses above) rather than accepting any locale
+## string TranslationServer happens to recognize -- this project only
+## ships real translated strings for these two.
+const SUPPORTED_LOCALES: Array[String] = ["en", "hi"]
+@export var locale: String = "en"
+
 ## Not named `changed` -- Resource already declares a native `changed`
 ## signal (fired by ResourceSaver/the editor's own property-change
 ## tracking); redeclaring it here is a compile error ("Member 'changed'
@@ -114,5 +126,19 @@ func set_ui_volume(value: float) -> void:
 ## Toggles audio_muted. Persists and emits `settings_changed`.
 func toggle_audio_muted() -> void:
 	audio_muted = not audio_muted
+	save()
+	settings_changed.emit()
+
+
+# --- Localization Phase 1 --------------------------------------------------
+
+## Silently no-ops for an unsupported code rather than storing garbage --
+## same "the UI can only ever offer a valid choice" guarantee
+## cycle_text_scale()'s bounded TEXT_SCALE_STEPS gives, applied here since
+## this setter (unlike that one) takes a free string, not an index cycle.
+func set_locale(new_locale: String) -> void:
+	if not SUPPORTED_LOCALES.has(new_locale) or new_locale == locale:
+		return
+	locale = new_locale
 	save()
 	settings_changed.emit()

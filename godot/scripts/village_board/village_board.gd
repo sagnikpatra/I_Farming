@@ -190,6 +190,7 @@ func _ready() -> void:
 	_last_colorblind_safe = _accessibility_settings.colorblind_safe
 	_accessibility_settings.settings_changed.connect(_on_accessibility_settings_changed)
 	_apply_audio_settings_to_bus_server()
+	TranslationServer.set_locale(_accessibility_settings.locale)
 	var loaded_state := SaveSystem.load_state()
 	_economy = GameEconomy.new(loaded_state)
 	var zones := VillageSnapshotMapper.build(_economy.state, int(Time.get_unix_time_from_system() * 1000.0))
@@ -1631,6 +1632,13 @@ func get_audio_manager() -> AudioManager:
 ## cheap (a handful of AudioServer calls, no scene mutation).
 func _on_accessibility_settings_changed() -> void:
 	_apply_audio_settings_to_bus_server()
+	# Localization Phase 1: cheap, no scene mutation -- applied unconditionally
+	# on every signal, same as the bus-volume push above. Only affects text
+	# built AFTER this call (any fresh _populate()); already-built Control
+	# trees (an already-open sheet's other rows, HUD) keep their current-
+	# language text until next relaunch -- same documented, deliberate
+	# limitation cycle_text_scale() already carries above, not a new gap.
+	TranslationServer.set_locale(_accessibility_settings.locale)
 	if _accessibility_settings.colorblind_safe != _last_colorblind_safe:
 		_last_colorblind_safe = _accessibility_settings.colorblind_safe
 		rebuild(VillageSnapshotMapper.build(_economy.state, int(Time.get_unix_time_from_system() * 1000.0)), true)

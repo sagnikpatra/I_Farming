@@ -84,13 +84,28 @@ soft-currency-only game with no real-money purchase behind it.
 |---|---|---|---|
 | MEDIUM | Premium Pass EV is negative below Tier 3 | **Your call** — three real options: (a) lower `FESTIVAL_PREMIUM_PASS_COST` so even a Tier-1-only occurrence roughly breaks even, (b) let a purchased pass persist across occurrences instead of resetting every 8h (bigger behavior change), or (c) leave as-is if "a pass that rewards planning ahead, and punishes buying it casually" is the intended design — it's a coherent design stance, just not one this doc currently states explicitly | (a)/(c) are `game_data.gd`-constant or doc-only changes; (b) is a real economy-logic change, more involved |
 
-## Values That Need Attention
+## Values That Need Attention — Resolved 2026-08-22
 
-None require an immediate code change — this is a real design tradeoff
-needing your explicit call, not a broken formula. No values were changed
-by this report.
+`FESTIVAL_PREMIUM_PASS_COST` lowered from 5,000 to **400**
+(`godot/scripts/economy/game_data.gd`) — chosen at or below
+`FESTIVAL_PREMIUM_BONUS[0]` (500), so the smallest tier's own bonus
+always covers the pass cost. New net-vs-tier table after the fix:
+
+| Tier reached that occurrence | Premium bonus earned | Net vs. ₹400 cost |
+|---|---|---|
+| Tier 1 only (25 units) | ₹500 | **+₹100** |
+| Through Tier 2 (75 units) | ₹2,000 | **+₹1,600** |
+| Through Tier 3 (150 units) | ₹6,000 | **+₹5,600** |
+
+Never negative for anyone who reaches at least Tier 1 that occurrence —
+the "trap purchase" property is closed. Verified with a data-level
+invariant test (`FESTIVAL_PREMIUM_PASS_COST <= FESTIVAL_PREMIUM_BONUS[0]`,
+survives any future constant change) plus a real end-to-end test (buy
+the pass, sell exactly 25 Paddy during Makar Sankranti, confirm the
+Tier-1 reward alone covers the cost) in `test_game_economy.gd`. Full
+suite re-verified 583/583 (up from 581/581), twice, non-flaky.
 
 ---
 
-Re-run `/balance-check` after any fix to verify. Next in this sweep:
-`mandi-trading.md`.
+This closes the sweep's one clear-cut fix. Re-run `/balance-check` if
+`game_data.gd`'s Festival constants ever change again to verify.

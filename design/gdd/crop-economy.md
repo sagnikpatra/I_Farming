@@ -256,9 +256,26 @@ tuned, not placeholder.
   One new finding, not previously documented here: **within** Open
   Field, Wheat's ₹/sec strictly dominates both Paddy's and Tomato's
   (Tomato is the single worst ₹/sec crop in the entire 9-crop
-  catalogue) — flagged as a real pattern needing an explicit call (leave
-  as an intentional ₹/tap-vs-₹/sec tradeoff, or retune), not resolved
-  here. See the report for the full numbers and reasoning.
+  catalogue).
+
+  **Decision (2026-08-22): confirmed intentional, not retuned.** Unlike
+  the Festival Premium Pass finding in the same balance-check sweep
+  (`liveops-events.md` §5 — retuned, since that was an unambiguous flaw:
+  a mechanic meant to add value doing the opposite in the common case),
+  this pattern has a real, plausible design rationale already present in
+  this doc's own §1: Tier 1 exists "to build a daily-return habit," and
+  `v2.md`'s stated session model explicitly names both a short (1-5 min)
+  and long (15+ min) loop. Read that way, Tomato's lower ₹/sec but
+  larger single payout and much longer, lower-touch cycle (2 hours vs.
+  Wheat's 2 minutes) is a genuine ₹/tap-vs-₹/sec tradeoff serving
+  players who can't or don't want to check in every couple of minutes —
+  not a formula mistake. Retuning it would mean changing real gameplay
+  numbers on pure formula analysis with no playtesting to confirm the
+  new feel is actually better, for a mechanic this project's own
+  `.claude/docs/coding-standards.md` explicitly classifies as a "Feel"
+  quality (verified via playtesting, not automated formula checks).
+  Left as-is; closing the ambiguity this way rather than leaving it open
+  indefinitely.
 
 ---
 

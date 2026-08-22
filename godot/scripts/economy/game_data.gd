@@ -136,7 +136,20 @@ const MONSOON_FLOOD_CHANCE_PERCENT: int = 10
 const FESTIVAL_CYCLE_MS: int = 8 * 60 * 60 * 1000
 const FESTIVAL_ACTIVE_DURATION_MS: int = 60 * 60 * 1000
 const FESTIVAL_POINTS_PER_UNIT_SOLD: int = 2
-const FESTIVAL_PREMIUM_PASS_COST: int = 5_000
+## Balance fix (2026-08-22, design/balance/balance-check-liveops-events-
+## 2026-08-22.md): was 5,000. The Premium Pass resets every
+## FESTIVAL_CYCLE_MS occurrence (see _with_fresh_event_occurrence()), so
+## it must be rebought every 8h to have any effect that cycle -- at the
+## old cost, reaching only Tier 1 (the FESTIVAL_TIER_THRESHOLDS[0]
+## premium bonus, 500) meant a real -4,500 loss, a "trap purchase" for
+## anyone not actively optimizing around it. Lowered to sit at or below
+## the smallest tier's own premium bonus, so genuine engagement (reaching
+## at least Tier 1) is never a losing trade -- only buying the pass and
+## then not engaging at all stays a real risk, which is the intended
+## shape for a pass mechanic. Chosen deliberately, not guessed: 400 <
+## FESTIVAL_PREMIUM_BONUS[0] (500), giving a guaranteed minimum +100 net
+## at Tier 1, +1,600 at Tier 2, +5,600 at Tier 3.
+const FESTIVAL_PREMIUM_PASS_COST: int = 400
 
 const FESTIVAL_TIER_THRESHOLDS: Array[int] = [50, 150, 300]
 const FESTIVAL_FREE_REWARDS: Array[int] = [500, 1_500, 4_000]

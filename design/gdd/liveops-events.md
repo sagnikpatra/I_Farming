@@ -216,11 +216,25 @@ vs-session-length question above needs real player session data this
 single-player, no-backend/no-analytics game doesn't collect, so it stays
 genuinely open — not something a formula-level balance pass can resolve
 on its own. The pass instead found a different, concrete issue: the
-**Festival Premium Pass has negative expected value unless the player
-reaches the top reward tier in the same 8-hour occurrence they bought
+**Festival Premium Pass had negative expected value unless the player
+reached the top reward tier in the same 8-hour occurrence they bought
 it for** (it resets every occurrence, confirmed in
 `_with_fresh_event_occurrence()`) — see the report for the full ₹
 breakdown. Monsoon's own numbers confirmed clean, no finding there.
+
+**Fixed 2026-08-22**: `FESTIVAL_PREMIUM_PASS_COST` lowered from 5,000 to
+400 (`game_data.gd`), chosen so it sits at or below
+`FESTIVAL_PREMIUM_BONUS[0]` (500) — the smallest tier's own premium
+bonus now always covers the pass cost, so genuine engagement (reaching
+at least Tier 1) is never a net loss; only buying the pass and then not
+engaging at all stays a real risk, the intended shape for a pass
+mechanic. Verified with a real data-invariant test plus a real
+end-to-end test (buy the pass, sell exactly enough of the active
+festival's target crop to land on Tier 1, confirm the tier reward alone
+covers the pass cost) in `test_game_economy.gd`. This is the one value
+this balance-check sweep actually changed — see
+`crop-economy.md` §5 for why the sibling finding there (Tomato/Paddy's
+₹/sec) was confirmed intentional instead of retuned the same way.
 
 ---
 

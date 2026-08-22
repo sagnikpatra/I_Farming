@@ -413,6 +413,45 @@ func test_buy_premium_pass_twice_in_the_same_occurrence_is_a_silent_noop() -> vo
 	assert_false(eco.has_events())
 
 
+## Balance fix regression guard (design/balance/balance-check-liveops-
+## events-2026-08-22.md): the smallest tier's premium bonus must cover
+## the pass cost, or the pass has negative expected value for anyone who
+## buys it and only reaches the first tier that occurrence -- exactly
+## the "trap purchase" this fix closed. A pure data-level invariant, not
+## tied to any specific FESTIVAL_PREMIUM_PASS_COST/FESTIVAL_PREMIUM_BONUS
+## value -- catches a future constant change reintroducing the same bug
+## regardless of what the new numbers are.
+func test_premium_pass_cost_never_exceeds_the_smallest_tiers_premium_bonus() -> void:
+	assert_true(
+		GameData.FESTIVAL_PREMIUM_PASS_COST <= GameData.FESTIVAL_PREMIUM_BONUS[0],
+		"the pass must never cost more than the smallest tier's own premium bonus, or reaching only that tier is a real loss"
+	)
+
+
+## The same guarantee, proven end-to-end through a real festival sale
+## registering real tier progress -- not just the data-level invariant
+## above. Phase 0 = Makar Sankranti (target crop Paddy, see
+## GameData._ensure_festivals()); FESTIVAL_TIER_THRESHOLDS[0] = 50 points
+## at FESTIVAL_POINTS_PER_UNIT_SOLD = 2 -- exactly 25 units sold reaches
+## Tier 1 and no further.
+func test_premium_pass_reaching_only_tier_one_is_not_a_net_loss() -> void:
+	var now_festival: int = 0
+	eco.buy_premium_pass(now_festival)
+	var coins_after_pass_purchase := eco.state.coins
+
+	eco.state.inventory[CropType.Kind.PADDY] = CropStock.new(25, 0)
+	eco.sell_crop(CropType.Kind.PADDY, now_festival)
+
+	assert_eq(eco.state.event_claimed_tier, 1, "precondition: this test must actually land on Tier 1, not overshoot or undershoot it")
+	var coins_gained_from_tier_reward: int = (
+		eco.state.coins - coins_after_pass_purchase - (GameData.crop_def(CropType.Kind.PADDY).base_sell_price * 25)
+	)
+	assert_true(
+		coins_gained_from_tier_reward >= GameData.FESTIVAL_PREMIUM_PASS_COST,
+		"the tier-1 reward alone (free + premium bonus) must cover what the pass cost, real end-to-end"
+	)
+
+
 # --- Zone layout: move / rotate / flip -----------------------------------------------
 
 func test_move_zone_creates_a_new_anchor_at_default_orientation() -> void:

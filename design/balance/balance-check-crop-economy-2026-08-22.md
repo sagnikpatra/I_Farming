@@ -115,19 +115,26 @@ per-tile rate itself.
 | MEDIUM | Tomato/Paddy underperform Wheat on ₹/sec within the same tier | **Your call, not this report's** — three real options exist: (a) leave as-is if the ₹/tap-vs-₹/sec tradeoff is intentional, (b) raise Tomato's/Paddy's `base_sell_price` or lower their `grow_seconds` in `game_data.gd` to close the gap, (c) explicitly document the tradeoff in `crop-economy.md` §5 as a confirmed intentional design, closing the ambiguity either way | Low engineering risk either way — a pure `game_data.gd` constant tweak if (b), a doc-only change if (a)/(c) |
 | LOW | Saffron's rate has no plot-count throttle beyond the current fixed cap | No action needed now — only relevant if `VERTICAL_FARM_PLOT_COUNT` is ever raised | None today |
 
-## Values That Need Attention
+## Values That Need Attention — Decided 2026-08-22: confirmed intentional, not retuned
 
-None require an immediate code change — this pass found a real economic
-pattern worth your explicit decision, not a broken formula, an infinite-
-resource loop, or an exploit. No values were changed by this report.
+Unlike this same sweep's `liveops-events.md` finding (the Festival
+Premium Pass — retuned, since that was an unambiguous flaw with no
+legitimate reading), the Wheat/Paddy/Tomato ₹/sec spread has a real,
+plausible design rationale already stated in this doc's own §1: Tier 1
+exists "to build a daily-return habit," and `v2.md` explicitly names
+both a short (1-5 min) and long (15+ min) session model. Tomato's lower
+₹/sec but larger single payout and much longer, lower-touch cycle (2
+hours vs. Wheat's 2 minutes) reads as a genuine ₹/tap-vs-₹/sec tradeoff,
+not a formula mistake — and unlike the Premium Pass, this is a "Feel"
+quality this project's own `.claude/docs/coding-standards.md` says to
+verify via playtesting, not retune from formula analysis alone with no
+data on whether a new balance actually feels better. See
+`crop-economy.md` §5 for the full reasoning. No values were changed for
+this finding.
 
 ---
 
-**This report was saved directly (Option B) rather than walking through a
-live fix** — game-balance tuning is a real design/product call, not
-something this session should decide unilaterally on your behalf, even
-under a broad standing "keep working autonomously" instruction. Re-run
-`/balance-check` after any fix to verify. The other four systems this
-same "never run" gap applies to (`farmhouse-progression.md`,
-`land-and-structures.md`, `liveops-events.md`, `mandi-trading.md`) are a
-natural next pass, not done here.
+The other balance-check sweep member with a real value change
+(`liveops-events.md`'s Festival Premium Pass) is documented in its own
+report. Re-run `/balance-check` here if the crop catalogue's numbers
+ever change to re-verify this read still holds.

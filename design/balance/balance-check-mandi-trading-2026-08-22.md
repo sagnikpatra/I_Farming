@@ -76,13 +76,19 @@ None. No values were changed by this report.
 ---
 
 **This closes the 5-system economy balance-check sweep** started with
-`crop-economy.md`. Summary across all five: one real economic finding
-each in `crop-economy.md` (Tomato/Paddy underperform Wheat on ₹/sec) and
-`liveops-events.md` (Premium Pass has negative EV below its top tier);
-one minor/nuanced finding each in `farmhouse-progression.md` (an
-undocumented but likely-intentional final-tier bonus swap) and
-`land-and-structures.md` (structure "tier" numbering doesn't track raw
-unlock cost, though total investment ceiling likely explains most of it);
-`mandi-trading.md` itself confirmed clean. None of the five required an
-immediate code change — every finding is either confirmed-healthy or a
-real design call left explicitly for you.
+`crop-economy.md`. Final summary across all five, including the two
+follow-up decisions made after this report was first written:
+- `crop-economy.md`: Tomato/Paddy underperform Wheat on ₹/sec —
+  **confirmed intentional** (a real ₹/tap-vs-₹/sec tradeoff already
+  supported by the doc's own design intent), not retuned.
+- `liveops-events.md`: the Festival Premium Pass had negative EV below
+  its top tier — **fixed** (`FESTIVAL_PREMIUM_PASS_COST` 5,000 → 400),
+  verified with 2 new tests, 583/583 full suite.
+- `farmhouse-progression.md`: an undocumented, likely-intentional
+  final-tier bonus swap — noted, left as-is.
+- `land-and-structures.md`: structure "tier" numbering doesn't track raw
+  unlock cost — noted, left as-is (total investment ceiling likely
+  explains most of it); this system's own genuinely open design question
+  (collision validation) was separately resolved as *already answered*
+  by the real Godot implementation, a different kind of finding.
+- `mandi-trading.md` (this report): confirmed clean, no finding.

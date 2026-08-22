@@ -16,17 +16,26 @@ run/main_scene="res://scenes/main/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
 
+[audio]
+
+buses/default_bus_layout="uid://bpvfxfp30mn64"
+
+[autoload]
+
+GodotPlayGameServices="*uid://b64haubsotd5e"
+PgsPhase1SignInProbe="*res://autoload/pgs_phase1_signin_probe.gd"
+
 [display]
 
 window/size/viewport_width=1080
 window/size/viewport_height=2280
-window/handheld/orientation=6
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/handheld/orientation=6
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg")
 
 [layer_names]
 

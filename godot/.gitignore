@@ -4,6 +4,10 @@
 export.cfg
 export_presets.cfg
 
+# Generated Gradle Android build scaffolding (regenerable via
+# `godot --install-android-build-template`; added ADR-0003 Phase 1, 2026-08-22)
+android/
+
 # Imported translations (automatically generated from CSV files)
 *.translation
 

@@ -5563,3 +5563,31 @@ path the original bug report was specifically about -- extended
 **Next step**: continuing to scan for further genuine targets per the
 standing instruction -- no new gap found in this pass beyond the
 extended confirmation above.
+
+## 2026-08-23 (cont'd) -- WorkerStation test coverage gap closed
+
+Phone showed the notification shade in foreground (`dumpsys window`
+check, not a screenshot) -- backed off device interaction again rather
+than assume it was still free to use, and switched to a code-only pass.
+
+Scanned every `.gd` script for a missing dedicated test file. Most
+"gaps" are plain data classes already covered indirectly through
+economy integration tests (a naming-convention false alarm, not real
+gaps). One real gap found: `worker_station.gd` had zero test coverage,
+not even indirectly -- despite owning real logic (position, character
+instancing, the deliberate held-pose animation), and despite being a
+class whose correctness I'd only reasoned about, never verified, when
+writing the animation loop fix earlier today (worker_station.gd shares
+villager.gd's exact Walking_A clip via a paused AnimationPlayer; I'd
+reasoned loop_mode wouldn't affect an explicitly-paused player but
+never actually tested that).
+
+Wrote `test_worker_station.gd` (4 tests): position/character-instancing
+coverage, and -- the one that actually matters -- a direct regression
+test proving the held pose stays paused even though its own clip is now
+loop-forced, empirically confirming the reasoning from this morning's
+fix rather than leaving it as an unverified comment. Full suite run
+twice: 614/614 (up from 610), non-flaky.
+
+**Next step**: continuing to scan. This closes the one real test-
+coverage gap found this pass.

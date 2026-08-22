@@ -1720,6 +1720,7 @@ func _apply_time_of_day_if_needed(now: int) -> void:
 	var phase := TimeOfDay.phase_for_hour(hour)
 	if phase == _last_time_of_day_phase:
 		return
+	var previous_phase := _last_time_of_day_phase
 	_last_time_of_day_phase = phase
 
 	var preset := TimeOfDay.preset_for_phase(phase)
@@ -1729,6 +1730,25 @@ func _apply_time_of_day_if_needed(now: int) -> void:
 	env.ambient_light_energy = preset["ambient_energy"]
 	_directional_light.light_color = preset["sun_color"]
 	_directional_light.light_energy = preset["sun_energy"]
+
+	# design/gdd/richer-ambient-villagers.md's Night population thinning --
+	# only resync on the two transitions that actually change the thinning
+	# factor (entering/leaving Night), not every Dawn/Day/Dusk edge, so the
+	# whole population doesn't visibly pop (VillagerSpawner.sync() always
+	# tears down and respawns fresh, per its own doc comment) on phase
+	# changes that wouldn't have changed the count anyway.
+	if phase == TimeOfDay.Phase.NIGHT or previous_phase == TimeOfDay.Phase.NIGHT:
+		_villager_spawner.sync(_economy.state, _current_population_scale())
+
+
+## design/gdd/richer-ambient-villagers.md's Night population thinning.
+## Single source of truth for "what scale applies right now" -- reads
+## _last_time_of_day_phase (already kept correct by
+## _apply_time_of_day_if_needed() above) rather than a second tracked
+## field, so there's no way for this to drift out of sync with the real
+## current phase.
+func _current_population_scale() -> float:
+	return VillagerSpawner.NIGHT_POPULATION_SCALE if _last_time_of_day_phase == TimeOfDay.Phase.NIGHT else 1.0
 
 
 ## Shared save-if-dirty + re-render pattern, gated on GameEconomy.dirty per
@@ -1772,7 +1792,13 @@ func _sync_villagers_if_needed() -> void:
 	var signature := _walkable_tiles_signature(grid) + "|workers:" + _worker_assignment_signature()
 	if signature == _last_synced_walkable_signature:
 		return
-	_villager_spawner.sync(_economy.state)
+	# Night population thinning must still apply here -- this resync
+	# trigger (a walkable-tile/worker-assignment change) is independent of
+	# _apply_time_of_day_if_needed()'s own Night-transition trigger, and
+	# without reading the current scale here too, a zone unlock or drag
+	# commit at Night would silently repopulate back to full daytime
+	# count. See _current_population_scale()'s own doc comment.
+	_villager_spawner.sync(_economy.state, _current_population_scale())
 	_sync_worker_stations()
 	_last_synced_walkable_signature = signature
 

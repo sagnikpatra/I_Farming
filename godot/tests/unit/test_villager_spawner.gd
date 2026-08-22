@@ -151,6 +151,37 @@ func test_sync_wires_an_empty_poi_list_with_no_decorations() -> void:
 		assert_true(roamer.poi_tiles.is_empty())
 
 
+# --- Night population thinning (design/gdd/richer-ambient-villagers.md stretch goal) --
+
+func test_sync_default_population_scale_matches_pre_thinning_behavior() -> void:
+	# Omitting population_scale entirely must behave exactly as it did
+	# before Night thinning existed -- backward compatibility for every
+	# other call site/test in this suite.
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state)
+
+	assert_eq(spawner.get_roamer_count(), 3)
+
+
+func test_sync_applies_a_fractional_population_scale() -> void:
+	# Fresh state roaming_count = 3 (see test_sync_spawns_villager_count_roamers).
+	# 3 * NIGHT_POPULATION_SCALE (0.5) = 1.5, rounds to 2.
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state, VillagerSpawner.NIGHT_POPULATION_SCALE)
+
+	assert_eq(spawner.get_roamer_count(), 2)
+
+
+func test_sync_population_scale_never_produces_a_negative_count() -> void:
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state, 0.0)
+
+	assert_eq(spawner.get_roamer_count(), 0)
+
+
 func test_sync_roaming_count_at_maximum_worker_saturation() -> void:
 	# Unlock every worker-eligible zone (needed for assign_worker() to
 	# accept the assignment -- see game_economy.gd's _is_plot_kind_unlocked()),

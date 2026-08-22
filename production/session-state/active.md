@@ -4087,6 +4087,56 @@ sections were both merged in cleanly this session) and
 ambient villagers) now has only night population thinning left as an
 open stretch goal.
 
+## 2026-08-22 (cont'd) -- Night Population Thinning built; item 4's
+stretch-goal backlog fully closed
+
+Third and last villager stretch goal this session: the ambient roaming
+population (never assigned workers) now roughly halves during the
+real-world-local Night phase and restores at Dawn, reusing
+`design/gdd/real-time-day-night.md`'s existing lighting infrastructure
+rather than adding a new timer.
+
+`VillagerSpawner.sync()` gained an optional `population_scale`
+parameter (default 1.0) and a `NIGHT_POPULATION_SCALE = 0.5` constant.
+`village_board.gd`'s existing `_apply_time_of_day_if_needed()` (already
+edge-detecting phase changes for lighting) now also triggers a villager
+resync, but **only on the two transitions that actually change the
+scale** (entering/leaving Night) -- not every Dawn/Day/Dusk edge,
+avoiding a 4x/day full-population visual "pop" for transitions that
+wouldn't have changed the count anyway (`VillagerSpawner.sync()` always
+tears down and fully respawns, a pre-existing deliberate
+simplification). Caught and fixed one real design gap before it became
+a bug: `_sync_villagers_if_needed()`'s own independent resync trigger
+(zone unlocks, drag commits) would have silently repopulated to full
+daytime count if it fired during Night, since it didn't know about the
+scale at all -- fixed by having both paths read one shared
+`_current_population_scale()` helper as the single source of truth,
+rather than tracking the scale twice.
+
+3 new GUT tests in `test_villager_spawner.gd`. Full suite: 508/508
+(505 + 3), zero regressions. `village_board.gd` itself has no dedicated
+test file (a pre-existing project-wide gap, not something introduced
+here -- documented as such in the GDD rather than silently accepted).
+
+**On-device verification, real logging + screenshot together**: same
+temporary-override precedent as Congregating -- forced the hour to 22
+(Night) plus a temporary debug print, rebuilt, ran on the OnePlus
+device. Logged `phase=NIGHT scale=0.5 roamer_count=2` against a fresh
+save whose normal daytime count is 3 (`round(3*0.5)=2`, exactly
+matching the unit test's own expectation) -- no crash. Screenshot
+confirms both the expected Night lighting *and* the visibly reduced
+villager count (2, down from 3) on the real board together. Both
+temporary changes reverted before the final build; re-ran the full
+suite (508/508) and did one more export+install+launch to confirm the
+reverted/production code still boots clean.
+
+Updated `richer-ambient-villagers.md` (new Night Population Thinning
+section, Formulas/Dependencies/Tuning Knobs/Acceptance Criteria all
+updated -- Tuning Knobs now explicitly states no stretch goals remain
+open for this file) and `feature-scoping-2026-08-22.md`'s summary
+table -- **item 4 (richer ambient villagers) now has zero open stretch
+goals**, the first of the 5 feature-scoping items to reach that state.
+
 ## Next Step
 
 1. **Real blocker, still needs the project owner specifically**: use
@@ -4102,17 +4152,18 @@ open stretch goal.
    actual app-pause call site plus a settings-screen last-sync
    indicator (ADR-0003 Phase 2 steps 7-8) -- the provider class itself
    is already built and tested, this is just the wiring.
-3. Villager Congregating and Point-of-Interest Lingering are both done.
-   Next time a save with decorations exists on-device, capture the
-   still-open on-device visual confirmation for Lingering (see the
-   GDD's Acceptance Criteria).
-4. Remaining stretch goals across all 5 feature-scoping items, still
-   open/undecided: Farmhouse footprint growth + other-structure
-   sub-upgrade attachments (item 1), a second gems sink (item 2,
-   real-money purchase explicitly excluded -- needs its own
+3. Item 4 (richer ambient villagers) is fully done -- Idle-Pause,
+   Congregating, Point-of-Interest Lingering, and Night Population
+   Thinning all shipped and tested. Next time a save with decorations
+   exists on-device, capture the still-open on-device visual
+   confirmation for Lingering specifically (see the GDD's Acceptance
+   Criteria).
+4. Remaining stretch goals, all still open/undecided, across the other
+   3 feature-scoping items: Farmhouse footprint growth +
+   other-structure sub-upgrade attachments (item 1), a second gems sink
+   (item 2, real-money purchase explicitly excluded -- needs its own
    billing-integration decision first), seasonal palette + villager
-   lamp-lighting (item 3), night population thinning (item 4, the last
-   one left).
+   lamp-lighting (item 3).
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)

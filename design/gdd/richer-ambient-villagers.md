@@ -44,12 +44,9 @@ than a minigame... a living village").
   behavior is a separate system from the unassigned ambient population
   this file governs; nothing here touches `WorkerStation` or worker
   visuals.
-- Explicitly **not** in this pass (see Tuning Knobs for why it's
-  deferred, not forgotten): day/night population thinning -- needs new
-  spawn/despawn control this file's self-contained idle-pause change
-  doesn't provide. Villager-to-villager congregating and point-of-
-  interest lingering (both below) were originally deferred for a similar
-  reason but have since been built.
+- Every stretch goal originally deferred from this pass (Congregating,
+  Point-of-Interest Lingering, Night population thinning, all below) has
+  since been built.
 
 ### Congregating (built 2026-08-22)
 
@@ -98,6 +95,37 @@ than a minigame... a living village").
 - **Assigned/"called" workers remain entirely unaffected**, same as
   Idle-Pause and Congregating above.
 
+### Night Population Thinning (built 2026-08-22)
+
+- The ambient roaming population (never assigned workers) is roughly
+  halved during the real-world-local Night phase
+  (`design/gdd/real-time-day-night.md`'s `TimeOfDay.Phase.NIGHT`, 20:00-
+  04:59 local) and restored to full at Dawn.
+- `VillagerSpawner.sync()` gained an optional `population_scale`
+  parameter (default `1.0`, no thinning) -- `village_board.gd` is the
+  only caller that knows about time of day at all; `VillagerSpawner`
+  itself has no day/night opinion, it just multiplies whatever count it
+  would otherwise spawn.
+- The population only actually resyncs on the two transitions that
+  change the scale -- entering Night and leaving Night -- not on every
+  Dawn/Day/Dusk edge the existing lighting system already detects.
+  `VillagerSpawner.sync()` always tears down and fully respawns the
+  population (a pre-existing, deliberate simplification -- see its own
+  class doc), so resyncing on every phase change would make the whole
+  population visibly "pop" four times a day for transitions that
+  wouldn't even have changed the count.
+- Reuses the exact same edge-detected `_last_time_of_day_phase` check
+  the lighting system already performs each 3-second growth tick --
+  no new timer, no new polling.
+- Any *other* resync trigger (a zone unlock, a drag-commit) that fires
+  while it's already Night must still apply the thinning factor, not
+  silently repopulate to full daytime count -- `village_board.gd`'s
+  `_current_population_scale()` is the single source of truth both
+  resync paths read, rather than each tracking its own copy.
+- **Assigned/"called" workers remain entirely unaffected** -- thinning
+  only ever scales the ambient wandering count, applied strictly after
+  the existing worker-assignment subtraction.
+
 ## 4. Formulas
 
 - **Idle chance**: `IDLE_PAUSE_CHANCE = 0.35` (35%) rolled once per
@@ -123,6 +151,9 @@ than a minigame... a living village").
   target pick -- deliberately independent of `IDLE_PAUSE_CHANCE`; a
   villager can walk toward a POI tile without idling there, or idle
   somewhere with no POI bias at all, since the two rolls don't interact.
+- **Night population scale**: `VillagerSpawner.NIGHT_POPULATION_SCALE =
+  0.5` -- roaming count is `round(roaming_count * scale)`, floored at 0.
+  E.g. a fresh-game roaming count of 3 becomes `round(1.5) = 2` at Night.
 
 ## 5. Edge Cases
 
@@ -154,22 +185,33 @@ than a minigame... a living village").
   `_choose_target_tile()` (Lingering).
 - `villager_spawner.gd`: wires each roamer's
   `other_villager_positions_provider` (Congregating) and `poi_tiles`
-  (Lingering) after the full population/grid exist.
+  (Lingering) after the full population/grid exist; `sync()`'s new
+  `population_scale` parameter and `NIGHT_POPULATION_SCALE` constant
+  (Night Thinning).
 - `village_snapshot_mapper.gd`: `point_of_interest_tiles()` -- the one
   place that turns raw `GameState.decorations` positions into walkable
   neighbor tiles, reusing the same `WalkableGrid` `build_walkable_grid()`
   already produces rather than a second occupancy pass.
-- Does **not** touch `village_board.gd` or any economy/save code.
+- `village_board.gd`: **Night Thinning is the one stretch goal that does
+  touch this file** -- `_apply_time_of_day_if_needed()` (already existed
+  for `design/gdd/real-time-day-night.md`'s lighting) now also triggers
+  `VillagerSpawner.sync()` on Night-boundary transitions, and
+  `_sync_villagers_if_needed()`'s own independent resync trigger reads
+  the same `_current_population_scale()` helper so the two don't drift.
+  Congregating and Lingering do **not** touch this file, or any
+  economy/save code.
 
 ## 7. Tuning Knobs
 
 - `IDLE_PAUSE_CHANCE`, `IDLE_DURATION_MIN_SEC`/`MAX_SEC`,
   `CONGREGATE_DISTANCE_TILES`, `POI_LINGER_CHANCE` -- all in
-  `villager_roamer.gd`, easy to rebalance after on-device observation.
-- **Future stretch**: day/night population thinning (fewer villagers
-  outdoors at Night) -- real synergy with `design/gdd/real-time-day-night.md`
-  (just built), but requires new spawn/despawn control in `VillagerSpawner`
-  that doesn't exist yet.
+  `villager_roamer.gd`. `VillagerSpawner.NIGHT_POPULATION_SCALE` --
+  in `villager_spawner.gd`. All easy to rebalance after on-device
+  observation.
+- No further stretch goals remain open for this file -- every item
+  originally deferred (Congregating, Lingering, Night Thinning) has now
+  been built. Future extensions would be new scope, not this pass's own
+  backlog.
 
 ## 8. Acceptance Criteria
 
@@ -257,3 +299,35 @@ than a minigame... a living village").
       "villager visibly gathers near a Lantern" visual moment is
       genuinely unconfirmed, not just unphotographed. Worth doing next
       time a save with decorations is available on-device.
+
+### Night Population Thinning (2026-08-22)
+
+- [x] `VillagerSpawner.sync()`'s `population_scale` parameter is
+      independently unit-testable: default behavior unchanged, a
+      fractional scale correctly rounds the roaming count, and scale
+      never produces a negative count -- `tests/unit/test_villager_spawner.gd`.
+- [x] Assigned workers are never thinned -- the scale is applied strictly
+      after the existing worker-assignment subtraction, verified by the
+      same tests above using the existing worker-saturation fixtures.
+- [x] The population only resyncs on Night-entering/leaving transitions,
+      not every Dawn/Day/Dusk phase edge -- verified by code inspection
+      of the shared `_last_time_of_day_phase` edge-detection
+      (`village_board.gd` has no dedicated test file, matching this
+      project's existing gap for that class -- see `technical-preferences.md`'s
+      Testing section).
+- [x] A non-day/night resync trigger (e.g. a zone unlock) occurring
+      during Night still applies the thinning factor rather than
+      silently repopulating to full daytime count -- verified by code
+      inspection: `_sync_villagers_if_needed()` reads the same
+      `_current_population_scale()` single source of truth
+      `_apply_time_of_day_if_needed()` does.
+- [x] Full GUT suite green (508/508 at the time this was built).
+- [x] Verified on-device via a temporary forced-Night override + debug
+      log line (both reverted before commit, same precedent as
+      Congregating's own verification): logged output confirmed
+      `phase=NIGHT scale=0.5 roamer_count=2` against a fresh save whose
+      normal daytime roaming count is 3 (`round(3 * 0.5) = 2`, exactly
+      matching the unit test's own expectation) -- no crash. A screenshot
+      of the same session visually confirms both the expected Night
+      lighting and the reduced villager count together on the real
+      board, not just the logged number.

@@ -51,16 +51,27 @@ func _init(parent: Node3D, grid_cols: int, grid_rows: int, tile_size: float = 1.
 	_tile_size = tile_size
 
 
+## design/gdd/richer-ambient-villagers.md's Night population thinning
+## stretch goal -- the roaming (non-worker) population is multiplied by
+## this factor at Night, rounded to the nearest whole villager. Assigned
+## workers are never thinned (see sync()'s own doc comment); this only
+## ever scales the ambient wandering count.
+const NIGHT_POPULATION_SCALE: float = 0.5
+
 ## Rebuilds the ambient-roaming population to match `state`'s current
 ## villager_count() minus however many are currently assigned as workers
 ## (state.worker_assignments.size() -- see class doc), against a fresh
-## WalkableGrid built from `state`. If the board has fewer distinct
-## walkable tiles than the target count (a degenerate case the real board
-## should never actually reach -- see the GameState-integration check
-## finding 63/120 tiles walkable even in the most conservative fresh-game
-## state), spawns one villager per distinct walkable tile rather than
-## stacking multiple villagers on the same tile or erroring.
-func sync(state: GameState) -> void:
+## WalkableGrid built from `state`. `population_scale` (default 1.0, no
+## thinning) further multiplies that roaming count -- the caller (
+## village_board.gd) passes NIGHT_POPULATION_SCALE above during Night and
+## 1.0 otherwise; this class has no opinion on time of day itself. If the
+## board has fewer distinct walkable tiles than the target count (a
+## degenerate case the real board should never actually reach -- see the
+## GameState-integration check finding 63/120 tiles walkable even in the
+## most conservative fresh-game state), spawns one villager per distinct
+## walkable tile rather than stacking multiple villagers on the same tile
+## or erroring.
+func sync(state: GameState, population_scale: float = 1.0) -> void:
 	_clear()
 
 	var grid := VillageSnapshotMapper.build_walkable_grid(state, _grid_cols, _grid_rows)
@@ -70,6 +81,7 @@ func sync(state: GameState) -> void:
 
 	var target_count := VillageSnapshotMapper.villager_count(state)
 	var roaming_count: int = maxi(target_count - state.worker_assignments.size(), 0)
+	roaming_count = maxi(roundi(float(roaming_count) * population_scale), 0)
 	var start_tiles := _pick_distinct_tiles(walkable, mini(roaming_count, walkable.size()))
 	# design/gdd/richer-ambient-villagers.md's Point-of-Interest Lingering
 	# stretch goal -- computed once per sync(), same grid every spawned

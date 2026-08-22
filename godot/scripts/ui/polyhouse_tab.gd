@@ -185,14 +185,14 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label("Build a Naturally Ventilated Polyhouse", 18, SOIL_BROWN_DARK)
+	var title_label := _make_title_label(tr(&"polyhouse.build_title"), 18, SOIL_BROWN_DARK)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(title_label)
 
 	# A11Y fix (§5, HIGH): 13px -> this project's 14px floor.
 	var blurb_label := _make_title_label(
-		"Unlocks %d protected plots for Colored Capsicum and Dutch Rose." % GameData.POLYHOUSE_PLOT_COUNT,
+		tr(&"polyhouse.build_blurb") % GameData.POLYHOUSE_PLOT_COUNT,
 		14,
 		SOIL_BROWN_DARK
 	)
@@ -202,7 +202,7 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 
 	box.add_child(_build_subsidy_card(data))
 
-	var build_button := _make_chunky_button("Build for ₹%d" % data["cost"], FIELD_GREEN)
+	var build_button := _make_chunky_button(tr(&"polyhouse.build_button") % data["cost"], FIELD_GREEN)
 	build_button.pressed.connect(_on_build_pressed)
 	box.add_child(build_button)
 
@@ -215,7 +215,7 @@ func _build_subsidy_card(data: Dictionary) -> PanelContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 8)
 
-	var title := "🎉 Subsidy unlocked!" if data["subsidy_unlocked"] else "Subsidy Quest"
+	var title := tr(&"polyhouse.subsidy_unlocked") if data["subsidy_unlocked"] else tr(&"polyhouse.subsidy_quest")
 	box.add_child(_make_title_label(title, 14))
 	box.add_child(_build_progress_bar(data["subsidy_progress"]))
 
@@ -252,13 +252,13 @@ func _build_upgrades_row(data: Dictionary) -> HBoxContainer:
 	row.add_theme_constant_override("separation", 8)
 
 	row.add_child(_build_chip(
-		"Fan & Pad ✓" if data["has_fan_pad"] else "Fan & Pad", data["has_fan_pad"], _on_fan_pad_pressed
+		tr(&"polyhouse.fan_pad_active") if data["has_fan_pad"] else tr(&"polyhouse.fan_pad"), data["has_fan_pad"], _on_fan_pad_pressed
 	))
 	row.add_child(_build_chip(
-		"Drip ✓" if data["has_drip_irrigation"] else "Drip Irrigation", data["has_drip_irrigation"], _on_drip_pressed
+		tr(&"polyhouse.drip_active") if data["has_drip_irrigation"] else tr(&"polyhouse.drip"), data["has_drip_irrigation"], _on_drip_pressed
 	))
 	row.add_child(_build_chip(
-		"Film Active ✓" if data["film_active"] else "Renew Film", data["film_active"], _on_film_pressed
+		tr(&"polyhouse.film_active") if data["film_active"] else tr(&"polyhouse.renew_film"), data["film_active"], _on_film_pressed
 	))
 
 	return row

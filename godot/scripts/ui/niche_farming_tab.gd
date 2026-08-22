@@ -60,16 +60,12 @@ func _populate() -> void:
 		child.queue_free()
 	var data := build_view_data(_economy, _now())
 
-	_body.add_child(_make_section_header("🪷 Makhana Ponds"))
+	_body.add_child(_make_section_header(tr(&"niche.aquaculture_header")))
 	if not data["has_aquaculture"]:
 		_body.add_child(_build_build_card(
-			"🪷", "Excavate Ponds",
-			(
-				"Unlocks %d pond plots for Makhana (Fox Nut) and Pond Fish -- a cheaper, " %
-				GameData.AQUACULTURE_PLOT_COUNT
-				+ "faster-cycling alternative to Polyhouse crops."
-			),
-			"Excavate for ₹%d" % data["aquaculture_cost"], data["aquaculture_cost"], _on_build_aquaculture_pressed
+			"🪷", tr(&"niche.aquaculture_title"),
+			tr(&"niche.aquaculture_blurb") % GameData.AQUACULTURE_PLOT_COUNT,
+			tr(&"niche.aquaculture_button") % data["aquaculture_cost"], data["aquaculture_cost"], _on_build_aquaculture_pressed
 		))
 	else:
 		# EPIC-M7: worker assignment, only meaningful once the zone exists.
@@ -79,17 +75,12 @@ func _populate() -> void:
 
 	_body.add_child(HSeparator.new())
 
-	_body.add_child(_make_section_header("🌸 Saffron Vertical Farm"))
+	_body.add_child(_make_section_header(tr(&"niche.vertical_farm_header")))
 	if not data["has_vertical_farm"]:
 		_body.add_child(_build_build_card(
-			"🌸", "Build a Vertical Farm",
-			(
-				"Only %d tiles, but Saffron sells for more per unit than anything except " %
-				GameData.VERTICAL_FARM_PLOT_COUNT
-				+ "Sandalwood. Running the grow lights needs a recurring electricity payment "
-				+ "to keep planting new cycles."
-			),
-			"Build for ₹%d" % data["vertical_farm_cost"], data["vertical_farm_cost"], _on_build_vertical_farm_pressed
+			"🌸", tr(&"niche.vertical_farm_title"),
+			tr(&"niche.vertical_farm_blurb") % GameData.VERTICAL_FARM_PLOT_COUNT,
+			tr(&"niche.vertical_farm_button") % data["vertical_farm_cost"], data["vertical_farm_cost"], _on_build_vertical_farm_pressed
 		))
 	else:
 		_body.add_child(_build_electricity_chip(data))
@@ -245,8 +236,8 @@ func _build_electricity_chip(data: Dictionary) -> Button:
 	var can_afford: bool = _economy.state.coins >= data["electricity_cost"]
 	var chip := Button.new()
 	chip.text = (
-		"⚡ Powered: %s left" % format_hours_minutes(data["electricity_remaining_ms"])
-		if active else "⚡ Pay Electricity ₹%d" % data["electricity_cost"]
+		(tr(&"niche.electricity_powered") % format_hours_minutes(data["electricity_remaining_ms"]))
+		if active else (tr(&"niche.electricity_pay") % data["electricity_cost"])
 	)
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	chip.focus_mode = Control.FOCUS_NONE

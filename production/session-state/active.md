@@ -4716,3 +4716,28 @@ strings as its own follow-up (flagged in localization-pipeline.md as a
 separate, larger design question). Still open and blocked on the user,
 unchanged: pushing accumulated local commits to origin, and the Play
 Console Game Services setup for real cloud-save sign-in.
+
+## 2026-08-22 (Phase 2 localization, second slice)
+
+Continued Phase 2: migrated `polyhouse_tab.gd` (build card, Subsidy
+Quest card, all 3 upgrade chips), `agroforestry_tab.gd` (build card,
+Security chip, hint label), and `niche_farming_tab.gd` (both section
+headers, both build cards, the electricity chip) to `tr()`, with real
+Hindi translations added to `godot/locales/ui_strings.csv`.
+
+Extended `test_localization.gd` with 4 more spot-checks. Full suite:
+571/571 (up from 569/569), run twice, non-flaky. Updated
+localization-pipeline.md's Status/scope-list and the roadmap's
+Localization bullet.
+
+Remaining Phase 2 scope, unchanged from the plan: `open_field_tab.gd`,
+`events_tab.gd`, the 3 pickers, the 2 info cards,
+`worker_assignment_row.gd`, and `game_economy.gd`'s `_push_event()`
+message strings (flagged as its own larger follow-up, not a mechanical
+sweep).
+
+**Next step**: continue Phase 2 with `open_field_tab.gd`/`events_tab.gd`
+next (the last 2 management sheets), then the pickers/info cards. Still
+open and blocked on the user, unchanged: pushing accumulated local
+commits to origin, and the Play Console Game Services setup for real
+cloud-save sign-in.

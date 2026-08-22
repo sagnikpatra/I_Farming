@@ -127,8 +127,9 @@ stays the owner's regardless of how much of this list gets done.
       unmigrated by design — see `docs/architecture/
       localization-pipeline.md`'s own Phase 2 plan, not silently assumed
       covered. Phase 2 itself is now in progress:
-      `farmhouse_tab.gd`/`mandi_tab.gd` done same day, 569/569 GUT
-      passing.
+      `farmhouse_tab.gd`/`mandi_tab.gd`/`polyhouse_tab.gd`/
+      `agroforestry_tab.gd`/`niche_farming_tab.gd` done same day,
+      571/571 GUT passing.
 - [x] Security/save-integrity audit — done 2026-08-21: `/security-audit
       full` run against the Godot save format and economy logic. **1 HIGH
       finding (SEC-001: save-loaded crop/host/decoration enum ordinals

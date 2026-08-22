@@ -88,6 +88,22 @@ func test_english_locale_still_resolves_farmhouse_and_mandi_keys() -> void:
 	assert_eq(tr(&"mandi.nothing_to_sell"), "Nothing to sell")
 
 
+## Same slice, extended for the polyhouse_tab.gd/agroforestry_tab.gd/
+## niche_farming_tab.gd migration -- one format-string key from each file.
+func test_hindi_locale_resolves_polyhouse_agroforestry_niche_keys() -> void:
+	TranslationServer.set_locale("hi")
+	assert_eq(tr(&"polyhouse.build_button") % 50000, "₹50000 में बनाएं")
+	assert_eq(tr(&"agroforestry.build_button") % 20000, "₹20000 में भूमि साफ़ करें")
+	assert_eq(tr(&"niche.electricity_pay") % 500, "⚡ बिजली भुगतान करें ₹500")
+
+
+func test_english_locale_still_resolves_polyhouse_agroforestry_niche_keys() -> void:
+	TranslationServer.set_locale("en")
+	assert_eq(tr(&"polyhouse.subsidy_quest"), "Subsidy Quest")
+	assert_eq(tr(&"agroforestry.hint"), "Plant a host next to an empty tile, then Sandalwood beside the host.")
+	assert_eq(tr(&"niche.vertical_farm_title"), "Build a Vertical Farm")
+
+
 # ---------------------------------------------------------------------------
 # AccessibilitySettings.locale
 # ---------------------------------------------------------------------------

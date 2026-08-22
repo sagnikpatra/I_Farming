@@ -40,3 +40,30 @@ mandi.held,Held: %d,पास में: %d
 mandi.tomorrow_forecast,Tomorrow: %s %s%d%%,कल: %s %s%d%%
 mandi.sell_button,Sell %d via Mandi,मंडी से %d बेचें
 mandi.nothing_to_sell,Nothing to sell,बेचने के लिए कुछ नहीं
+polyhouse.build_title,Build a Naturally Ventilated Polyhouse,प्राकृतिक हवादार पॉलीहाउस बनाएं
+polyhouse.build_blurb,Unlocks %d protected plots for Colored Capsicum and Dutch Rose.,रंगीन शिमला मिर्च और डच गुलाब के लिए %d संरक्षित प्लॉट अनलॉक करता है।
+polyhouse.build_button,Build for ₹%d,₹%d में बनाएं
+polyhouse.subsidy_unlocked,🎉 Subsidy unlocked!,🎉 सब्सिडी अनलॉक हुई!
+polyhouse.subsidy_quest,Subsidy Quest,सब्सिडी मिशन
+polyhouse.fan_pad_active,Fan & Pad ✓,फैन एंड पैड ✓
+polyhouse.fan_pad,Fan & Pad,फैन एंड पैड
+polyhouse.drip_active,Drip ✓,ड्रिप ✓
+polyhouse.drip,Drip Irrigation,ड्रिप सिंचाई
+polyhouse.film_active,Film Active ✓,फिल्म सक्रिय ✓
+polyhouse.renew_film,Renew Film,फिल्म नवीनीकृत करें
+agroforestry.build_title,Clear Land for Agroforestry,कृषि-वानिकी के लिए भूमि साफ़ करें
+"agroforestry.build_blurb","Unlocks a %dx%d plot grid for Sandalwood (Srigandham) cultivation. Sandalwood is semi-parasitic -- it must be planted next to a host plant (Pigeon Pea, Neem, or Acacia) and takes weeks to mature, but a single mature tree is worth a fortune.","श्रीगंधम (चंदन) की खेती के लिए %dx%d प्लॉट ग्रिड अनलॉक करता है। चंदन अर्ध-परजीवी है -- इसे मेज़बान पौधे (अरहर, नीम, या बबूल) के पास लगाना ज़रूरी है और परिपक्व होने में हफ्तों लगते हैं, लेकिन एक परिपक्व पेड़ की कीमत बहुत ज़्यादा होती है।"
+agroforestry.build_button,Clear Land for ₹%d,₹%d में भूमि साफ़ करें
+agroforestry.security_active,Security (Fencing + CCTV) ✓,सुरक्षा (बाड़ + सीसीटीवी) ✓
+agroforestry.security_button,Security ₹%d,सुरक्षा ₹%d
+agroforestry.hint,"Plant a host next to an empty tile, then Sandalwood beside the host.","एक खाली टाइल के पास मेज़बान पौधा लगाएं, फिर मेज़बान के बगल में चंदन लगाएं।"
+niche.aquaculture_header,🪷 Makhana Ponds,🪷 मखाना तालाब
+niche.aquaculture_title,Excavate Ponds,तालाब खोदें
+"niche.aquaculture_blurb","Unlocks %d pond plots for Makhana (Fox Nut) and Pond Fish -- a cheaper, faster-cycling alternative to Polyhouse crops.","मखाना (फॉक्स नट) और तालाब मछली के लिए %d तालाब प्लॉट अनलॉक करता है -- पॉलीहाउस फसलों का एक सस्ता, तेज़ी से चलने वाला विकल्प।"
+niche.aquaculture_button,Excavate for ₹%d,₹%d में खोदें
+niche.vertical_farm_header,🌸 Saffron Vertical Farm,🌸 केसर वर्टिकल फार्म
+niche.vertical_farm_title,Build a Vertical Farm,वर्टिकल फार्म बनाएं
+"niche.vertical_farm_blurb","Only %d tiles, but Saffron sells for more per unit than anything except Sandalwood. Running the grow lights needs a recurring electricity payment to keep planting new cycles.","केवल %d टाइलें, लेकिन केसर चंदन को छोड़कर किसी भी चीज़ से ज़्यादा दाम में बिकता है। ग्रो लाइट चलाने के लिए नई साइकिल लगाते रहने हेतु बार-बार बिजली भुगतान की ज़रूरत होती है।"
+niche.vertical_farm_button,Build for ₹%d,₹%d में बनाएं
+niche.electricity_powered,⚡ Powered: %s left,⚡ संचालित: %s बचा है
+niche.electricity_pay,⚡ Pay Electricity ₹%d,⚡ बिजली भुगतान करें ₹%d

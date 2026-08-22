@@ -134,17 +134,12 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label("Clear Land for Agroforestry", 18, SOIL_BROWN_DARK)
+	var title_label := _make_title_label(tr(&"agroforestry.build_title"), 18, SOIL_BROWN_DARK)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title_label)
 
 	var blurb_label := _make_title_label(
-		(
-			"Unlocks a %dx%d plot grid for Sandalwood (Srigandham) cultivation. Sandalwood is " %
-			[GameData.AGROFORESTRY_GRID_SIZE, GameData.AGROFORESTRY_GRID_SIZE]
-			+ "semi-parasitic -- it must be planted next to a host plant (Pigeon Pea, Neem, or "
-			+ "Acacia) and takes weeks to mature, but a single mature tree is worth a fortune."
-		),
+		tr(&"agroforestry.build_blurb") % [GameData.AGROFORESTRY_GRID_SIZE, GameData.AGROFORESTRY_GRID_SIZE],
 		14,
 		SOIL_BROWN_DARK
 	)
@@ -154,7 +149,7 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 
 	# §2.4 disabled-button state.
 	var can_afford_build: bool = _economy.state.coins >= int(data["cost"])
-	var build_button := _make_chunky_button("Clear Land for ₹%d" % data["cost"], FIELD_GREEN, Color.WHITE, can_afford_build)
+	var build_button := _make_chunky_button(tr(&"agroforestry.build_button") % data["cost"], FIELD_GREEN, Color.WHITE, can_afford_build)
 	if can_afford_build:
 		build_button.pressed.connect(_on_build_pressed)
 	box.add_child(build_button)
@@ -166,7 +161,7 @@ func _build_security_chip(data: Dictionary) -> Button:
 	var active: bool = data["has_security"]
 	var can_afford: bool = active or _economy.state.coins >= int(data["security_cost"])
 	var chip := _make_chunky_button(
-		"Security (Fencing + CCTV) ✓" if active else "Security ₹%d" % data["security_cost"],
+		tr(&"agroforestry.security_active") if active else tr(&"agroforestry.security_button") % data["security_cost"],
 		RIPE_GOLD if active else WOOD_BROWN_LIGHT,
 		# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
 		# Color.WHITE on the active RIPE_GOLD background measured ~1.63:1
@@ -184,7 +179,7 @@ func _build_hint_label() -> Label:
 	# A11Y: sits directly on the cream background -- see _build_build_card()'s note.
 	# Also raised 12px -> this project's 14px floor (§5, HIGH).
 	var label := _make_title_label(
-		"Plant a host next to an empty tile, then Sandalwood beside the host.", 14, SOIL_BROWN_DARK
+		tr(&"agroforestry.hint"), 14, SOIL_BROWN_DARK
 	)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return label

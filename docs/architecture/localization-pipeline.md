@@ -4,8 +4,9 @@
 
 Phase 1 complete (infrastructure + a proven real slice). Phase 2
 (finishing the UI-wide string migration) in progress --
-`farmhouse_tab.gd`/`mandi_tab.gd` done (2026-08-22, same day), the rest
-of the list below still open.
+`farmhouse_tab.gd`/`mandi_tab.gd`/`polyhouse_tab.gd`/
+`agroforestry_tab.gd`/`niche_farming_tab.gd` done (2026-08-22, same day),
+the rest of the list below still open.
 
 ## Date
 
@@ -115,14 +116,21 @@ human listen-through closed.
   migrated -- they come from `GameData`'s catalogue data, the same
   larger data-migration question Phase 1's doc flagged as deliberately
   out of scope.
+- `polyhouse_tab.gd`: build card (title, blurb, button), the Subsidy
+  Quest card, and all 3 upgrade chips (Fan & Pad, Drip Irrigation,
+  Renew Film, both their active/inactive text).
+- `agroforestry_tab.gd`: build card (title, blurb, button), the
+  Security chip (both states), and the post-build hint label.
+- `niche_farming_tab.gd`: both section headers (Makhana Ponds, Saffron
+  Vertical Farm), both build cards (title/blurb/button), and the
+  electricity chip (both Powered/Pay states).
 
 ## What's explicitly NOT yet migrated (Phase 2 remaining scope)
 
 Every other hardcoded string in `godot/scripts/ui/`, specifically:
 
-- `polyhouse_tab.gd`, `agroforestry_tab.gd`, `niche_farming_tab.gd`,
-  `open_field_tab.gd`, `events_tab.gd` — every remaining management
-  sheet's full body text.
+- `open_field_tab.gd`, `events_tab.gd` — the two remaining management
+  sheets' full body text.
 - `seed_picker.gd`, `agro_plant_picker.gd`, `decoration_picker.gd` —
   picker sheet chrome (crop/decoration display names themselves come
   from `GameData`'s catalogue data, a separate, larger data-migration
@@ -167,6 +175,8 @@ Full suite verified green (558/558, up from 545/545) twice in a row,
 non-flaky. Extended with 3 more spot-checks after the `farmhouse_tab.gd`/
 `mandi_tab.gd` Phase 2 slice (two-placeholder format keys from each file,
 plus an English-still-works sanity check) -- 569/569, twice, non-flaky.
+Extended again after `polyhouse_tab.gd`/`agroforestry_tab.gd`/
+`niche_farming_tab.gd` -- 571/571, twice, non-flaky.
 
 ## Dependencies
 

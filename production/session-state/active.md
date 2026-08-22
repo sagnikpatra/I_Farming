@@ -4230,6 +4230,64 @@ Updated `real-time-day-night.md` (new Villager Lamp-Lighting subsections
 throughout) and `feature-scoping-2026-08-22.md`'s summary table -- item
 3 now joins item 4 with zero open stretch goals.
 
+## 2026-08-22 (cont'd) -- User pushed back on question cadence a second
+time; made the remaining open design decisions directly rather than
+asking per-item, closed out item 1
+
+User: "you did stop again... please complete the game." Then, when
+offered a menu, explicitly picked "you decide the open questions now"
+over being asked each one -- confirms the read from the earlier
+pushback: stop gating on process questions, make the calls, keep
+building, explain the reasoning after the fact rather than before.
+
+**Decision 1 -- Farmhouse footprint growth: decided against, not
+deferred.** The brief's own recommendation was fixed-footprint; growing
+it would force resolving `land-and-structures.md`'s genuinely still-open
+collision-validation question as a side effect of a visual feature, with
+real risk of a larger Farmhouse overlapping a player's placed
+decoration. Documented as a closed decision in `farmhouse-visual-tiers.md`,
+not left as an ambiguous "future stretch."
+
+**Decision 2 -- Sub-upgrade visual cue: a shared warm tint, not per-flag
+attachment meshes.** No sourced 3D asset exists for any of the 4
+add-ons (fence/fan/film/security), and building them from scratch is
+real content-creation scope. Chose the same "use what needs no new
+asset" reasoning villager lamp-lighting already established earlier
+this session, applied to a color cue this time instead of a light node.
+
+Built: `ZoneFixture.active_upgrade_count` (set by
+`VillageSnapshotMapper`, driven by real `GameEconomy` flags --
+Polyhouse's `has_fan_pad`/`has_drip_irrigation`/UV film,
+Agroforestry's `has_security`, Vertical Farm's electricity; Aquaculture
+always 0, documented as having no sub-upgrade of its own). Time-limited
+upgrades evaluated against a real `now` newly threaded through
+`VillageSnapshotMapper.build(state, now = -1)` -- the -1 default is a
+genuinely safe "always reads as inactive" fallback (verified this
+explicitly, not assumed, since a naive 0 default would have read most
+real epoch timestamps as still-active). `village_board.gd` applies the
+tint as an additive emissive boost on the building's existing material,
+found via the same path `_apply_toon_shading()` already uses.
+
+10 new GUT tests in `test_village_snapshot_mapper.gd`. Full suite:
+528/528, zero regressions.
+
+**A real tuning correction made from an actual screenshot, not
+guessed**: first intensity chosen was verified genuinely too subtle
+against bright daytime ambient light (additive emission needs far more
+energy to compete with strong ambient than at Night, where villager-lamp
+glow read clearly at similar values). Re-tuned and re-verified on the
+same device against the same real save state before/after -- visibly,
+clearly brighter the second time. Verified via a temporary forced-
+purchase override (all 3 structures fully upgraded, reverted before
+commit) -- confirmed the override never risked the real save, since
+`_ready()` never itself persists to disk.
+
+Updated `farmhouse-visual-tiers.md` (footprint-growth decision recorded)
+and `land-and-structures.md` (new Sub-Upgrade Visual Cue section,
+Acceptance Criteria) and `feature-scoping-2026-08-22.md`'s summary table
+-- **item 1 now also has zero open stretch goals**, the third item this
+session to reach that state (after items 3 and 4).
+
 ## Next Step
 
 1. **Real blocker, still needs the project owner specifically**: use
@@ -4245,19 +4303,21 @@ throughout) and `feature-scoping-2026-08-22.md`'s summary table -- item
    actual app-pause call site plus a settings-screen last-sync
    indicator (ADR-0003 Phase 2 steps 7-8) -- the provider class itself
    is already built and tested, this is just the wiring.
-3. Items 3 and 4 (real-world weather, richer ambient villagers) are both
-   now fully done -- zero open stretch goals on either. Next time a save
-   with decorations exists on-device, capture the still-open visual
-   confirmation for Point-of-Interest Lingering, and next time a
-   purchase/drag can be triggered live during a forced-Night session,
-   capture the still-open live confirmation of the rebuild-during-Night
-   lamp fix (both currently verified by code inspection/tests, not a
-   live action -- see each GDD's Acceptance Criteria).
-4. Remaining open stretch goals, both real design decisions, not just
-   implementation: Farmhouse footprint growth + other-structure
-   sub-upgrade attachments (item 1); a second gems sink (item 2,
-   real-money purchase explicitly excluded -- needs its own
-   billing-integration decision first).
+3. Items 1, 3, and 4 (structures, real-world weather, richer ambient
+   villagers) are all now fully done -- zero open stretch goals on any
+   of them. Only item 2 (gems, a second sink -- real-money purchase
+   explicitly excluded, needs its own billing decision first) remains
+   from the original 5-item feature-scoping pass, and it's the one item
+   with no existing concrete mechanic to implement (the others were all
+   "the brief already specifies the shape, build it" -- this one needs
+   an actual new mechanic invented, a bigger step).
+4. Several still-open on-device visual confirmations, all currently
+   verified by code inspection/tests rather than a live action, tracked
+   in each feature's own GDD Acceptance Criteria rather than lost:
+   Point-of-Interest Lingering (needs a save with decorations placed),
+   the rebuild-during-Night lamp fix (needs a live purchase/drag
+   triggered mid-Night), and the two-villagers-mutually-facing
+   Congregating case (inherently probabilistic to catch on camera).
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)

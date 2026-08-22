@@ -39,6 +39,17 @@ var has_building: bool = true
 ## or on a locked zone (which always uses LOCKED_ZONE_PLACEHOLDER_COLOR,
 ## already translucent, regardless of this flag).
 var use_translucent_placeholder: bool = false
+## design/gdd/land-and-structures.md's sub-upgrade visual cue stretch goal
+## -- how many of this zone's own sub-upgrades (Fan & Pad/UV Film/Drip
+## Irrigation for Polyhouse, Security for Agroforestry, Electricity for
+## Vertical Farm) are currently active. 0 for every zone with none of its
+## own (Farmhouse, Mandi, Open Field, Aquaculture -- which has no
+## sub-upgrade of its own in GameState today) or when the base structure
+## itself isn't unlocked yet. Set post-construction by
+## VillageSnapshotMapper (like host_occupied/lifecycle on PlotFixture),
+## not a constructor parameter -- this field is optional/zero-default for
+## the many zones that never set it.
+var active_upgrade_count: int = 0
 
 func _init(
 	p_id: String,

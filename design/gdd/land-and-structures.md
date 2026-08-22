@@ -236,6 +236,53 @@ cost-equivalency research, treated as deliberately tuned.
 all 4 structure unlock costs + Sandalwood theft/payout together, since
 they're the game's primary large-currency sinks.
 
+### Sub-Upgrade Visual Cue (built 2026-08-22)
+
+`feature-scoping-2026-08-22.md` item 1's own text originally floated
+"small visual attachments (fence, shed, tint)" for Polyhouse's Fan &
+Pad/UV Film/Drip Irrigation, Agroforestry's Security, and Vertical
+Farm's Electricity sub-upgrades, without settling which. Decided and
+built: **a shared warm emissive tint on the structure's own existing
+material, intensity scaling with how many of its own sub-upgrades are
+currently active** -- not distinct attachment meshes or per-flag colors.
+
+- **Why tint over attachment meshes**: no sourced 3D asset exists for
+  any of the 4 add-ons (a fence, a fan unit, a film sheet, a security
+  post are all unmodeled), and building them from scratch is real
+  content-creation scope this pass doesn't take on -- the same
+  reasoning `real-time-day-night.md`'s villager lamp-lighting stretch
+  goal already used to choose a built-in engine light over a sourced
+  model. A tint needs no new asset at all.
+- `VillageSnapshotMapper` computes `ZoneFixture.active_upgrade_count`
+  per zone (Polyhouse: `has_fan_pad` + `has_drip_irrigation` +
+  currently-unexpired UV film, each worth 1; Agroforestry: `has_security`
+  worth 1; Vertical Farm: currently-unexpired electricity worth 1;
+  Aquaculture: always 0 -- it has no sub-upgrade of its own in
+  `GameState` today). Time-limited upgrades (UV film, electricity) are
+  evaluated against a real `now` threaded through `build()`, mirroring
+  `game_economy.gd`'s own `is_film_active()`/`is_electricity_active()`
+  exactly (duplicated rather than depending on a `GameEconomy` instance,
+  since the mapper is a pure `GameState` function).
+- `village_board.gd` applies the tint as an additive emissive boost on
+  the building's own material(s) (found the same way toon-shading
+  already patches them), not a base-color replacement -- the structure's
+  tier-specific model/color (`farmhouse-visual-tiers.md`) and Day/Night/
+  seasonal lighting (`real-time-day-night.md`) both stay fully visible
+  underneath it.
+- **A real tuning correction made from an actual on-device screenshot,
+  not guessed**: the first intensity chosen (`UPGRADE_TINT_STEP=0.35`,
+  `MAX=1.0`) was verified genuinely too subtle to read against bright
+  daytime ambient light -- additive emission needs far more energy to
+  compete with strong ambient lighting than it does at Night (where the
+  villager-lamp glow read clearly at similar values, against much
+  darker ambient). Re-tuned to `STEP=1.2`/`MAX=3.5` and re-verified on
+  the same device against the same real save state before/after --
+  visibly, clearly brighter the second time.
+- **Not** per-flag distinguishable at a glance (a fully-upgraded
+  Polyhouse looks identical regardless of *which* 3 upgrades are active)
+  -- a deliberate, documented scope reduction from the original brief's
+  "communicates which add-ons are active" ambition, not an oversight.
+
 ---
 
 ## 6. Acceptance Criteria
@@ -245,6 +292,9 @@ they're the game's primary large-currency sinks.
 - ✅ All 4 structure tiers with their full sub-economies
 - ✅ Zone layout customization (free, unvalidated)
 - ✅ Decorations (paid, cosmetic, unvalidated)
+- ✅ Sub-upgrade visual cue (§5, built 2026-08-22) -- Polyhouse/
+  Agroforestry/Vertical Farm's own add-ons now visibly tint their
+  structure; see that section for what's verified vs. tested
 
 **What's Missing**: Nothing identified as unbuilt within this doc's scope.
 
@@ -252,6 +302,20 @@ they're the game's primary large-currency sinks.
 - [x] Every structure's unlock cost, plot grant, and sub-economy documented
 - [x] Sandalwood's theft/host mechanics fully specified
 - [ ] Open question in §3 (layout/decoration collision validation) resolved
+- [x] `active_upgrade_count` is independently unit-testable as pure logic
+      against a real `GameState`, driven through `GameEconomy`'s real
+      `buy_*`/`renew_*` methods -- `tests/unit/test_village_snapshot_mapper.gd`
+      (10 new tests: per-structure counts, an expired-upgrade exclusion
+      for each time-limited flag, Aquaculture's always-zero case, and
+      `build()`'s own backward-compatible default).
+- [x] Full GUT suite green (528/528 at the time this was built).
+- [x] Verified on-device via a temporary forced-purchase override
+      (reverted before commit): all 3 upgradeable structures fully
+      upgraded, confirmed visibly tinted with no crash, using the real
+      save state's actual coin balance restored afterward (the override
+      only mutated in-memory state during the verification session --
+      `_ready()` never itself persists to disk, so the player's real save
+      was never at risk).
 
 ---
 

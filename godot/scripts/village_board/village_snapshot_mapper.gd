@@ -81,16 +81,39 @@ const VERTICAL_FARM_PLINTH_COLOR := Color(0.80, 0.42, 0.38)
 const OPEN_FIELD_PLINTH_COLOR_UNUSED := Color(0.0, 0.0, 0.0, 0.0)
 
 
-static func build(state: GameState) -> Array[ZoneFixture]:
+## `now` (default -1, meaning "unknown/don't evaluate") only matters for
+## Polyhouse's UV Film and Vertical Farm's Electricity sub-upgrades --
+## both time-limited (see is_film_active()/is_electricity_active() below,
+## which mirror game_economy.gd's own identically-named methods exactly,
+## duplicated rather than depending on a GameEconomy instance here since
+## this class is a pure GameState -> fixture mapper with no economy-layer
+## dependency). The many callers that don't care about this new dimension
+## (every existing test, in particular) keep working unchanged at the
+## default.
+static func build(state: GameState, now: int = -1) -> Array[ZoneFixture]:
 	var zones: Array[ZoneFixture] = []
 	zones.append(_build_farmhouse(state))
 	zones.append(_build_open_field(state))
-	zones.append(_build_polyhouse(state))
+	zones.append(_build_polyhouse(state, now))
 	zones.append(_build_mandi(state))
 	zones.append(_build_agroforestry(state))
 	zones.append(_build_aquaculture(state))
-	zones.append(_build_vertical_farm(state))
+	zones.append(_build_vertical_farm(state, now))
 	return zones
+
+
+## Mirrors game_economy.gd's is_film_active(now) exactly, minus the
+## GameEconomy instance dependency -- now=-1 (build()'s default) always
+## reads as "not active," a safe, conservative default for every caller
+## that doesn't pass a real now.
+static func is_film_active(state: GameState, now: int) -> bool:
+	return now >= 0 and state.has_polyhouse and state.film_expires_at_epoch_ms != -1 and now < state.film_expires_at_epoch_ms
+
+
+## Mirrors game_economy.gd's is_electricity_active(now) exactly -- same
+## now=-1 safe-default reasoning as is_film_active() above.
+static func is_electricity_active(state: GameState, now: int) -> bool:
+	return now >= 0 and state.has_vertical_farm and state.electricity_expires_at_epoch_ms != -1 and now < state.electricity_expires_at_epoch_ms
 
 
 ## Resolves a draggable zone's saved custom anchor (state.zone_layout),
@@ -358,12 +381,12 @@ static func _build_open_field(state: GameState) -> ZoneFixture:
 ## doc comment for why Polyhouse has no sourced model in any curated kit and
 ## instead renders via village_board.gd's placeholder-box branch with
 ## use_translucent_placeholder=true (glass-structure read).
-static func _build_polyhouse(state: GameState) -> ZoneFixture:
+static func _build_polyhouse(state: GameState, now: int = -1) -> ZoneFixture:
 	var anchor := _resolve_anchor(state, ZONE_ID_POLYHOUSE, POLYHOUSE_ANCHOR)
 	var plots: Array[PlotFixture] = []
 	if state.has_polyhouse:
 		plots = _simple_zone_plots(state, PlotKind.Kind.POLYHOUSE, anchor, 2, 2, false)
-	return ZoneFixture.new(
+	var zone := ZoneFixture.new(
 		ZONE_ID_POLYHOUSE, "Polyhouse", "",
 		anchor.x, anchor.y, 2, 2,
 		POLYHOUSE_PLINTH_COLOR,
@@ -371,6 +394,16 @@ static func _build_polyhouse(state: GameState) -> ZoneFixture:
 		state.has_polyhouse, true,
 		true
 	)
+	if state.has_polyhouse:
+		var count := 0
+		if state.has_fan_pad:
+			count += 1
+		if state.has_drip_irrigation:
+			count += 1
+		if is_film_active(state, now):
+			count += 1
+		zone.active_upgrade_count = count
+	return zone
 
 
 static func _build_mandi(state: GameState) -> ZoneFixture:
@@ -404,13 +437,16 @@ static func _build_agroforestry(state: GameState) -> ZoneFixture:
 			fixture.kind = PlotKind.Kind.AGROFORESTRY
 			fixture.crop = plot.state.crop
 			plots.append(fixture)
-	return ZoneFixture.new(
+	var zone := ZoneFixture.new(
 		ZONE_ID_AGROFORESTRY, "Agroforestry", VillageFixtureData.AGROFORESTRY_MODEL,
 		anchor.x, anchor.y, 2, 2,
 		AGROFORESTRY_PLINTH_COLOR,
 		plots,
 		state.has_agroforestry, true
 	)
+	if state.has_agroforestry and state.has_security:
+		zone.active_upgrade_count = 1
+	return zone
 
 
 static func _build_aquaculture(state: GameState) -> ZoneFixture:
@@ -427,15 +463,18 @@ static func _build_aquaculture(state: GameState) -> ZoneFixture:
 	)
 
 
-static func _build_vertical_farm(state: GameState) -> ZoneFixture:
+static func _build_vertical_farm(state: GameState, now: int = -1) -> ZoneFixture:
 	var anchor := _resolve_anchor(state, ZONE_ID_VERTICAL_FARM, VERTICAL_FARM_ANCHOR)
 	var plots: Array[PlotFixture] = []
 	if state.has_vertical_farm:
 		plots = _simple_zone_plots(state, PlotKind.Kind.VERTICAL_FARM, anchor, 2, 2, false)
-	return ZoneFixture.new(
+	var zone := ZoneFixture.new(
 		ZONE_ID_VERTICAL_FARM, "Vertical Farm", VillageFixtureData.VERTICAL_FARM_MODEL,
 		anchor.x, anchor.y, 2, 2,
 		VERTICAL_FARM_PLINTH_COLOR,
 		plots,
 		state.has_vertical_farm, true
 	)
+	if is_electricity_active(state, now):
+		zone.active_upgrade_count = 1
+	return zone

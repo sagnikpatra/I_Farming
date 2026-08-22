@@ -100,19 +100,25 @@ authored scale.
 - The 5 model picks themselves -- swappable any time by editing
   `farmhouse_model_path()`'s table; no other code depends on which
   specific `.obj` is used per tier.
-- **Future stretch, explicitly out of scope this pass**: footprint growth
-  per tier (a bigger Farmhouse at higher levels) -- the scoping brief
-  (`docs/architecture/feature-scoping-2026-08-22.md` item 1) flagged this
-  as forcing resolution of `land-and-structures.md`'s open
-  zone/decoration collision-validation question, and reduced this pass's
-  own complexity estimate from L back to M by staying fixed-footprint.
+- **Decided against, not just deferred (2026-08-22)**: footprint growth
+  per tier (a bigger Farmhouse at higher levels). Re-examined when the
+  other item-1/3/4 stretch goals were being worked through the same
+  session -- the original scoping brief's own recommendation was
+  explicit ("footprint growth as a v2 stretch," keep this pass at
+  fixed-footprint M complexity), and it would force resolving
+  `land-and-structures.md`'s genuinely still-open zone/decoration
+  collision-validation question as a side effect of a *visual* feature,
+  with real risk of a larger Farmhouse newly overlapping a player's
+  already-placed decoration. Fixed-footprint stays the shipped design,
+  not a placeholder awaiting a follow-up.
 - **Future stretch**: a visible transform/juice effect on the upgrade
   moment itself (currently just the standard full-board rebuild).
-- **Future stretch**: applying the same per-tier-model treatment to
+- Applying the same per-tier-model treatment to
   Polyhouse/Agroforestry/Aquaculture/Vertical Farm's own sub-upgrades
-  (Fan & Pad, UV Film, Security, Electricity) as small visual
-  *attachments* rather than full model swaps -- scoped out of this pass,
-  which is Farmhouse-only per the brief's own complexity-reduction call.
+  (Fan & Pad, UV Film, Security, Electricity) as small visual cues --
+  see `land-and-structures.md`'s own Tuning Knobs for the built version
+  (a shared tint/emissive treatment, not per-flag distinct attachment
+  meshes -- see that doc for why).
 
 ## 8. Acceptance Criteria
 

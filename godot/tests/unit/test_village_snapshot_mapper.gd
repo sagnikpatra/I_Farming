@@ -665,3 +665,87 @@ func test_no_worker_station_exists_for_an_unassigned_plot_kind() -> void:
 	board.persist_and_rebuild_if_dirty()
 
 	assert_null(board.get_worker_station(PlotKind.Kind.OPEN_FIELD))
+
+
+# --- active_upgrade_count -- land-and-structures.md's sub-upgrade visual cue stretch goal --
+
+func test_polyhouse_upgrade_count_is_zero_before_polyhouse_is_bought() -> void:
+	var zones := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_POLYHOUSE).active_upgrade_count, 0)
+
+
+func test_polyhouse_upgrade_count_is_zero_with_no_sub_upgrades_bought() -> void:
+	eco.buy_polyhouse()
+	var zones := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_POLYHOUSE).active_upgrade_count, 0)
+
+
+func test_polyhouse_upgrade_count_counts_fan_pad() -> void:
+	eco.buy_polyhouse()
+	eco.buy_fan_pad()
+	var zones := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_POLYHOUSE).active_upgrade_count, 1)
+
+
+func test_polyhouse_upgrade_count_counts_all_three_sub_upgrades_together() -> void:
+	eco.buy_polyhouse()
+	eco.buy_fan_pad()
+	eco.buy_drip_irrigation()
+	eco.renew_film(NOW)
+	var zones := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_POLYHOUSE).active_upgrade_count, 3)
+
+
+func test_polyhouse_upgrade_count_excludes_an_expired_film() -> void:
+	eco.buy_polyhouse()
+	eco.renew_film(NOW)
+	# Query well past the film's own expiry.
+	var zones := VillageSnapshotMapper.build(eco.state, NOW + GameData.UV_FILM_DURATION_MS + 1)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_POLYHOUSE).active_upgrade_count, 0)
+
+
+func test_agroforestry_upgrade_count_reflects_security() -> void:
+	eco.buy_agroforestry()
+	var before := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(before, VillageSnapshotMapper.ZONE_ID_AGROFORESTRY).active_upgrade_count, 0)
+
+	eco.buy_security()
+	var after := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(after, VillageSnapshotMapper.ZONE_ID_AGROFORESTRY).active_upgrade_count, 1)
+
+
+func test_vertical_farm_upgrade_count_reflects_active_electricity() -> void:
+	eco.buy_vertical_farm()
+	var before := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(before, VillageSnapshotMapper.ZONE_ID_VERTICAL_FARM).active_upgrade_count, 0)
+
+	eco.renew_electricity(NOW)
+	var after := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(after, VillageSnapshotMapper.ZONE_ID_VERTICAL_FARM).active_upgrade_count, 1)
+
+
+func test_vertical_farm_upgrade_count_excludes_expired_electricity() -> void:
+	eco.buy_vertical_farm()
+	eco.renew_electricity(NOW)
+	var zones := VillageSnapshotMapper.build(eco.state, NOW + GameData.ELECTRICITY_DURATION_MS + 1)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_VERTICAL_FARM).active_upgrade_count, 0)
+
+
+func test_aquaculture_upgrade_count_is_always_zero() -> void:
+	# Aquaculture has no sub-upgrade of its own in GameState today --
+	# documented explicitly (zone_fixture.gd's own active_upgrade_count
+	# doc comment) rather than left as an unexplained gap.
+	eco.buy_aquaculture()
+	var zones := VillageSnapshotMapper.build(eco.state, NOW)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_AQUACULTURE).active_upgrade_count, 0)
+
+
+func test_build_defaults_now_to_a_value_that_always_reads_upgrades_as_inactive() -> void:
+	# Backward compatibility: every pre-existing call to build(state) with
+	# no now argument (every test above this section, and every one
+	# already in this file) must keep working exactly as before --
+	# confirmed explicitly rather than just assumed from the default value.
+	eco.buy_polyhouse()
+	eco.renew_film(NOW)
+	var zones := VillageSnapshotMapper.build(eco.state)
+	assert_eq(_zone_by_id(zones, VillageSnapshotMapper.ZONE_ID_POLYHOUSE).active_upgrade_count, 0)

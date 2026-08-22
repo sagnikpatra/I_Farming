@@ -76,6 +76,12 @@ const LOCKED_ZONE_PLACEHOLDER_COLOR := Color(0.97, 0.93, 0.84, 0.30)
 # each structure's NightLamp OmniLight3D energy at Night; 0.0 (off) at every
 # other phase. See _apply_night_lamps_to_current_state().
 const NIGHT_LAMP_ENERGY: float = 1.5
+# design/gdd/land-and-structures.md's sub-upgrade visual cue stretch goal --
+# a warm emissive boost applied to a structure's own building material,
+# scaling with ZoneFixture.active_upgrade_count. See _apply_upgrade_tint().
+const UPGRADE_TINT_COLOR := Color(1.0, 0.85, 0.4)
+const UPGRADE_TINT_STEP: float = 1.2
+const UPGRADE_TINT_MAX: float = 3.5
 # Track B: Polyhouse's translucent-glass placeholder alpha (see
 # _build_zone_structure()'s use_translucent_placeholder branch). Higher than
 # LOCKED_ZONE_PLACEHOLDER_COLOR's 0.30 -- an unlocked, built Polyhouse should
@@ -186,7 +192,7 @@ func _ready() -> void:
 	_apply_audio_settings_to_bus_server()
 	var loaded_state := SaveSystem.load_state()
 	_economy = GameEconomy.new(loaded_state)
-	var zones := VillageSnapshotMapper.build(_economy.state)
+	var zones := VillageSnapshotMapper.build(_economy.state, int(Time.get_unix_time_from_system() * 1000.0))
 	var overlaps := _find_overlapping_tiles(zones)
 	if not overlaps.is_empty():
 		# Logged loudly for developers, but NOT a hard assert (as this used to
@@ -1111,6 +1117,7 @@ func _build_zone_structure(zone: ZoneFixture, zone_node: Node3D) -> void:
 		# rest directly on the plinth top with no extra offset.
 		building.set_meta("base_y", PLINTH_HEIGHT)
 	_apply_toon_shading(building)
+	_apply_upgrade_tint(building, zone.active_upgrade_count)
 	zone_node.add_child(building)
 
 	# EPIC-M3 pick collider -- sized directly from footprint/building_height
@@ -1234,6 +1241,40 @@ func _apply_toon_shading(instance: MeshInstance3D) -> void:
 		toon_mat.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
 		toon_mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 		instance.set_surface_override_material(i, toon_mat)
+
+
+## design/gdd/land-and-structures.md's sub-upgrade visual cue stretch
+## goal. A warm emissive boost on `building`'s own existing material(s)
+## (found the same two ways _apply_toon_shading() above just left them --
+## either a single material_override, or per-surface override materials
+## it just created), scaling with `active_upgrade_count`. No-op at 0 (the
+## overwhelming majority of structures, and every non-upgradeable zone).
+## Deliberately a shared intensity cue rather than a distinct attachment
+## mesh/tint per individual flag (Fan & Pad vs. UV Film vs. Drip
+## Irrigation are visually indistinguishable from each other this way) --
+## no sourced asset exists for any of them, and building 3+ distinct
+## attachment meshes from scratch is real content-creation scope this
+## pass deliberately doesn't take on. Must be called after
+## _apply_toon_shading(building), not before -- it reads the materials
+## that call already put in place.
+func _apply_upgrade_tint(building: MeshInstance3D, active_upgrade_count: int) -> void:
+	if active_upgrade_count <= 0:
+		return
+	var intensity := minf(float(active_upgrade_count) * UPGRADE_TINT_STEP, UPGRADE_TINT_MAX)
+	var materials: Array[StandardMaterial3D] = []
+	if building.material_override is StandardMaterial3D:
+		materials.append(building.material_override)
+	else:
+		var mesh := building.mesh
+		if mesh:
+			for i in range(mesh.get_surface_count()):
+				var mat := building.get_surface_override_material(i)
+				if mat is StandardMaterial3D:
+					materials.append(mat)
+	for mat in materials:
+		mat.emission_enabled = true
+		mat.emission = UPGRADE_TINT_COLOR
+		mat.emission_energy_multiplier = intensity
 
 
 ## Precedence: host_occupied overrides everything (foliage-green tint,
@@ -1592,7 +1633,7 @@ func _on_accessibility_settings_changed() -> void:
 	_apply_audio_settings_to_bus_server()
 	if _accessibility_settings.colorblind_safe != _last_colorblind_safe:
 		_last_colorblind_safe = _accessibility_settings.colorblind_safe
-		rebuild(VillageSnapshotMapper.build(_economy.state), true)
+		rebuild(VillageSnapshotMapper.build(_economy.state, int(Time.get_unix_time_from_system() * 1000.0)), true)
 
 
 ## Pushes AccessibilitySettings' 4 volume fields + mute state to AudioServer.
@@ -1842,7 +1883,7 @@ func persist_and_rebuild_if_dirty(preserve_camera: bool = true) -> void:
 		return
 	SaveSystem.save_state(_economy.state)
 	_economy.dirty = false
-	rebuild(VillageSnapshotMapper.build(_economy.state), preserve_camera)
+	rebuild(VillageSnapshotMapper.build(_economy.state, int(Time.get_unix_time_from_system() * 1000.0)), preserve_camera)
 	_sync_villagers_if_needed()
 
 

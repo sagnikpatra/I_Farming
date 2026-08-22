@@ -70,11 +70,24 @@ fi
 
 # Check for hardcoded gameplay values in gameplay code
 # Uses grep -E (POSIX extended) instead of grep -P (Perl) for cross-platform compatibility
-CODE_FILES=$(echo "$STAGED" | grep -E '^src/gameplay/')
+# Update (2026-08-23): also matches godot/scripts/economy/ -- this
+# project's real gameplay-logic root (no src/gameplay/ exists here).
+# Verified by direct empirical test: this check never fired for any
+# godot/scripts/economy/ commit before this fix, confirmed with a
+# staged synthetic file containing an obvious hardcoded value.
+CODE_FILES=$(echo "$STAGED" | grep -E '^(src/gameplay/|godot/scripts/economy/)')
 if [ -n "$CODE_FILES" ]; then
     while IFS= read -r file; do
         if [ -f "$file" ]; then
-            if grep -nE '(damage|health|speed|rate|chance|cost|duration)[[:space:]]*[:=][[:space:]]*[0-9]+' "$file" 2>/dev/null; then
+            # Update (2026-08-23): also matches GDScript's typed-declaration
+            # syntax (`name: Type = value`) via an optional type-annotation
+            # group between the identifier and the `=` -- the original
+            # pattern only matched an untyped `name = value`/`name: value`,
+            # which never fires against this project's actual GDScript
+            # style (every real const/var declaration is typed). Verified
+            # empirically: a synthetic `const damage: int = 25` line
+            # produced zero warning before this fix, a real one after.
+            if grep -nE '(damage|health|speed|rate|chance|cost|duration)[[:space:]]*(:[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*)?[:=][[:space:]]*[0-9]+' "$file" 2>/dev/null; then
                 WARNINGS="$WARNINGS\nCODE: $file may contain hardcoded gameplay values. Use data files."
             fi
         fi
@@ -82,7 +95,17 @@ if [ -n "$CODE_FILES" ]; then
 fi
 
 # Check for TODO/FIXME without assignee -- uses grep -E instead of grep -P
-SRC_FILES=$(echo "$STAGED" | grep -E '^src/')
+# Update (2026-08-23): also matches godot/ -- this project's real source
+# root (no root-level src/ exists here). Note: this project's own
+# established convention throughout is bare TODO/FIXME with a dated,
+# contextual explanation in a doc comment right above (not a `TODO(name)`
+# owner tag) -- this check will flag that convention as a style warning
+# every time it fires. Left the check itself as-is (a WARNING, not a
+# BLOCKED, so it doesn't stop a real commit) rather than silently
+# suppressing it -- surfacing the convention mismatch honestly is more
+# useful than hiding it, and a human can decide whether to adopt owner
+# tags or leave the check as an accepted, ignorable warning for this repo.
+SRC_FILES=$(echo "$STAGED" | grep -E '^(src/|godot/)')
 if [ -n "$SRC_FILES" ]; then
     while IFS= read -r file; do
         if [ -f "$file" ]; then

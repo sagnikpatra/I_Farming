@@ -6065,3 +6065,53 @@ per this session's own discipline: 632/632, unaffected.
 standing instruction. Remaining `.claude/hooks/` files
 (`validate-*.sh`, `notify.sh`, `pre/post-compact.sh`, `log-agent*.sh`,
 `session-stop.sh`) not yet given this same treatment.
+
+## 2026-08-23 (cont'd) -- validate-commit.sh's gameplay-code checks were also dead
+
+Continued the hooks thread: `validate-commit.sh` (a PreToolUse hook that
+runs on every real `git commit`, so this has silently under-checked
+every commit made today, and likely every commit since this project
+adopted the template) had the same two blind checks -- hardcoded-value
+detection and TODO/FIXME-owner-tag detection both keyed on `^src/` /
+`^src/gameplay/`, matching nothing in this project.
+
+Verified empirically with a genuine before/after test rather than
+reading and assuming: staged a synthetic file at
+`godot/scripts/economy/_temp_verify_hook.gd` containing an obvious
+hardcoded value (`const damage: int = 25`) and an unowned `# TODO`
+comment, confirmed the unpatched hook produced zero warnings, fixed the
+paths to also match `godot/scripts/economy/`/`godot/`, confirmed both
+warnings now fire correctly. Along the way found a second, independent
+bug in the hardcoded-value regex itself: it only matched an untyped
+`name = value`/`name: value` shape, never GDScript's real
+`name: Type = value` typed-declaration syntax that every real const/var
+in this codebase actually uses -- so even with the path fixed, this
+check would have stayed silently useless for this project's actual code
+style. Fixed the regex to also accept an optional type-annotation
+between the identifier and `=`, re-verified against the same synthetic
+file. Cleaned up the synthetic file completely afterward (`git reset` +
+`rm`, confirmed gone via `git status`).
+
+Noted honestly rather than silently changed: this project's own real
+TODO/FIXME convention throughout (a bare `TODO`/dated contextual comment
+above, not a `TODO(name)` owner tag) will now trigger this STYLE warning
+on every future commit that touches one -- left the check itself
+enabled (it's a non-blocking WARNING) rather than unilaterally deciding
+to suppress it, since that's a real convention question for a human to
+weigh in on, not a factual bug to silently patch around.
+
+Design-doc section validation (`design/gdd/` -- Check 1) was already
+correctly matching this whole time; confirmed by inspection, not
+re-tested (its path was never wrong). The JSON-data-file check
+(`assets/data/*.json`) correctly stays inert -- confirmed no such
+directory exists in this project, matching its real "data lives as
+GDScript consts" convention.
+
+Not a Godot-code change, ran the full suite anyway per this session's
+discipline: 632/632, unaffected.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction. Remaining `.claude/hooks/` files
+(`validate-assets.sh`, `validate-push.sh`, `validate-skill-change.sh`,
+`notify.sh`, `pre/post-compact.sh`, `log-agent*.sh`, `session-stop.sh`)
+not yet given this same treatment.

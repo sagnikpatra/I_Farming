@@ -233,8 +233,8 @@ shipped here.
 | # | Feature | Complexity | Key dependency / prerequisite | Status |
 |---|---|---|---|---|
 | 1 | Building upgrades change layout | M (Farmhouse-only) / L (footprint growth + all structures) | Resolves `land-and-structures.md`'s open collision-validation question if footprint grows | **Built (2026-08-22, commit `d03eaee` + a same-day stretch goal)** -- Farmhouse model re-skin, fixed footprint. **Footprint growth decided against, not deferred** (2026-08-22): the brief's own recommendation was fixed-footprint, and growing it would force resolving `land-and-structures.md`'s still-open collision-validation question as a side effect of a visual feature. The other 3 structures' sub-upgrades (Fan & Pad/UV Film/Drip Irrigation/Security/Electricity) shipped same-day as a shared warm-tint visual cue (not per-flag distinct attachments -- no sourced asset exists for any of them) -- item 1 has no open stretch goals left |
-| 2 | Gems via daily tasks | M (grind-only) / L (if real-money purchasable) | Real-money path needs a billing-integration decision first | **Built (2026-08-22, commit `85a0079` + a same-day second-sink stretch goal)** -- grind-only, as scoped; real-money purchase stays explicitly out of scope (no billing integration exists). **Second sink also decided and shipped same-day**: a capped grow-time skip (10 gems, once per real calendar day) -- see `design/gdd/gems-second-sink.md`. Gem-exclusive decorations (the brief's other candidate) not pursued -- needs a new sourced 3D asset, deliberately avoided this pass. The skip's economy logic is fully unit-tested; the on-device button press itself was not visually confirmed (see that GDD's Acceptance Criteria) |
-| 3 | Real-world-timezone weather | S/M (cosmetic, recommended) / L (mechanical, not recommended) | New device-timezone read dependency either way | **Built (2026-08-22, commit `81a0d3c` + 2 same-day stretch goals)** -- Option A (cosmetic day/night, S complexity); **both originally-deferred stretch goals now also shipped same-day**: Option B (seasonal palette -- real-calendar-month tint layered on the phase preset) and villager lamp-lighting (one `OmniLight3D` per structure, lit only at Night, no new 3D assets needed) -- item 3 has no open stretch goals left |
+| 2 | Gems via daily tasks | M (grind-only) / L (if real-money purchasable) | Real-money path needs a billing-integration decision first | **Built (2026-08-22, commit `85a0079` + a same-day second-sink stretch goal)** -- grind-only, as scoped; real-money purchase stays explicitly out of scope (no billing integration exists). **Second sink also decided and shipped same-day**: a capped grow-time skip (10 gems, once per real calendar day) -- see `design/gdd/gems-second-sink.md`. Gem-exclusive decorations (the brief's other candidate) not pursued -- needs a new sourced 3D asset, deliberately avoided this pass. The skip's economy logic is fully unit-tested, and the real button press itself is now confirmed too via a headless test that drives the actual Skip Button node's `pressed` signal end to end (`test_growing_info_card.gd`) -- item 2 has no open gaps left |
+| 3 | Real-world-timezone weather | S/M (cosmetic, recommended) / L (mechanical, not recommended) | New device-timezone read dependency either way | **Built (2026-08-22, commit `81a0d3c` + 2 same-day stretch goals)** -- Option A (cosmetic day/night, S complexity); **both originally-deferred stretch goals now also shipped same-day**: Option B (seasonal palette -- real-calendar-month tint layered on the phase preset) and villager lamp-lighting (one `OmniLight3D` per structure, lit only at Night, no new 3D assets needed). Lamp-lighting's own rebuild-during-Night bug (a real one found and fixed this pass) is now also test-verified end to end, not just by code inspection (`test_village_board.gd`) -- item 3 has no open stretch goals or gaps left |
 | 4 | Richer ambient villager behavior | M (contingent) / L (if new animation sourcing needed) | Verify `Rig_Medium_General.glb` has a usable idle clip first | **Built (2026-08-22, commits `028c36a` + 3 same-day stretch goals)** -- prerequisite confirmed true (Idle_A/Idle_B exist), idle-pause shipped at M; **all three originally-deferred stretch goals now also shipped same-day**: congregating (villagers turn to face each other), point-of-interest lingering (villagers bias toward decoration-adjacent tiles), and night population thinning (roaming population roughly halves at real-world Night, restores at Dawn) -- item 4 has no open stretch goals left |
 | 5 | Festival chanda visiting-NPCs | L | — | **Built (2026-08-22, commit `56c62a9`)** |
 
@@ -271,3 +271,24 @@ have been. Cloud save is tracked separately in
 actioned). The project owner's next move, per the Collaborative Design
 Principle, is a genuinely new direction -- the cloud-save ADR's
 remaining Play Console step, or something not on this list at all.
+
+**Update (2026-08-22, later still)**: the one remaining on-device-only
+gap -- item 3's rebuild-during-Night lamp fix, previously verified only
+by code inspection -- is now closed the same way as the two above:
+`test_village_board.gd`, the first-ever dedicated test file for
+`village_board.gd`, forces Night, confirms a lamp is genuinely lit, then
+drives a real unrelated economy action through the real `rebuild()`
+path and asserts the lamp stays lit (plus a companion Day-phase test
+guarding the opposite direction). Building it surfaced two more real
+test-determinism bugs, both fixed the same session: (1) several
+`test_growing_info_card.gd` tests set `economy.state.gems` to an exact
+value *before* calling `plant_seed()`, which itself can complete a
+random daily task and award gems -- fixed by reordering the gems
+assignment to after every action that can trigger that side effect; (2)
+`test_gems_daily_tasks.gd`'s one test that calls
+`resolve_growth_completions()` on an `OPEN_FIELD` plot at a fixed
+monsoon-season timestamp was exposed to the game's own intentionally
+unseeded monsoon-flood roll -- fixed with `has_polyhouse = true`,
+mirroring the game's real immunity mechanic rather than pinning the RNG.
+Full suite verified green (545/545) twice in a row before commit. This
+was the last open item from this scoping pass; nothing remains open.

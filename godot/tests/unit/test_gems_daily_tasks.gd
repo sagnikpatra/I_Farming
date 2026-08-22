@@ -272,7 +272,19 @@ func test_skip_grow_time_rewinds_planted_at_so_the_plot_resolves_ready_immediate
 	# job, unchanged) -- it must rewind planted_at_epoch_ms far enough that
 	# the very next resolve call, at the SAME now, already treats it as
 	# complete.
+	#
+	# This is the only test in the file that actually calls
+	# resolve_growth_completions() and asserts the resulting plot kind, so
+	# it's the only one exposed to resolve_growth_completions()'s own
+	# monsoon-flood roll for OPEN_FIELD plots (an intentionally unseeded
+	# RNG -- real gameplay randomness, not something a test should pin a
+	# seed to). The fixed `now` above falls within the monsoon window,
+	# which made this genuinely flaky (found via a real, reproducible
+	# failure this session). has_polyhouse mirrors the game's own escape
+	# hatch ("Polyhouse owners are immune") rather than fighting the RNG --
+	# this test is about skip_grow_time()'s clock rewind, not monsoon risk.
 	var now: int = 1787356800000
+	eco.state.has_polyhouse = true
 	eco.state.gems = GameData.GROW_SKIP_COST_GEMS
 	var plot_id := eco.state.plots[0].id
 	eco.plant_seed(plot_id, CropType.Kind.WHEAT, now)

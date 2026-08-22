@@ -71,11 +71,19 @@ func test_card_shows_an_enabled_skip_button_with_full_context() -> void:
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
 	_reset_grow_skip_cap(economy)
-	economy.state.gems = GameData.GROW_SKIP_COST_GEMS
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+	# Set gems AFTER plant_seed() -- plant_seed() bumps the PLANT daily task
+	# (game_economy.gd's _bump_daily_task_progress()), which can itself award
+	# gems depending on which 3 tasks today's real day_key happened to pick.
+	# Assigning here, last, keeps the test's intended gems value the one
+	# that's actually in effect when the button gets built, regardless of
+	# that real-calendar-dependent side effect. Found via a real, reproducible
+	# test failure this session (see test-standards.md's "must not depend on
+	# execution order" -- this was really "must not depend on the calendar").
+	economy.state.gems = GameData.GROW_SKIP_COST_GEMS
 	var sheet: BottomSheet = add_child_autofree(BottomSheetScene.instantiate())
 
 	var card: GrowingInfoCard = add_child_autofree(GrowingInfoCardScene.instantiate())
@@ -91,11 +99,13 @@ func test_skip_button_is_disabled_with_insufficient_gems() -> void:
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
 	_reset_grow_skip_cap(economy)
-	economy.state.gems = GameData.GROW_SKIP_COST_GEMS - 1
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+	# Set gems AFTER plant_seed() -- see the same-shaped comment in
+	# test_card_shows_an_enabled_skip_button_with_full_context() above.
+	economy.state.gems = GameData.GROW_SKIP_COST_GEMS - 1
 	var sheet: BottomSheet = add_child_autofree(BottomSheetScene.instantiate())
 
 	var card: GrowingInfoCard = add_child_autofree(GrowingInfoCardScene.instantiate())
@@ -110,11 +120,13 @@ func test_skip_button_is_disabled_after_the_daily_cap_is_used() -> void:
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
 	_reset_grow_skip_cap(economy)
-	economy.state.gems = GameData.GROW_SKIP_COST_GEMS * 2
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+	# Set gems AFTER both plant_seed() calls -- see the same-shaped comment in
+	# test_card_shows_an_enabled_skip_button_with_full_context() above.
+	economy.state.gems = GameData.GROW_SKIP_COST_GEMS * 2
 	economy.skip_grow_time(plot_id, now)  # uses today's one skip
 	var second_plot_id := economy.state.plots[1].id
 	_reset_plot_to_empty(economy, second_plot_id)
@@ -136,11 +148,19 @@ func test_pressing_the_real_skip_button_spends_gems_and_resolves_the_plot() -> v
 	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
 	var economy := board.get_economy()
 	_reset_grow_skip_cap(economy)
-	economy.state.gems = GameData.GROW_SKIP_COST_GEMS
 	var plot_id := economy.state.plots[0].id
 	var now := int(Time.get_unix_time_from_system() * 1000.0)
 	_reset_plot_to_empty(economy, plot_id)
 	economy.plant_seed(plot_id, CropType.Kind.WHEAT, now)
+	# Set gems AFTER plant_seed() -- plant_seed() bumps the PLANT daily task
+	# (game_economy.gd's _bump_daily_task_progress()), which can itself award
+	# gems depending on which 3 tasks today's real day_key happened to pick.
+	# Assigning here, last, keeps the test's intended gems value the one
+	# that's actually in effect when the button gets pressed, regardless of
+	# that real-calendar-dependent side effect. Found via a real, reproducible
+	# test failure this session (see test-standards.md's "must not depend on
+	# execution order" -- this was really "must not depend on the calendar").
+	economy.state.gems = GameData.GROW_SKIP_COST_GEMS
 	var sheet: BottomSheet = add_child_autofree(BottomSheetScene.instantiate())
 
 	var card: GrowingInfoCard = GrowingInfoCardScene.instantiate()

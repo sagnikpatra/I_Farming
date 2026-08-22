@@ -4513,3 +4513,51 @@ calling a fix non-flaky, not just "passed once."
 7. Everything else from prior "Next Step" entries (screen-alignment
    confirmation, localization, store readiness) is unchanged and still
    open.
+
+## 2026-08-22 (cont'd further)
+
+Closed the last open gap from `feature-scoping-2026-08-22.md`: item 3's
+rebuild-during-Night lamp fix, previously verified only by code
+inspection. Added `godot/tests/unit/test_village_board.gd` -- the
+first-ever dedicated test file for `village_board.gd` -- with 2 tests
+that force Night/Day, drive a real unrelated economy action
+(`buy_polyhouse()` + `persist_and_rebuild_if_dirty()`) through the real
+`rebuild()` path, and assert the lamp state is correct on both sides.
+
+Adding that file surfaced two real, previously-latent test-determinism
+bugs (both now fixed):
+
+1. **`test_growing_info_card.gd`**: several tests set
+   `economy.state.gems` to an exact value *before* calling
+   `plant_seed()`. `plant_seed()` bumps the PLANT daily task
+   (`game_economy.gd`'s `_bump_daily_task_progress()`), which can itself
+   award gems if today's randomly-picked daily tasks include it --
+   deterministic per real calendar day, so it silently worked on some
+   days and silently broke on others. Fixed by moving the gems
+   assignment to after every action that can trigger that side effect,
+   in all 4 affected tests.
+2. **`test_gems_daily_tasks.gd`**: `test_skip_grow_time_rewinds_
+   planted_at_so_the_plot_resolves_ready_immediately` calls
+   `resolve_growth_completions()` on an `OPEN_FIELD` plot at a fixed
+   timestamp that happens to fall in the monsoon window, exposing it to
+   the game's own intentionally *unseeded* monsoon-flood RNG roll (real
+   gameplay randomness, correctly not seeded in production code). Fixed
+   with `eco.state.has_polyhouse = true`, using the game's real immunity
+   mechanic rather than pinning the RNG -- this test is about
+   `skip_grow_time()`'s clock rewind, not monsoon risk.
+
+Full GUT suite run twice in a row after the fix: 545/545 both times, 0
+flaky. Updated `real-time-day-night.md`'s Acceptance Criteria (code
+inspection -> real test verification) and `feature-scoping-2026-08-22.md`
+(item 3's row + a closing summary paragraph) to match. This was the last
+open item from the 2026-08-22 scoping pass -- nothing remains open on
+that list.
+
+**Next step**: no forced next step -- the scoping-pass backlog is fully
+closed. Still-open longer-term items, unchanged from before: (1) commits
+through this point are local-only, still need the user's word on
+pushing to origin; (2) the cloud-save ADR's Google Play Console Game
+Services setup remains blocked on the user (SHA-1 and package name
+already handed over); (3) screen-alignment confirmation, localization,
+and store readiness are still open from even earlier in the project and
+untouched this session.

@@ -285,23 +285,33 @@ other phase. Position offset from the structure's footprint center:
 - [x] Every structure (`has_building=true` zone) gets exactly one
       `NightLamp` -- confirmed by code inspection of
       `_build_zone_structure()`'s unconditional lamp creation within
-      that branch (`village_board.gd` has no dedicated test file,
-      matching this project's existing gap for that class -- see
-      `technical-preferences.md`'s Testing section, same accepted gap
-      the Night Population Thinning feature already documented).
+      that branch. `village_board.gd`'s prior lack of any dedicated test
+      file (matching this project's then-accepted gap -- see
+      `technical-preferences.md`'s Testing section) is now partially
+      closed: see `test_village_board.gd` below, though this specific
+      per-zone lamp-creation bullet is still by inspection, not a
+      dedicated test of its own.
 - [x] Lamps are off (`light_energy = 0.0`) at every phase except Night --
-      confirmed by code inspection of `_apply_night_lamps_to_current_state()`.
+      confirmed both by code inspection of
+      `_apply_night_lamps_to_current_state()` and, for the Day case
+      specifically, by `test_village_board.gd`'s
+      `test_lamps_are_off_when_phase_is_explicitly_not_night`.
 - [x] A `rebuild()` unrelated to a day/night phase change does not
       darken lamps that should still be lit -- the specific bug this
-      pass found and fixed (see Detailed Rules/Edge Cases above);
-      verified by code inspection of `rebuild()`'s unconditional final
-      call to `_apply_night_lamps_to_current_state()`, not exercised via
-      a live rebuild-during-Night action this session (would need
-      triggering a real purchase/drag mid-Night on-device -- noted as a
-      gap, not silently assumed correct).
-- [x] Full GUT suite green throughout (518/518 -- no automated coverage
-      exists for the new code itself, but the full suite confirms it
-      introduces zero parse errors or regressions elsewhere).
+      pass found and fixed (see Detailed Rules/Edge Cases above); the
+      on-device-verification gap this bullet used to flag is now closed
+      -- `godot/tests/unit/test_village_board.gd` (the first-ever test
+      file for `village_board.gd`) drives the real scene end-to-end:
+      forces Night, confirms the lamp is genuinely lit, then triggers a
+      real unrelated economy action (`buy_polyhouse()` +
+      `persist_and_rebuild_if_dirty()`, the exact real-game trigger the
+      bug was found from) and asserts the lamp is still lit after the
+      real `rebuild()` this causes. A companion test forces Day and
+      confirms the same rebuild path correctly leaves the lamp off,
+      guarding the opposite direction too.
+- [x] Full GUT suite green throughout (545/545, run twice in a row to
+      confirm non-flaky -- `village_board.gd` now has its own dedicated
+      coverage for this fix, not just zero-regression-elsewhere).
 - [x] Verified on-device via a temporary forced-Night override (reverted
       before commit, same precedent as every other feature this
       session): screenshot shows multiple structures with a genuine warm

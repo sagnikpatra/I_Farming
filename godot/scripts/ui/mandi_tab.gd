@@ -224,25 +224,16 @@ func _build_build_card() -> VBoxContainer:
 	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label("Register at the Local Mandi", 18, SOIL_BROWN_DARK)
+	var title_label := _make_title_label(tr(&"mandi.register_title"), 18, SOIL_BROWN_DARK)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title_label)
 
-	var blurb_label := _make_title_label(
-		(
-			"Trade crops through an e-NAM-style electronic auction instead of a "
-			+ "flat roadside price. Prices move with demand and your own recent "
-			+ "selling, within safe bands -- a genuine alternative to Sell All, "
-			+ "not a replacement for it."
-		),
-		13,
-		SOIL_BROWN_DARK
-	)
+	var blurb_label := _make_title_label(tr(&"mandi.register_blurb"), 13, SOIL_BROWN_DARK)
 	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(blurb_label)
 
-	var build_button := _make_chunky_button("Register for ₹%d" % GameData.MANDI_UNLOCK_COST, SAFFRON_DARK)
+	var build_button := _make_chunky_button(tr(&"mandi.register_button") % GameData.MANDI_UNLOCK_COST, SAFFRON_DARK)
 	build_button.pressed.connect(_on_build_pressed)
 	box.add_child(build_button)
 
@@ -254,18 +245,10 @@ func _build_intro() -> VBoxContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 6)
 
-	var title_label := _make_title_label("🏛️ Local Mandi · e-NAM", 18, SOIL_BROWN_DARK)
+	var title_label := _make_title_label(tr(&"mandi.intro_title"), 18, SOIL_BROWN_DARK)
 	box.add_child(title_label)
 
-	var blurb_label := _make_title_label(
-		(
-			"Prices swing with server-wide demand and your own recent sales -- "
-			+ "flood the market and the price dips until it recovers. Produce "
-			+ "from protected cultivation earns an automatic A-Grade bonus."
-		),
-		12,
-		SOIL_BROWN_DARK
-	)
+	var blurb_label := _make_title_label(tr(&"mandi.intro_blurb"), 12, SOIL_BROWN_DARK)
 	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(blurb_label)
 
@@ -275,7 +258,7 @@ func _build_intro() -> VBoxContainer:
 func _build_terminal_offer() -> Button:
 	var can_afford := _economy.state.coins >= GameData.MANDI_TERMINAL_COST
 	var button := _make_chunky_button(
-		"📡 Digital Auction Terminal ₹%d -- unlocks tomorrow's forecast" % GameData.MANDI_TERMINAL_COST,
+		tr(&"mandi.terminal_offer") % GameData.MANDI_TERMINAL_COST,
 		WOOD_BROWN_LIGHT,
 		Color.WHITE,
 		can_afford
@@ -323,10 +306,10 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 	# "A-Grade" are exactly the frequently-read status/numeric text the
 	# audit calls out, not decoration.
 	if row_data["is_graded"]:
-		var graded_label := _make_title_label("A-Grade", 14, FIELD_GREEN_LIGHT)
+		var graded_label := _make_title_label(tr(&"mandi.a_grade"), 14, FIELD_GREEN_LIGHT)
 		name_row.add_child(graded_label)
 	name_col.add_child(name_row)
-	name_col.add_child(_make_title_label("Held: %d" % held, 14))
+	name_col.add_child(_make_title_label(tr(&"mandi.held") % held, 14))
 	left.add_child(name_col)
 
 	var right := VBoxContainer.new()
@@ -339,7 +322,7 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 		var forecast_sign := "+" if forecast >= 0 else ""
 		# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md
 		# §5, HIGH): 10px -> this project's 14px floor.
-		right.add_child(_make_title_label("Tomorrow: %s %s%d%%" % [forecast_trend, forecast_sign, forecast], 14))
+		right.add_child(_make_title_label(tr(&"mandi.tomorrow_forecast") % [forecast_trend, forecast_sign, forecast], 14))
 
 	info_row.add_child(left)
 	info_row.add_child(right)
@@ -355,7 +338,7 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 func _build_sell_button(crop: int, held: int) -> Button:
 	var affordable_to_sell := held > 0
 	var button := _make_chunky_button(
-		"Sell %d via Mandi" % held if affordable_to_sell else "Nothing to sell",
+		(tr(&"mandi.sell_button") % held) if affordable_to_sell else tr(&"mandi.nothing_to_sell"),
 		SAFFRON_DARK,
 		Color.WHITE,
 		affordable_to_sell

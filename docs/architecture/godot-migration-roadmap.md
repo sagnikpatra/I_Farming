@@ -122,11 +122,13 @@ stays the owner's regardless of how much of this list gets done.
       with a real migrated slice (`hud.gd`'s 3 buttons/labels, the full
       `accessibility_sheet.gd`) rather than left as untested scaffolding —
       558/558 GUT passing, up from 545/545. The rest of the UI's hardcoded
-      strings (every other `*_tab.gd`/`*_card.gd`/`*_picker.gd`, plus
+      strings (every remaining `*_tab.gd`/`*_card.gd`/`*_picker.gd`, plus
       `game_economy.gd`'s `_push_event()` message strings) remain
       unmigrated by design — see `docs/architecture/
       localization-pipeline.md`'s own Phase 2 plan, not silently assumed
-      covered.
+      covered. Phase 2 itself is now in progress:
+      `farmhouse_tab.gd`/`mandi_tab.gd` done same day, 569/569 GUT
+      passing.
 - [x] Security/save-integrity audit — done 2026-08-21: `/security-audit
       full` run against the Godot save format and economy logic. **1 HIGH
       finding (SEC-001: save-loaded crop/host/decoration enum ordinals

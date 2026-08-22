@@ -3,7 +3,9 @@
 ## Status
 
 Phase 1 complete (infrastructure + a proven real slice). Phase 2
-(finishing the UI-wide string migration) not started.
+(finishing the UI-wide string migration) in progress --
+`farmhouse_tab.gd`/`mandi_tab.gd` done (2026-08-22, same day), the rest
+of the list below still open.
 
 ## Date
 
@@ -100,13 +102,27 @@ ships to players, same caveat class as this project's own temple-bell
 audio note (`design/audio/audio-core-gameplay-loop.md`) that a later
 human listen-through closed.
 
-## What's explicitly NOT yet migrated (Phase 2 scope)
+## What's migrated so far, Phase 2 (2026-08-22, same day as Phase 1)
+
+- `farmhouse_tab.gd`: header ("Farmhouse Level %d of %d"), the current/
+  next-level bonuses card (title, storage/growth-speed/sell-price rows),
+  the storage card, the upgrade button, and the max-level message.
+- `mandi_tab.gd`: the pre-registration build card (title, blurb,
+  register button), the post-registration intro (title, blurb), the
+  Digital Auction Terminal offer, and every crop row's static text
+  (A-Grade tag, "Held: N," tomorrow's forecast line, the Sell/"Nothing
+  to sell" button). Crop display names/emoji themselves are NOT
+  migrated -- they come from `GameData`'s catalogue data, the same
+  larger data-migration question Phase 1's doc flagged as deliberately
+  out of scope.
+
+## What's explicitly NOT yet migrated (Phase 2 remaining scope)
 
 Every other hardcoded string in `godot/scripts/ui/`, specifically:
 
-- `farmhouse_tab.gd`, `mandi_tab.gd`, `polyhouse_tab.gd`,
-  `agroforestry_tab.gd`, `niche_farming_tab.gd`, `open_field_tab.gd`,
-  `events_tab.gd` — every management sheet's full body text.
+- `polyhouse_tab.gd`, `agroforestry_tab.gd`, `niche_farming_tab.gd`,
+  `open_field_tab.gd`, `events_tab.gd` — every remaining management
+  sheet's full body text.
 - `seed_picker.gd`, `agro_plant_picker.gd`, `decoration_picker.gd` —
   picker sheet chrome (crop/decoration display names themselves come
   from `GameData`'s catalogue data, a separate, larger data-migration
@@ -148,7 +164,9 @@ every sibling field.
 reflects it — not just the engine API in isolation.
 
 Full suite verified green (558/558, up from 545/545) twice in a row,
-non-flaky.
+non-flaky. Extended with 3 more spot-checks after the `farmhouse_tab.gd`/
+`mandi_tab.gd` Phase 2 slice (two-placeholder format keys from each file,
+plus an English-still-works sanity check) -- 569/569, twice, non-flaky.
 
 ## Dependencies
 

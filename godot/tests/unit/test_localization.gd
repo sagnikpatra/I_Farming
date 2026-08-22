@@ -68,6 +68,26 @@ func test_unmigrated_key_falls_back_to_the_key_itself() -> void:
 	assert_eq(tr(&"not.a.real.key"), "not.a.real.key")
 
 
+## Phase 2 (docs/architecture/localization-pipeline.md) spot-checks --
+## farmhouse_tab.gd/mandi_tab.gd's migrated keys, one two-placeholder
+## format string from each to catch a placeholder getting dropped or
+## reordered in translation, which a single-placeholder check wouldn't.
+func test_hindi_locale_resolves_a_farmhouse_two_placeholder_key() -> void:
+	TranslationServer.set_locale("hi")
+	assert_eq(tr(&"farmhouse.level_of") % [3, 6], "फार्महाउस स्तर 3 / 6")
+
+
+func test_hindi_locale_resolves_a_mandi_two_placeholder_key() -> void:
+	TranslationServer.set_locale("hi")
+	assert_eq(tr(&"mandi.tomorrow_forecast") % ["▲", "+", 5], "कल: ▲ +5%")
+
+
+func test_english_locale_still_resolves_farmhouse_and_mandi_keys() -> void:
+	TranslationServer.set_locale("en")
+	assert_eq(tr(&"farmhouse.current_bonuses"), "Current Bonuses")
+	assert_eq(tr(&"mandi.nothing_to_sell"), "Nothing to sell")
+
+
 # ---------------------------------------------------------------------------
 # AccessibilitySettings.locale
 # ---------------------------------------------------------------------------

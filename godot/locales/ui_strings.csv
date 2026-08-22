@@ -20,3 +20,23 @@ a11y.ui_volume,UI Sounds Volume,यूआई ध्वनि वॉल्यू�
 a11y.language_title,Language,भाषा
 a11y.language_english,English,English
 a11y.language_hindi,Hindi,हिन्दी
+farmhouse.level_of,Farmhouse Level %d of %d,फार्महाउस स्तर %d / %d
+farmhouse.current_bonuses,Current Bonuses,वर्तमान लाभ
+farmhouse.next_label,Next:,अगला:
+farmhouse.storage_capacity,📦 Storage capacity: %d units,📦 भंडारण क्षमता: %d इकाइयाँ
+farmhouse.growth_speed,⚡ Growth speed: +%d%% faster,⚡ विकास गति: +%d%% तेज़
+farmhouse.sell_price,💰 Sell price: +%d%%,💰 बिक्री मूल्य: +%d%%
+farmhouse.storage_label,Storage: %d / %d,भंडारण: %d / %d
+farmhouse.upgrade_button,Upgrade for ₹%d,₹%d में अपग्रेड करें
+farmhouse.max_level_message,🎉 Your farmhouse has reached its finest form.,🎉 आपका फार्महाउस अपने सर्वश्रेष्ठ रूप में पहुंच गया है।
+mandi.register_title,Register at the Local Mandi,स्थानीय मंडी में पंजीकरण करें
+"mandi.register_blurb","Trade crops through an e-NAM-style electronic auction instead of a flat roadside price. Prices move with demand and your own recent selling, within safe bands -- a genuine alternative to Sell All, not a replacement for it.","ई-नाम शैली की इलेक्ट्रॉनिक नीलामी से फसलें बेचें, न कि तय सड़क किनारे मूल्य पर। कीमतें मांग और आपकी हाल की बिक्री के अनुसार, सुरक्षित सीमा में बदलती हैं -- यह 'सब बेचें' का असली विकल्प है, उसकी जगह नहीं।"
+mandi.register_button,Register for ₹%d,₹%d में पंजीकरण करें
+mandi.intro_title,🏛️ Local Mandi · e-NAM,🏛️ स्थानीय मंडी · ई-नाम
+"mandi.intro_blurb","Prices swing with server-wide demand and your own recent sales -- flood the market and the price dips until it recovers. Produce from protected cultivation earns an automatic A-Grade bonus.","कीमतें सर्वर-व्यापी मांग और आपकी हाल की बिक्री के साथ बदलती हैं -- बाज़ार में बाढ़ लाएँ तो कीमत तब तक गिरी रहती है जब तक ठीक न हो जाए। संरक्षित खेती से मिली उपज को स्वतः A-ग्रेड बोनस मिलता है।"
+"mandi.terminal_offer",📡 Digital Auction Terminal ₹%d -- unlocks tomorrow's forecast,📡 डिजिटल नीलामी टर्मिनल ₹%d -- कल का पूर्वानुमान अनलॉक करता है
+mandi.a_grade,A-Grade,A-ग्रेड
+mandi.held,Held: %d,पास में: %d
+mandi.tomorrow_forecast,Tomorrow: %s %s%d%%,कल: %s %s%d%%
+mandi.sell_button,Sell %d via Mandi,मंडी से %d बेचें
+mandi.nothing_to_sell,Nothing to sell,बेचने के लिए कुछ नहीं

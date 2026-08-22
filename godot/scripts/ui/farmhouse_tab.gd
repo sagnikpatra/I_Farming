@@ -62,18 +62,18 @@ func _populate() -> void:
 		child.queue_free()
 	var data := build_view_data(_economy)
 	_body.add_child(_build_header(data))
-	_body.add_child(_build_bonuses_card("Current Bonuses", data["current"]))
+	_body.add_child(_build_bonuses_card(tr(&"farmhouse.current_bonuses"), data["current"]))
 	_body.add_child(_build_storage_card(data))
 	if data["is_max_level"]:
 		_body.add_child(_build_max_level_message())
 	else:
 		var next: FarmhouseLevelDef = data["next"]
-		_body.add_child(_build_bonuses_card("%s Next: %s" % [next.emoji, next.display_name], next))
+		_body.add_child(_build_bonuses_card("%s %s %s" % [next.emoji, tr(&"farmhouse.next_label"), next.display_name], next))
 		# §2.4 disabled-button state: previously always full-saturation
 		# regardless of affordability (the exact BLOCKING gap
 		# design/art/ui-visual-direction-2026-08.md §1.1 calls out by name).
 		var can_afford: bool = _economy.state.coins >= next.upgrade_cost
-		var upgrade_button := _make_chunky_button("Upgrade for ₹%d" % next.upgrade_cost, SAFFRON_DARK, Color.WHITE, can_afford)
+		var upgrade_button := _make_chunky_button(tr(&"farmhouse.upgrade_button") % next.upgrade_cost, SAFFRON_DARK, Color.WHITE, can_afford)
 		if can_afford:
 			upgrade_button.pressed.connect(_on_upgrade_pressed)
 		_body.add_child(upgrade_button)
@@ -152,7 +152,7 @@ func _build_header(data: Dictionary) -> VBoxContainer:
 	header.add_child(name_label)
 
 	var level_label := _make_title_label(
-		"Farmhouse Level %d of %d" % [current.level, GameData.farmhouse_max_level()], 12, SOIL_BROWN_DARK
+		tr(&"farmhouse.level_of") % [current.level, GameData.farmhouse_max_level()], 12, SOIL_BROWN_DARK
 	)
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(level_label)
@@ -170,9 +170,9 @@ func _build_bonuses_card(title: String, def: FarmhouseLevelDef) -> PanelContaine
 	# A11Y fix (§5, HIGH): all 3 raised 13px -> this project's 14px floor --
 	# these are exactly the "frequently-read numeric/status text" the audit
 	# calls out, not decoration.
-	box.add_child(_make_title_label("📦 Storage capacity: %d units" % def.storage_capacity, 14))
-	box.add_child(_make_title_label("⚡ Growth speed: +%d%% faster" % def.growth_speed_bonus_percent, 14))
-	box.add_child(_make_title_label("💰 Sell price: +%d%%" % def.sell_price_bonus_percent, 14))
+	box.add_child(_make_title_label(tr(&"farmhouse.storage_capacity") % def.storage_capacity, 14))
+	box.add_child(_make_title_label(tr(&"farmhouse.growth_speed") % def.growth_speed_bonus_percent, 14))
+	box.add_child(_make_title_label(tr(&"farmhouse.sell_price") % def.sell_price_bonus_percent, 14))
 
 	card.add_child(box)
 	return card
@@ -184,7 +184,7 @@ func _build_storage_card(data: Dictionary) -> PanelContainer:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", 6)
 
-	box.add_child(_make_title_label("Storage: %d / %d" % [data["storage_used"], data["storage_cap"]], 16))
+	box.add_child(_make_title_label(tr(&"farmhouse.storage_label") % [data["storage_used"], data["storage_cap"]], 16))
 	box.add_child(_build_storage_bar(data["storage_progress"]))
 
 	card.add_child(box)
@@ -216,7 +216,7 @@ func _build_storage_bar(progress: float) -> ProgressBar:
 
 func _build_max_level_message() -> Label:
 	# A11Y: sits directly on the cream background -- see _build_header()'s note.
-	var label := _make_title_label("🎉 Your farmhouse has reached its finest form.", 14, SOIL_BROWN_DARK)
+	var label := _make_title_label(tr(&"farmhouse.max_level_message"), 14, SOIL_BROWN_DARK)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return label

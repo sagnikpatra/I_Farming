@@ -4690,3 +4690,29 @@ the localization migration (the rest of `*_tab.gd`/`*_card.gd`/
 test-isolation infrastructure idea above. Still open and blocked on the
 user, unchanged: pushing accumulated local commits to origin, and the
 Play Console Game Services setup for real cloud-save sign-in.
+
+## 2026-08-22 (Phase 2 localization, first slice)
+
+Started Phase 2 of the localization migration (docs/architecture/
+localization-pipeline.md's own plan): migrated `farmhouse_tab.gd` (level
+header, current/next bonuses card, storage card, upgrade button,
+max-level message) and `mandi_tab.gd` (pre/post-registration cards,
+terminal offer, every crop row's static text) to `tr()`, with real
+Hindi translations for every string, added to `godot/locales/
+ui_strings.csv`. Crop/decoration display names themselves stay
+data-driven from `GameData` -- out of scope, same as Phase 1.
+
+Extended `test_localization.gd` with 3 spot-checks (two-placeholder
+format-string keys from each file, an English-still-works check). Full
+suite: 569/569 (up from 566/566), run twice, non-flaky. Updated
+localization-pipeline.md's Status/scope-list and the roadmap's
+Localization bullet to reflect this slice.
+
+**Next step**: continue Phase 2 with the remaining sheets
+(`polyhouse_tab.gd`, `agroforestry_tab.gd`, `niche_farming_tab.gd`,
+`open_field_tab.gd`, `events_tab.gd`, the 3 pickers, the 2 info cards,
+`worker_assignment_row.gd`), or pick up `_push_event()`'s own message
+strings as its own follow-up (flagged in localization-pipeline.md as a
+separate, larger design question). Still open and blocked on the user,
+unchanged: pushing accumulated local commits to origin, and the Play
+Console Game Services setup for real cloud-save sign-in.

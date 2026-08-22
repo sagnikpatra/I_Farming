@@ -201,3 +201,43 @@ func test_a_real_phase_transition_does_not_snap_instantly() -> void:
 	board._apply_time_of_day_if_needed(0)
 
 	assert_eq(board._world_environment.environment.background_color, color_before_transition, "a real transition must start a crossfade, not snap the color instantly -- the tween hasn't processed a frame yet within this same synchronous call")
+
+
+## design/art/ui-visual-direction-2026-08.md's on-device "COC-quality" review
+## (2026-08-23): LOCKED_ZONE_PLACEHOLDER_COLOR's glassy box alone doesn't
+## read as "locked" -- each zone's own plinth_color shows through the
+## translucent overlay, so a row of locked zones looked like an arbitrary
+## set of pastel boxes rather than one consistent state. Same SC 1.4.1 Use
+## of Color gap class the plot lifecycle badges elsewhere in this file
+## (_build_ready_badge_decal() etc.) already guard against -- this locks in
+## the equivalent fix at the zone level: a locked zone's rendered node tree
+## must include the LockBadge decal.
+func test_a_locked_zone_renders_a_lock_badge() -> void:
+	RealSavePaths.wipe_all()  # fresh economy -- Polyhouse must actually start locked, not inherit an unlock from an earlier test's save
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+
+	var polyhouse_node: Node3D = board._zone_nodes_by_id[VillageSnapshotMapper.ZONE_ID_POLYHOUSE]
+	assert_true(polyhouse_node.has_node("LockBadge"), "a locked zone must render the LockBadge decal so it reads as locked, not as an unstyled box")
+
+
+## Opposite-direction sanity check for the same fix -- an unlocked zone must
+## never carry the badge (it would misleadingly suggest a built, working
+## zone is still locked), and buying Polyhouse must remove the badge a
+## fresh board started with, not just skip adding a new one.
+func test_an_unlocked_zone_does_not_render_a_lock_badge() -> void:
+	RealSavePaths.wipe_all()
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+
+	var farmhouse_node: Node3D = board._zone_nodes_by_id[VillageSnapshotMapper.ZONE_ID_FARMHOUSE]
+	assert_false(farmhouse_node.has_node("LockBadge"), "Farmhouse is always unlocked and must never render the LockBadge decal")
+
+	var economy := board.get_economy()
+	economy.state.coins = 1_000_000
+	economy.buy_polyhouse()
+	board.persist_and_rebuild_if_dirty()
+
+	# rebuild() always tears down and reconstructs every zone node fresh --
+	# re-fetch rather than reuse the old (now-freed) reference, same
+	# precedent as the lamp tests above.
+	var new_polyhouse_node: Node3D = board._zone_nodes_by_id[VillageSnapshotMapper.ZONE_ID_POLYHOUSE]
+	assert_false(new_polyhouse_node.has_node("LockBadge"), "unlocking Polyhouse must remove the badge a fresh board started with")

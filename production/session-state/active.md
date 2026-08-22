@@ -6346,3 +6346,55 @@ curate-only pass.
 Cleaned up `board_review.png` from scratchpad after review (nothing
 committed from it — screenshot-based verification only, evidence already
 covered by the git-history citations above).
+
+## 2026-08-23 (cont.) — Real design finding: locked-zone lock badge
+
+Continued the "design, UI, lighting, like COC" thread past the doc-audit
+checkpoint by doing an actual on-device visual review (Day phase, forced
+via a temporary local-only `hour = 12` override in
+`_apply_time_of_day_if_needed()`, reverted immediately after the
+screenshot -- never committed).
+
+**Real finding**: the four/five locked-zone placeholder boxes
+(`LOCKED_ZONE_PLACEHOLDER_COLOR`, a glassy warm-ivory translucent box) read
+as an arbitrary set of unstyled pastel rectangles on-device, not as a
+consistent "locked, come back later" state -- each zone's own
+`plinth_color` shows through the translucent overlay, so Polyhouse/
+Agroforestry/Aquaculture/Vertical Farm each looked like a differently-
+colored plain box rather than one recognizable "locked" language. This
+undercuts the "premium, COC-quality" goal even though the underlying system
+(terrain, zone models, crop stages, decoration density -- see the Track B
+audit above) is otherwise solid.
+
+**Fix shipped**: `_build_locked_badge_decal()`/`_build_locked_badge_texture()`
+in `village_board.gd` -- a padlock icon badge (cream disc + SOIL_BROWN_DARK
+icon, same runtime-texture-paint technique and palette as the existing
+`_build_ready_badge_decal()`/`_build_host_badge_decal()`/
+`_build_ghost_badge_decal()` plot badges), floated above every locked
+zone's placeholder box. `_reposition_zone_group()` also updated to keep the
+badge correctly attached if a locked zone is ever dragged (mirrors the
+existing optional-NightLamp `has_meta()` pattern). This is the same SC
+1.4.1 Use of Color gap class the plot-lifecycle badges already fixed
+elsewhere in this file -- confirmed via
+`production/qa/accessibility/village-board-and-management-sheets-audit-2026-08-21.md`
+that locked zones specifically were never covered by that audit, so this
+is a genuinely new finding, not a duplicate.
+
+**Verified**:
+- Headless `--check-only` parse clean.
+- Full GUT suite 634/634 passing, twice (2 new tests added:
+  `test_a_locked_zone_renders_a_lock_badge`,
+  `test_an_unlocked_zone_does_not_render_a_lock_badge`, in
+  `tests/unit/test_village_board.gd`, following that file's existing
+  `_zone_nodes_by_id`/`RealSavePaths.wipe_all()` conventions).
+- **Negative control**: temporarily disabled the fix (`if false and not
+  zone.is_unlocked`), confirmed exactly the expected test failed (10/11,
+  the locked-badge test failing with the right message), restored the
+  fix, confirmed 634/634 again.
+- On-device (real device `5bc7f547`): built and installed a debug APK,
+  confirmed the padlock badge renders clearly on every locked zone in both
+  Day and Night phase (badge isn't gated by time-of-day).
+
+Cleaned up all scratchpad APKs/screenshots (`day-review.apk`,
+`lock-badge-review.apk`, `day_review.png`, `lock_badge_review.png`) and
+device sdcard copies after review.

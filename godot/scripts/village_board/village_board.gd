@@ -1048,6 +1048,86 @@ func _build_ghost_badge_texture() -> ImageTexture:
 	return ImageTexture.create_from_image(image)
 
 
+## Locked-zone badge decal -- design/art/ui-visual-direction-2026-08.md's
+## on-device "COC-quality" review (2026-08-23) found LOCKED_ZONE_PLACEHOLDER_
+## COLOR's glassy box, on its own, doesn't read as "locked, come back later"
+## -- each zone's own plinth_color shows through the translucent overlay, so
+## a row of locked zones reads as an arbitrary set of pastel boxes rather
+## than one consistent "not yet unlocked" state. Same SC 1.4.1 Use of Color
+## class of gap the plot badges above (_build_ready_badge_decal() etc.)
+## already fixed for lifecycle tints -- this closes the equivalent gap at
+## the zone level. Same runtime-texture-paint technique, cream disc +
+## SOIL_BROWN_DARK icon matching the ready badge's existing palette so the
+## badge language stays visually consistent across the whole board.
+const _LOCK_BADGE_TEXTURE_SIZE: int = 32
+const _LOCK_BADGE_DISC_COLOR := Color(0.97, 0.93, 0.84, 0.92)
+const _LOCK_BADGE_ICON_COLOR := Color("#3E2412")
+
+func _build_locked_badge_decal(footprint: Vector2) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2.ONE * (minf(footprint.x, footprint.y) * 0.34)
+	instance.mesh = plane
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _build_locked_badge_texture()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	instance.material_override = mat
+	return instance
+
+
+func _build_locked_badge_texture() -> ImageTexture:
+	var size := _LOCK_BADGE_TEXTURE_SIZE
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var center := (size - 1) / 2.0
+	var disc_radius := center * 0.92
+
+	for y in range(size):
+		for x in range(size):
+			var dx := float(x) - center
+			var dy := float(y) - center
+			var dist := sqrt(dx * dx + dy * dy)
+			if dist > disc_radius:
+				image.set_pixel(x, y, Color(0.0, 0.0, 0.0, 0.0))
+				continue
+			if _is_on_padlock(x, y, size):
+				image.set_pixel(x, y, _LOCK_BADGE_ICON_COLOR)
+				continue
+			var color := _LOCK_BADGE_DISC_COLOR
+			if dist > disc_radius * 0.85:
+				color.a *= clampf((disc_radius - dist) / (disc_radius * 0.15), 0.0, 1.0)
+			image.set_pixel(x, y, color)
+
+	return ImageTexture.create_from_image(image)
+
+
+## Padlock silhouette hit-test, same normalized-[0,1]-coordinate technique as
+## _is_on_checkmark() above: a filled body rectangle plus a ring-arc shackle
+## above it (upper half of a circle only, so it reads as a "U" rather than a
+## full ring) -- legible at this decal's small on-screen size without a real
+## glyph/font render, matching every other badge in this file.
+func _is_on_padlock(x: int, y: int, size: int) -> bool:
+	var nx := float(x) / size
+	var ny := float(y) / size
+	# Body: a simple filled rect, lower-middle of the icon.
+	if nx >= 0.32 and nx <= 0.68 and ny >= 0.52 and ny <= 0.80:
+		return true
+	# Shackle: upper-half ring-arc centered above the body.
+	var shackle_center_x := 0.5
+	var shackle_center_y := 0.52
+	var shackle_radius := 0.16
+	var shackle_thickness := 0.055
+	if ny <= shackle_center_y:
+		var dx := nx - shackle_center_x
+		var dy := ny - shackle_center_y
+		var dist := sqrt(dx * dx + dy * dy)
+		if absf(dist - shackle_radius) < shackle_thickness:
+			return true
+	return false
+
+
 ## Builds one zone's Plinth + Building + PickArea trio and positions them at
 ## the zone's current fixture tile position. Returns the zone's root node
 ## (registered by rebuild() into _zone_nodes_by_id).
@@ -1145,6 +1225,13 @@ func _build_zone_structure(zone: ZoneFixture, zone_node: Node3D) -> void:
 	_apply_upgrade_tint(building, zone.active_upgrade_count)
 	zone_node.add_child(building)
 
+	if not zone.is_unlocked:
+		var lock_badge := _build_locked_badge_decal(footprint)
+		lock_badge.name = "LockBadge"
+		lock_badge.position = Vector3(0.0, PLINTH_HEIGHT + building_height + 0.05, 0.0)
+		zone_node.add_child(lock_badge)
+		zone_node.set_meta("lock_badge_y", PLINTH_HEIGHT + building_height + 0.05)
+
 	# EPIC-M3 pick collider -- sized directly from footprint/building_height
 	# (the exact values used to build the visible mesh above), never a
 	## separate guessed box. This is the fix for the old LibGDX board's
@@ -1218,6 +1305,15 @@ func _reposition_zone_group(zone_node: Node3D, center: Vector3) -> void:
 		var lamp := zone_node.get_node("NightLamp") as Node3D
 		var lamp_offset: Vector3 = zone_node.get_meta("lamp_offset")
 		lamp.position = center + lamp_offset
+
+	# LockBadge only exists on a currently-locked zone (see
+	# _build_zone_structure()) -- has_meta() correctly skips both unlocked
+	# zones and the buildingless Open Field pseudo-zone, same pattern as the
+	# lamp check above.
+	if zone_node.has_meta("lock_badge_y"):
+		var lock_badge := zone_node.get_node("LockBadge") as Node3D
+		var lock_badge_y: float = zone_node.get_meta("lock_badge_y")
+		lock_badge.position = Vector3(center.x, lock_badge_y, center.z)
 
 
 ## Generic per-model scale normalization (root cause #3): scales a mesh

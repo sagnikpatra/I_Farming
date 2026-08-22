@@ -71,12 +71,17 @@ func sync(state: GameState) -> void:
 	var target_count := VillageSnapshotMapper.villager_count(state)
 	var roaming_count: int = maxi(target_count - state.worker_assignments.size(), 0)
 	var start_tiles := _pick_distinct_tiles(walkable, mini(roaming_count, walkable.size()))
+	# design/gdd/richer-ambient-villagers.md's Point-of-Interest Lingering
+	# stretch goal -- computed once per sync(), same grid every spawned
+	# roamer already shares, not per-roamer.
+	var poi_tiles := VillageSnapshotMapper.point_of_interest_tiles(state, grid)
 
 	for start_tile in start_tiles:
 		var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
 		_parent.add_child(roamer)
 		var character_key: String = CHARACTER_KEYS[_rng.randi_range(0, CHARACTER_KEYS.size() - 1)]
 		roamer.setup(grid, start_tile, _grid_cols, _grid_rows, _tile_size, character_key)
+		roamer.poi_tiles = poi_tiles
 		_roamers.append(roamer)
 
 	# design/gdd/richer-ambient-villagers.md's Congregating stretch goal --

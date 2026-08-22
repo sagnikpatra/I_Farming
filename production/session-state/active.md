@@ -4051,6 +4051,42 @@ never separately screenshot-confirmed, only one-directional tracking
 was, though the shared pure function makes mutual very likely already
 true) and `feature-scoping-2026-08-22.md`'s summary table.
 
+## 2026-08-22 (cont'd) -- Point-of-Interest Lingering built, same session,
+same "keep going" momentum
+
+Continued straight from Congregating into the other villager stretch
+goal the GDD had already scoped: villagers now bias their target-tile
+choice toward walkable tiles adjacent to player-placed decorations
+(30% chance per target pick, independent of the idle-pause roll),
+giving the cosmetic Decorations economy its first functional feedback
+loop.
+
+Added `VillageSnapshotMapper.point_of_interest_tiles()` (every walkable
+neighbor of every placed decoration, deduplicated, reusing the same
+`WalkableGrid` `build_walkable_grid()` already produces), plus
+`VillagerRoamer.should_linger_at_poi()`/`poi_tiles`/
+`_choose_target_tile()`, wired by `VillagerSpawner.sync()` alongside
+the Congregating provider. 10 new GUT tests across all three files
+(4 mapper, 4 roamer, 2 spawner) -- the mapper tests drive real
+decoration placement through `GameEconomy.place_decoration()`, not
+hand-built `Decoration` objects, matching this suite's own established
+convention. Full suite: 505/505 (495 + 10), zero regressions.
+
+Verified export/install/launch clean on the OnePlus device (no crash,
+normal boot) -- same baseline every change this session cleared. Did
+**not** do a full on-device visual capture of a villager actually
+lingering near a decoration: the live save on-device currently has no
+decorations placed, and placing one would have needed a UI-automation
+detour outside this pass's scope. Logged that gap honestly in the GDD's
+Acceptance Criteria as unconfirmed, not silently skipped -- the wiring
+itself is fully covered by tests through the real economy layer.
+
+Updated `richer-ambient-villagers.md` (new Congregating/Lingering
+sections were both merged in cleanly this session) and
+`feature-scoping-2026-08-22.md`'s summary table -- item 4 (richer
+ambient villagers) now has only night population thinning left as an
+open stretch goal.
+
 ## Next Step
 
 1. **Real blocker, still needs the project owner specifically**: use
@@ -4066,13 +4102,17 @@ true) and `feature-scoping-2026-08-22.md`'s summary table.
    actual app-pause call site plus a settings-screen last-sync
    indicator (ADR-0003 Phase 2 steps 7-8) -- the provider class itself
    is already built and tested, this is just the wiring.
-3. Villager Congregating is done. Remaining stretch goals across all 5
-   feature-scoping items, still open/undecided: Farmhouse footprint
-   growth + other-structure sub-upgrade attachments (item 1), a second
-   gems sink (item 2, real-money purchase explicitly excluded --
-   needs its own billing-integration decision first), seasonal palette
-   + villager lamp-lighting (item 3), point-of-interest decoration
-   lingering + night population thinning (item 4).
+3. Villager Congregating and Point-of-Interest Lingering are both done.
+   Next time a save with decorations exists on-device, capture the
+   still-open on-device visual confirmation for Lingering (see the
+   GDD's Acceptance Criteria).
+4. Remaining stretch goals across all 5 feature-scoping items, still
+   open/undecided: Farmhouse footprint growth + other-structure
+   sub-upgrade attachments (item 1), a second gems sink (item 2,
+   real-money purchase explicitly excluded -- needs its own
+   billing-integration decision first), seasonal palette + villager
+   lamp-lighting (item 3), night population thinning (item 4, the last
+   one left).
 2. Once sign-in is verified: (a) delete the temporary
    `pgs_phase1_signin_probe.gd` spike probe and its autoload
    registration, (b) Phase 1's kill-switch gate is fully passed, (c)

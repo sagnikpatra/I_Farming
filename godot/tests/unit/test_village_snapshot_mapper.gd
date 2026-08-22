@@ -477,6 +477,57 @@ func test_build_walkable_grid_follows_a_custom_zone_anchor() -> void:
 	assert_false(grid.is_walkable(Vector2i(9, 9)))
 
 
+# --- point_of_interest_tiles() -- richer-ambient-villagers.md's Lingering stretch goal --
+
+func test_point_of_interest_tiles_is_empty_with_no_decorations() -> void:
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	var pois := VillageSnapshotMapper.point_of_interest_tiles(eco.state, grid)
+
+	assert_true(pois.is_empty())
+
+
+func test_point_of_interest_tiles_returns_a_decorations_walkable_neighbors() -> void:
+	eco.place_decoration(DecorationType.Kind.LANTERN, 9.0, 9.0)
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	var pois := VillageSnapshotMapper.point_of_interest_tiles(eco.state, grid)
+
+	# (9,9) itself is reserved by the decoration (see the reserves-a-placed-
+	# decoration's-tile test above) -- its walkable neighbors should be POIs.
+	assert_true(pois.has(Vector2i(8, 9)))
+	assert_true(pois.has(Vector2i(9, 8)))
+	assert_false(pois.has(Vector2i(9, 9)), "the decoration's own tile is an obstacle, never a POI target")
+
+
+func test_point_of_interest_tiles_excludes_a_neighbor_thats_itself_reserved() -> void:
+	# Farmhouse's footprint reserves (0,0)/(1,1) etc (see the farmhouse-
+	# footprint-unwalkable test above) -- a decoration placed adjacent to
+	# it must not offer that reserved neighbor as a POI.
+	eco.place_decoration(DecorationType.Kind.LANTERN, 2.0, 0.0)
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	var pois := VillageSnapshotMapper.point_of_interest_tiles(eco.state, grid)
+
+	assert_false(pois.has(Vector2i(1, 0)), "Farmhouse's own footprint tile must never be offered as a POI target")
+
+
+func test_point_of_interest_tiles_deduplicates_shared_neighbors() -> void:
+	# Two decorations placed two tiles apart share (9,9) as a common
+	# neighbor of neither directly, but placing both near the same open
+	# corner should never produce duplicate entries for any tile.
+	eco.place_decoration(DecorationType.Kind.LANTERN, 8.0, 9.0)
+	eco.place_decoration(DecorationType.Kind.LANTERN, 9.0, 10.0)
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+
+	var pois := VillageSnapshotMapper.point_of_interest_tiles(eco.state, grid)
+
+	var seen: Dictionary = {}
+	for tile in pois:
+		assert_false(seen.has(tile), "no POI tile should be listed twice, even if two decorations share it as a neighbor")
+		seen[tile] = true
+
+
 # --- 14. villager_count() -- design/gdd/villagers.md §4's population formula ------
 
 func test_unlocked_zone_count_is_two_with_only_farmhouse_and_mandi() -> void:

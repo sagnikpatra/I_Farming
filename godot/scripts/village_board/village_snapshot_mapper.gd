@@ -196,6 +196,28 @@ static func build_walkable_grid(state: GameState, grid_cols: int, grid_rows: int
 	return WalkableGrid.new(grid_cols, grid_rows, reserved)
 
 
+## design/gdd/richer-ambient-villagers.md's Point-of-Interest Lingering
+## stretch goal. Every walkable tile 4-connected-adjacent to at least one
+## player-placed decoration -- never a decoration's own tile (that's
+## reserved as an obstacle by build_walkable_grid() above, not a target).
+## `grid` must already be built for the same `state` (typically the
+## result of build_walkable_grid() above) -- passed in rather than
+## rebuilt here so callers that already have a grid don't pay for a
+## second one.
+static func point_of_interest_tiles(state: GameState, grid: WalkableGrid) -> Array[Vector2i]:
+	const NEIGHBOR_OFFSETS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var result: Array[Vector2i] = []
+	var seen: Dictionary = {}
+	for decoration: Decoration in state.decorations:
+		var center := Vector2i(roundi(decoration.tile_x), roundi(decoration.tile_y))
+		for offset in NEIGHBOR_OFFSETS:
+			var neighbor := center + offset
+			if grid.is_walkable(neighbor) and not seen.has(neighbor):
+				seen[neighbor] = true
+				result.append(neighbor)
+	return result
+
+
 ## design/gdd/villagers.md §4's `unlockedZoneCount` formula input --
 ## Farmhouse and Mandi always count (never gated behind a `has_*` flag in
 ## GameState); the four Tier-2-4 structures count once their unlock flag

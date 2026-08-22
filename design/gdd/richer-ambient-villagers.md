@@ -44,13 +44,12 @@ than a minigame... a living village").
   behavior is a separate system from the unassigned ambient population
   this file governs; nothing here touches `WorkerStation` or worker
   visuals.
-- Explicitly **not** in this pass (see Tuning Knobs for why each is
-  deferred, not forgotten): point-of-interest lingering near decorations,
-  day/night population thinning. Each needs new cross-component data
-  (decoration tile positions, spawn/despawn control) that the
-  self-contained idle-pause change here doesn't. Villager-to-villager
-  congregating (below) was originally deferred for the same reason but
-  has since been built.
+- Explicitly **not** in this pass (see Tuning Knobs for why it's
+  deferred, not forgotten): day/night population thinning -- needs new
+  spawn/despawn control this file's self-contained idle-pause change
+  doesn't provide. Villager-to-villager congregating and point-of-
+  interest lingering (both below) were originally deferred for a similar
+  reason but have since been built.
 
 ### Congregating (built 2026-08-22)
 
@@ -77,6 +76,28 @@ than a minigame... a living village").
   Idle-Pause above -- congregating only ever runs on the ambient roaming
   population `VillagerSpawner` tracks.
 
+### Point-of-Interest Lingering (built 2026-08-22)
+
+- Every time a roamer finishes a walk leg and picks its next target
+  (the same moment the Idle-Pause roll above happens), there's a
+  separate chance the new target is biased toward a **point-of-interest
+  tile** -- a walkable tile adjacent to a player-placed decoration --
+  instead of a fully random walkable tile.
+- POI tiles are computed once per `VillagerSpawner.sync()` (every
+  walkable neighbor of every placed decoration, deduplicated) and shared
+  by the whole spawned population -- not per-roamer, since they don't
+  change between one `sync()` and the next.
+- A villager already standing on its only available POI tile falls back
+  to a normal random target rather than "choosing" the tile it's already
+  on (which would otherwise produce a zero-length path and a visibly
+  stuck frame).
+- Gives the cosmetic Decorations economy (`land-and-structures.md`) its
+  first functional feedback loop: a player who places a Lantern or Well
+  now has a concrete, if probabilistic, chance of seeing villagers
+  actually gather near it, not just walk past.
+- **Assigned/"called" workers remain entirely unaffected**, same as
+  Idle-Pause and Congregating above.
+
 ## 4. Formulas
 
 - **Idle chance**: `IDLE_PAUSE_CHANCE = 0.35` (35%) rolled once per
@@ -98,6 +119,10 @@ than a minigame... a living village").
   villagers idling on adjacent tiles (distance 1.0) or diagonally
   adjacent (distance ~1.41) both count, narrow enough that villagers
   across the board never appear to notice each other.
+- **POI linger chance**: `POI_LINGER_CHANCE = 0.3` (30%) rolled once per
+  target pick -- deliberately independent of `IDLE_PAUSE_CHANCE`; a
+  villager can walk toward a POI tile without idling there, or idle
+  somewhere with no POI bias at all, since the two rolls don't interact.
 
 ## 5. Edge Cases
 
@@ -124,27 +149,23 @@ than a minigame... a living village").
   looks up, so no change to that method's existing "moves/X" lookup
   convention is needed.
 - `villager_roamer.gd`: the new Idle-Pause state and its transition logic,
-  plus `nearest_congregate_target()` and the
-  `other_villager_positions_provider` Callable property Congregating adds.
+  plus `nearest_congregate_target()`/`other_villager_positions_provider`
+  (Congregating) and `should_linger_at_poi()`/`poi_tiles`/
+  `_choose_target_tile()` (Lingering).
 - `villager_spawner.gd`: wires each roamer's
-  `other_villager_positions_provider` after the full population exists
-  (Congregating's one real cross-component touch -- Idle-Pause itself
-  stays self-contained).
-- Does **not** touch `village_board.gd`, `WalkableGrid`, or any
-  `GameState`/economy code.
+  `other_villager_positions_provider` (Congregating) and `poi_tiles`
+  (Lingering) after the full population/grid exist.
+- `village_snapshot_mapper.gd`: `point_of_interest_tiles()` -- the one
+  place that turns raw `GameState.decorations` positions into walkable
+  neighbor tiles, reusing the same `WalkableGrid` `build_walkable_grid()`
+  already produces rather than a second occupancy pass.
+- Does **not** touch `village_board.gd` or any economy/save code.
 
 ## 7. Tuning Knobs
 
 - `IDLE_PAUSE_CHANCE`, `IDLE_DURATION_MIN_SEC`/`MAX_SEC`,
-  `CONGREGATE_DISTANCE_TILES` -- all in `villager_roamer.gd`, easy to
-  rebalance after on-device observation.
-- **Future stretch**: point-of-interest lingering (biasing target
-  selection toward tiles adjacent to player-placed decorations) -- needs
-  decoration tile positions threaded from `village_board.gd`/
-  `VillagerSpawner` down into `VillagerRoamer.setup()`, which isn't wired
-  today; would give the cosmetic Decorations economy its first functional
-  feedback loop, worth doing, just not bundled into this self-contained
-  slice.
+  `CONGREGATE_DISTANCE_TILES`, `POI_LINGER_CHANCE` -- all in
+  `villager_roamer.gd`, easy to rebalance after on-device observation.
 - **Future stretch**: day/night population thinning (fewer villagers
   outdoors at Night) -- real synergy with `design/gdd/real-time-day-night.md`
   (just built), but requires new spawn/despawn control in `VillagerSpawner`
@@ -200,3 +221,39 @@ than a minigame... a living village").
       captured. Not blocking: the shared pure function and per-roamer
       independence mean both sides run identical logic, so this is very
       likely already true, just not separately visually confirmed.
+
+### Point-of-Interest Lingering (2026-08-22)
+
+- [x] `point_of_interest_tiles()` is independently unit-testable as pure
+      logic against a real `GameState`/`WalkableGrid` (no decorations ->
+      empty; a decoration's walkable neighbors returned; the
+      decoration's own reserved tile and any other-reserved neighbor
+      excluded; no duplicates across decorations that share a neighbor)
+      -- `tests/unit/test_village_snapshot_mapper.gd`, driven through
+      `GameEconomy.place_decoration()`, not hand-built `Decoration`
+      objects.
+- [x] `should_linger_at_poi()`'s rate is independently statistically
+      testable, matching `should_enter_idle_pause()`'s own established
+      pattern -- `tests/unit/test_villager_roamer.gd`.
+- [x] A villager with no `poi_tiles` set behaves exactly as before
+      Lingering existed (falls back to fully random target selection) --
+      confirmed by an explicit empty-list test.
+- [x] A villager standing on its only available POI tile falls back to a
+      random target instead of a degenerate zero-length path -- confirmed
+      directly, not just reasoned about.
+- [x] `VillagerSpawner.sync()` wires the exact same computed POI list
+      (matching `point_of_interest_tiles()`'s own output) onto every
+      spawned roamer, and an empty list with no decorations placed --
+      `tests/unit/test_villager_spawner.gd`.
+- [x] Full GUT suite green (505/505 at the time this was built).
+- [ ] Verified on-device that a villager actually walks toward and
+      lingers near a real placed decoration -- **not captured**. The live
+      save on the project owner's device had no decorations placed at
+      verification time, and placing one would have needed a UI
+      automation detour beyond this pass's scope; build/launch was
+      confirmed clean (no crash, normal boot) the same way every other
+      change this session was, and the wiring is covered end-to-end by
+      the tests above through the real economy layer, but the specific
+      "villager visibly gathers near a Lantern" visual moment is
+      genuinely unconfirmed, not just unphotographed. Worth doing next
+      time a save with decorations is available on-device.

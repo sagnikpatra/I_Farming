@@ -128,6 +128,29 @@ func test_congregating_provider_reflects_the_current_full_population() -> void:
 		assert_true(actual.has(expected), "provider must return every other roamer's current position")
 
 
+# --- Point-of-Interest Lingering (design/gdd/richer-ambient-villagers.md stretch goal) --
+
+func test_sync_wires_poi_tiles_matching_the_placed_decorations() -> void:
+	eco.place_decoration(DecorationType.Kind.LANTERN, 9.0, 9.0)
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state)
+
+	var grid := VillageSnapshotMapper.build_walkable_grid(eco.state, GRID_COLS, GRID_ROWS)
+	var expected := VillageSnapshotMapper.point_of_interest_tiles(eco.state, grid)
+	for roamer in spawner.get_roamers():
+		assert_eq(roamer.poi_tiles, expected, "every spawned roamer must share the same computed POI tile list")
+
+
+func test_sync_wires_an_empty_poi_list_with_no_decorations() -> void:
+	var spawner := VillagerSpawner.new(parent, GRID_COLS, GRID_ROWS)
+
+	spawner.sync(eco.state)
+
+	for roamer in spawner.get_roamers():
+		assert_true(roamer.poi_tiles.is_empty())
+
+
 func test_sync_roaming_count_at_maximum_worker_saturation() -> void:
 	# Unlock every worker-eligible zone (needed for assign_worker() to
 	# accept the assignment -- see game_economy.gd's _is_plot_kind_unlocked()),

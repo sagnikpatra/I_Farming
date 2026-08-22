@@ -244,3 +244,65 @@ func test_roamer_does_not_congregate_toward_a_too_far_villager() -> void:
 	simulate(roamer, 1, 0.1)
 
 	assert_almost_eq(roamer.rotation.y, rotation_before, 0.001, "too far to congregate with -- facing must not change")
+
+
+# --- Point-of-Interest Lingering (design/gdd/richer-ambient-villagers.md stretch goal) --
+
+func test_should_linger_at_poi_matches_the_configured_chance_statistically() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var true_count := 0
+	var total := 2000
+	for i in range(total):
+		if VillagerRoamer.should_linger_at_poi(rng):
+			true_count += 1
+	var ratio := float(true_count) / float(total)
+	assert_almost_eq(ratio, VillagerRoamer.POI_LINGER_CHANCE, 0.06)
+
+
+func test_roamer_ignores_poi_tiles_when_none_are_set() -> void:
+	# Default poi_tiles is empty -- every pre-existing (pre-Lingering) test
+	# of this class relies on target-picking staying fully random.
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.setup(grid, Vector2i(1, 1), 3, 3, 1.0)
+
+	var target := roamer._choose_target_tile()
+
+	assert_true(grid.is_walkable(target), "with no POI tiles set, must still fall back to a normal random walkable tile")
+
+
+func test_roamer_chooses_the_poi_tile_at_approximately_the_configured_rate() -> void:
+	# Same "extract the pure decision, test statistically" pattern
+	# test_should_enter_idle_pause_matches_the_configured_chance_statistically
+	# above uses -- avoids depending on any single guessed RNG seed.
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.setup(grid, Vector2i(1, 1), 3, 3, 1.0)
+	roamer.poi_tiles = [Vector2i(0, 0)]
+	roamer._rng.seed = 777
+
+	var poi_count := 0
+	var total := 500
+	for i in range(total):
+		if roamer._choose_target_tile() == Vector2i(0, 0):
+			poi_count += 1
+	var ratio := float(poi_count) / float(total)
+
+	assert_almost_eq(ratio, VillagerRoamer.POI_LINGER_CHANCE, 0.08, "should choose the POI tile at approximately the configured rate")
+
+
+func test_roamer_excludes_its_own_current_tile_from_poi_candidates() -> void:
+	var grid := WalkableGrid.new(3, 3, [])
+	var roamer := ROAMER_SCENE.instantiate() as VillagerRoamer
+	add_child_autofree(roamer)
+	roamer.setup(grid, Vector2i(1, 1), 3, 3, 1.0)
+	# Only POI tile is the villager's own current tile -- must fall back to
+	# a real random walkable tile instead of a degenerate zero-length path.
+	roamer.poi_tiles = [Vector2i(1, 1)]
+
+	var target := roamer._choose_target_tile()
+
+	assert_ne(target, Vector2i(1, 1), "a villager standing on its only POI tile must not re-pick that same tile")

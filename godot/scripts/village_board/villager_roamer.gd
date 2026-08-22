@@ -29,6 +29,10 @@ const IDLE_CLIP_NAMES: Array[String] = ["Idle_A", "Idle_B"]
 ## (§4 Formulas). In tiles, scaled by _tile_size at call sites.
 const CONGREGATE_DISTANCE_TILES: float = 1.6
 
+## design/gdd/richer-ambient-villagers.md's Point-of-Interest Lingering
+## stretch goal (§4 Formulas).
+const POI_LINGER_CHANCE: float = 0.3
+
 enum _State { WALKING, IDLE_PAUSE }
 
 var _grid: WalkableGrid
@@ -52,6 +56,17 @@ var _idle_timer: float = 0.0
 ## callable is only ever invoked well after the full population exists).
 ## Left unset (an invalid Callable) means "no congregating" -- not an error.
 var other_villager_positions_provider: Callable
+
+## Optional, set by the owning VillagerSpawner via
+## VillageSnapshotMapper.point_of_interest_tiles() -- walkable tiles
+## adjacent to a player-placed decoration. Unlike
+## other_villager_positions_provider above, this is a plain array, not a
+## lazily-invoked Callable: POI tiles only change on a fresh sync() (which
+## already respawns every roamer -- see villager_spawner.gd's own header),
+## so there's no live-updating concern a Callable would solve here. Left
+## empty (the default) means "no POI bias" -- every existing test of this
+## class predates Lingering and never sets it, so it's simply skipped.
+var poi_tiles: Array[Vector2i] = []
 
 
 ## Must be called once before this node starts processing. `grid` is a
@@ -186,10 +201,26 @@ func get_villager() -> Villager:
 
 
 func _pick_new_target() -> void:
-	var target := _grid.random_walkable_tile(_rng, _current_tile)
+	var target := _choose_target_tile()
 	var path := _grid.find_path(_current_tile, target)
 	if path.size() > 1:
 		_pending_path = path.slice(1)  # drop the starting tile -- already there
+
+
+## design/gdd/richer-ambient-villagers.md's Point-of-Interest Lingering
+## stretch goal. Excludes _current_tile from the POI pool the same way
+## random_walkable_tile() already excludes it from the fully-random pool
+## -- a villager already standing on a POI tile shouldn't "pick" it again
+## and end up with a degenerate zero-length path.
+func _choose_target_tile() -> Vector2i:
+	var poi_candidates := poi_tiles.filter(func(t: Vector2i) -> bool: return t != _current_tile)
+	if not poi_candidates.is_empty() and should_linger_at_poi(_rng):
+		return poi_candidates[_rng.randi_range(0, poi_candidates.size() - 1)]
+	return _grid.random_walkable_tile(_rng, _current_tile)
+
+
+static func should_linger_at_poi(rng: RandomNumberGenerator) -> bool:
+	return rng.randf() < POI_LINGER_CHANCE
 
 
 ## Mirrors village_board.gd's private _grid_to_world() centering formula.

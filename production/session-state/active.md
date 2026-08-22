@@ -5843,3 +5843,33 @@ Docs-only, full suite re-run to confirm zero impact: 632/632, unchanged.
 standing instruction. `context-management.md`/`coordination-rules.md`
 (the two remaining `@`-included `.claude/docs/` files) not yet given
 this same full-read treatment -- worth checking next.
+
+## 2026-08-23 (cont'd) -- finished the .claude/docs/ full-read sweep
+
+Read the remaining 2 `@`-included `.claude/docs/` files in full (not just
+grep) to close out this thread. `context-management.md`: genuinely
+accurate, no fix needed -- spot-checked its one concrete factual claim
+(`.claude/hooks/session-start.sh` detects/previews `active.md`) directly
+against the real hook script and confirmed it's true.
+`coordination-rules.md`: found one real inaccuracy -- the Model Tier
+Assignment table's Sonnet/Opus rows still listed `claude-sonnet-4-6`/
+`claude-opus-4-6`, stale model IDs not matching any current real model
+(this assistant's own system prompt confirms the current family is
+Sonnet 5/Opus 5/Haiku 4.5). The Haiku row was already correct and
+unchanged. Noted honestly that this was informational-only, not a
+functional bug -- Claude Code resolves a skill's `model: haiku`/`opus`
+frontmatter internally, it doesn't read this file, so the old IDs never
+broke anything, they just stated outdated facts as current.
+
+This closes the "read every `@`-included `.claude/docs/` file in full"
+thread kicked off by the directory-structure.md find: all 5
+(`directory-structure.md`, `technical-preferences.md`, `coordination-
+rules.md`, `coding-standards.md`, `context-management.md`) have now had
+a real, complete read against actual project state, not just a keyword
+grep. 4 of 5 had real, fixable staleness; only `context-management.md`
+was already accurate.
+
+Docs-only, full suite re-run to confirm zero impact: 632/632, unchanged.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

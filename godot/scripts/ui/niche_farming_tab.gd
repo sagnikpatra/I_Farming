@@ -190,7 +190,7 @@ func _build_build_card(
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	var emoji_label := Label.new()
 	emoji_label.text = emoji
@@ -199,15 +199,20 @@ func _build_build_card(
 	emoji_label.label_settings = _make_label_settings(40, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label(title, 17, SOIL_BROWN_DARK)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title_label)
-
-	# A11Y fix (§5, HIGH): 13px -> this project's 14px floor.
-	var description_label := _make_title_label(description, 14, SOIL_BROWN_DARK)
-	description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	box.add_child(description_label)
+	# ONE combined Label (title+description joined by a newline), built via
+	# UiTheme.make_wrapping_label() (not _make_title_label()/LabelSettings)
+	# since this text autowraps -- LabelSettings + autowrap together ghost
+	# on this project's pinned gl_compatibility renderer. See that
+	# function's own doc comment and
+	# docs/engine-reference/godot/breaking-changes.md for the full
+	# investigation. Font size 15 keeps both lines at/above this project's
+	# 14px accessibility floor (§5, HIGH), same rationale the old separate
+	# description_label's own 14px already carried.
+	var title_description_label := UiTheme.make_wrapping_label(
+		"%s\n%s" % [title, description], 15, SOIL_BROWN_DARK
+	)
+	title_description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title_description_label)
 
 	var can_afford: bool = _economy.state.coins >= cost
 	var build_button := _make_chunky_button(cost_label, FIELD_GREEN, Color.WHITE, can_afford)
@@ -246,15 +251,15 @@ func _build_electricity_chip(data: Dictionary) -> Button:
 	var alpha: float = 1.0 if can_afford else UNAFFORDABLE_ALPHA
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(base_color.r, base_color.g, base_color.b, alpha)
-	style.set_corner_radius_all(20)
-	style.set_border_width_all(2)
+	style.set_corner_radius_all(UiTheme.scale_px(20))
+	style.set_border_width_all(UiTheme.scale_px(2))
 	style.border_color = Color(GOLD_LIGHT.r, GOLD_LIGHT.g, GOLD_LIGHT.b, alpha)
-	style.shadow_size = 3 if can_afford else 0
+	style.shadow_size = UiTheme.scale_px(3) if can_afford else 0
 	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.content_margin_left = UiTheme.scale_px(12)
+	style.content_margin_right = UiTheme.scale_px(12)
+	style.content_margin_top = UiTheme.scale_px(10)
+	style.content_margin_bottom = UiTheme.scale_px(10)
 	for state_name in ["normal", "hover", "pressed", "focus", "disabled"]:
 		chip.add_theme_stylebox_override(state_name, style)
 	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
@@ -267,7 +272,7 @@ func _build_electricity_chip(data: Dictionary) -> Button:
 	chip.add_theme_color_override("font_disabled_color", Color(font_color.r, font_color.g, font_color.b, font_alpha))
 	# A11Y fix (§5, HIGH): 13px -> this project's 14px floor -- this chip's
 	# text ("Powered: Xh Ym left") is frequently-read status, not decoration.
-	chip.add_theme_font_size_override("font_size", 14)
+	chip.add_theme_font_size_override("font_size", UiTheme.scale_font(14))
 	if can_afford:
 		chip.pressed.connect(_on_electricity_pressed)
 	return chip

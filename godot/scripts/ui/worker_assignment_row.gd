@@ -66,7 +66,7 @@ func _populate() -> void:
 	var card := UiTheme.make_panel(WOOD_BROWN_LIGHT)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	box.add_child(UiTheme.make_title_label(tr(&"worker_row.header"), 16))
 
@@ -83,12 +83,15 @@ func _populate() -> void:
 func _build_assigned_row(assignment: WorkerAssignment) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var display_name: String = Villager.CHARACTER_DISPLAY_NAMES.get(assignment.character_key, assignment.character_key)
-	var status_label := UiTheme.make_title_label(tr(&"worker_row.status") % display_name, 13, Color.WHITE, false)
+	# UiTheme.make_wrapping_label(), not make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	var status_label := UiTheme.make_wrapping_label(tr(&"worker_row.status") % display_name, 13, Color.WHITE, false)
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	row.add_child(status_label)
 
 	var unassign_button := UiTheme.make_chunky_button(tr(&"worker_row.unassign_button"), SOIL_BROWN_DARK)
@@ -101,7 +104,7 @@ func _build_assigned_row(assignment: WorkerAssignment) -> HBoxContainer:
 func _build_unassigned_row() -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	_option_button = OptionButton.new()
 	_option_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -145,7 +148,7 @@ func _on_unassign_pressed() -> void:
 
 func _style_option_button(option_button: OptionButton) -> void:
 	option_button.focus_mode = Control.FOCUS_NONE
-	option_button.custom_minimum_size = Vector2(0, 48)
+	option_button.custom_minimum_size = Vector2(0, UiTheme.scale_px(48))
 
 	var normal_style := _tinted_option_stylebox(false)
 	var pressed_style := _tinted_option_stylebox(true)
@@ -156,7 +159,7 @@ func _style_option_button(option_button: OptionButton) -> void:
 	option_button.add_theme_stylebox_override("disabled", normal_style)
 
 	option_button.add_theme_font_override("font", UiTheme.font_semibold())
-	option_button.add_theme_font_size_override("font_size", 14)
+	option_button.add_theme_font_size_override("font_size", UiTheme.scale_font(14))
 	for color_slot in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		option_button.add_theme_color_override(color_slot, Color.WHITE)
 
@@ -168,12 +171,12 @@ func _tinted_option_stylebox(pressed: bool) -> StyleBoxTexture:
 	# WOOD_BROWN_MID call sites.
 	style.texture = UiTheme.BUTTON_LONG_BROWN_PRESSED_TEXTURE if pressed else UiTheme.BUTTON_LONG_BROWN_TEXTURE
 	style.modulate_color = Color.WHITE
-	style.texture_margin_left = 22
-	style.texture_margin_right = 22
-	style.texture_margin_top = 10
-	style.texture_margin_bottom = 10
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.texture_margin_left = UiTheme.scale_px(22)
+	style.texture_margin_right = UiTheme.scale_px(22)
+	style.texture_margin_top = UiTheme.scale_px(10)
+	style.texture_margin_bottom = UiTheme.scale_px(10)
+	style.content_margin_left = UiTheme.scale_px(18)
+	style.content_margin_right = UiTheme.scale_px(18)
+	style.content_margin_top = UiTheme.scale_px(10)
+	style.content_margin_bottom = UiTheme.scale_px(10)
 	return style

@@ -112,6 +112,54 @@ resolved by reading docs — only by the on-device test above.
 post-process color-grade multiply, not part of the HDR/bloom pipeline that
 broke, so it is not suspected to share the same failure mode.
 
+### `LabelSettings` + `autowrap_mode` ghosts/doubles rendered text on this project's `gl_compatibility` renderer (found 2026-08-23)
+
+**Symptom**: a `Label` styled via a `LabelSettings` resource (this project's
+`UiTheme.make_title_label()`/`make_label_settings()`) with `autowrap_mode`
+set to anything other than `AUTOWRAP_OFF` renders with visibly
+ghosted/doubled glyphs — text appears smeared or duplicated at a nearby but
+wrong vertical offset, badly hurting readability. A short `LabelSettings`
+Label with NO autowrap (fits on one line, or uses an explicit `\n` with no
+wrapping needed) renders perfectly clean.
+
+**Isolated via extensive on-device testing** (many isolated
+export/install/screenshot cycles): ruled out, one at a time — insufficient
+separation/spacing (logcat-verified real Control positions were always
+correctly non-overlapping, even with a 168px real gap); duplicate nodes
+(logcat-verified single `_populate()` call, exact expected child count);
+`BoxContainer.ALIGNMENT_CENTER` (present in some broken cases but a clean
+combined-Label case also used it fine); the `shadow_size`/`shadow_offset`
+effect alone (forcing `shadow_size = 0` did not fix it); an adjacent emoji
+Label sibling (removing it did not fix it); stale scroll/redraw buffering
+(scrolling and re-screenshotting did not fix it). What DID fix it: replacing
+`LabelSettings` entirely with plain `Control` theme property overrides
+(`add_theme_font_override`/`add_theme_font_size_override`/
+`add_theme_color_override`) applied directly to the `Label` — the same
+mechanism `Button`/`OptionButton` already use for their own text in this
+codebase, which never exhibited this bug.
+
+**Root cause (suspected, not confirmed against Godot source)**: something
+about the interaction between a `LabelSettings` resource's shadow-rendering
+pass and the TextServer's autowrap line-breaking appears to use stale/
+mismatched line-position data on this pinned `gl_compatibility` renderer.
+Not confirmed against engine source — out of scope to chase further given
+the on-device workaround is clean and complete.
+
+**Fix landed**: `UiTheme.make_wrapping_label()` — a new helper alongside
+`make_title_label()`, for any Label that will autowrap. Every call site
+across the UI (`farmhouse_tab.gd`, `mandi_tab.gd`, `polyhouse_tab.gd`,
+`agroforestry_tab.gd`, `niche_farming_tab.gd`, `accessibility_sheet.gd`,
+`events_tab.gd`, `hud.gd`, `worker_assignment_row.gd` — 16 spots) that
+combined a `LabelSettings`-based label with `autowrap_mode` was migrated to
+it. Trade-off: no drop-shadow on these specific labels (no direct
+`Control`-theme-property equivalent to `LabelSettings.shadow_*`) — accepted
+since every affected call site is body/description/blurb text, not a bold
+header.
+
+**Practical rule for this project**: never set `autowrap_mode` on a Label
+built via `UiTheme.make_title_label()`/`make_label_settings()`. Use
+`UiTheme.make_wrapping_label()` instead for any text that needs to wrap.
+
 ## Not Yet Covered
 
 This project has not yet upgraded past 4.7.1, so there is no 4.7→4.8+

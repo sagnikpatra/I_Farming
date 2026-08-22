@@ -82,7 +82,7 @@ func _build_text_scale_row() -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	var percent := roundi(_settings.text_scale * 100.0)
 	box.add_child(_make_title_label(tr(&"a11y.text_size") % percent, 16))
@@ -92,10 +92,13 @@ func _build_text_scale_row() -> PanelContainer:
 	box.add_child(cycle_button)
 
 	# A11Y fix (§5, HIGH): 12px -> this project's 14px floor.
-	var hint := _make_title_label(
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	var hint := UiTheme.make_wrapping_label(
 		tr(&"a11y.text_size_hint"), 14, Color(1.0, 1.0, 1.0, 0.8)
 	)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(hint)
 
 	card.add_child(box)
@@ -106,11 +109,14 @@ func _build_colorblind_row() -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	box.add_child(_make_title_label(tr(&"a11y.colorblind_title"), 16))
-	var description := _make_title_label(tr(&"a11y.colorblind_description"), 12)
-	description.autowrap_mode = TextServer.AUTOWRAP_WORD
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	var description := UiTheme.make_wrapping_label(tr(&"a11y.colorblind_description"), 12)
 	box.add_child(description)
 
 	var toggle_label := tr(&"a11y.turn_off") if _settings.colorblind_safe else tr(&"a11y.turn_on")
@@ -137,7 +143,7 @@ func _build_language_row() -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	box.add_child(_make_title_label(tr(&"a11y.language_title"), 16))
 
@@ -160,7 +166,7 @@ func _build_audio_row() -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	box.add_child(_make_title_label(tr(&"a11y.audio_title"), 16))
 
@@ -207,7 +213,7 @@ func _build_volume_slider_row(label_text: String, initial_value: float, setter: 
 	slider.step = 0.05
 	slider.value = initial_value
 	slider.mouse_filter = Control.MOUSE_FILTER_STOP
-	slider.custom_minimum_size = Vector2(0, 32)
+	slider.custom_minimum_size = Vector2(0, UiTheme.scale_px(32))
 	slider.value_changed.connect(func(value: float) -> void:
 		setter.call(value)
 		percent_label.text = "%s: %d%%" % [label_text, roundi(value * 100.0)]

@@ -86,30 +86,30 @@ func _build_row(type: int, affordable: bool) -> Button:
 	row.mouse_filter = Control.MOUSE_FILTER_STOP
 	row.focus_mode = Control.FOCUS_NONE
 	row.disabled = not affordable
-	row.custom_minimum_size = Vector2(0, 56)
+	row.custom_minimum_size = Vector2(0, UiTheme.scale_px(56))
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(WOOD_BROWN_LIGHT.r, WOOD_BROWN_LIGHT.g, WOOD_BROWN_LIGHT.b, 1.0 if affordable else UNAFFORDABLE_ALPHA)
-	style.set_corner_radius_all(12)
-	style.set_border_width_all(2)
+	style.set_corner_radius_all(UiTheme.scale_px(12))
+	style.set_border_width_all(UiTheme.scale_px(2))
 	style.border_color = Color(GOLD_LIGHT.r, GOLD_LIGHT.g, GOLD_LIGHT.b, 1.0 if affordable else UNAFFORDABLE_ALPHA)
-	style.shadow_size = 4 if affordable else 0
+	style.shadow_size = UiTheme.scale_px(4) if affordable else 0
 	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.content_margin_left = UiTheme.scale_px(12)
+	style.content_margin_right = UiTheme.scale_px(12)
+	style.content_margin_top = UiTheme.scale_px(8)
+	style.content_margin_bottom = UiTheme.scale_px(8)
 	for state_name in ["normal", "hover", "pressed", "focus", "disabled"]:
 		row.add_theme_stylebox_override(state_name, style)
 
 	var content := HBoxContainer.new()
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 10)
+	content.add_theme_constant_override("separation", UiTheme.scale_px(10))
 
 	var left := HBoxContainer.new()
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 10)
+	left.add_theme_constant_override("separation", UiTheme.scale_px(10))
 
 	var emoji_label := Label.new()
 	emoji_label.text = type_def.emoji

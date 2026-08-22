@@ -184,7 +184,7 @@ func _build_monsoon_card(data: Dictionary) -> PanelContainer:
 	var card := _make_panel(RIPE_GOLD.lerp(WOOD_BROWN_LIGHT, 0.5) if active else WOOD_BROWN_LIGHT, 14)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §1,
 	# HIGH -- flagged in the audit's own table but never carried into its
@@ -205,12 +205,11 @@ func _build_monsoon_card(data: Dictionary) -> PanelContainer:
 	box.add_child(_make_title_label(
 		(tr(&"events.monsoon_ends_in") % remaining) if active else (tr(&"events.monsoon_next_in") % remaining), 14, text_color
 	))
-	var blurb := _make_title_label(
-		tr(&"events.monsoon_blurb"),
-		14,
-		text_color
-	)
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	var blurb := UiTheme.make_wrapping_label(tr(&"events.monsoon_blurb"), 14, text_color)
 	box.add_child(blurb)
 
 	card.add_child(box)
@@ -225,7 +224,7 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 14)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	box.add_child(_make_title_label("%s %s" % [festival.emoji, festival.display_name], 17))
 	var remaining := format_duration(data["festival_remaining_ms"])
@@ -234,11 +233,13 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 		(tr(&"events.festival_active_ends_in") % remaining) if active else (tr(&"events.festival_inactive_next_in") % remaining), 14
 	))
 	var crop_def := GameData.crop_def(festival.target_crop)
-	var target_blurb := _make_title_label(
-		tr(&"events.festival_target_blurb") % [crop_def.emoji, crop_def.display_name],
-		14
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	var target_blurb := UiTheme.make_wrapping_label(
+		tr(&"events.festival_target_blurb") % [crop_def.emoji, crop_def.display_name], 14
 	)
-	target_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 	box.add_child(target_blurb)
 
 	box.add_child(_make_title_label(
@@ -252,7 +253,7 @@ func _build_festival_card(data: Dictionary) -> PanelContainer:
 
 	var tiers_box := VBoxContainer.new()
 	tiers_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tiers_box.add_theme_constant_override("separation", 4)
+	tiers_box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 	for index in range(GameData.FESTIVAL_TIER_THRESHOLDS.size()):
 		tiers_box.add_child(_build_tier_row(
 			index + 1, GameData.FESTIVAL_TIER_THRESHOLDS[index], GameData.FESTIVAL_FREE_REWARDS[index],
@@ -285,23 +286,25 @@ func _build_chanda_card(data: Dictionary) -> PanelContainer:
 	var card := _make_panel(RIPE_GOLD.lerp(WOOD_BROWN_LIGHT, 0.5) if awaiting else WOOD_BROWN_LIGHT, 14)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	var text_color: Color = SOIL_BROWN_DARK if awaiting else Color.WHITE
 	box.add_child(_make_title_label("%s %s" % [festival.emoji, festival.display_name], 17, text_color))
 
 	if awaiting:
 		var ask: int = data["chanda_ask"]
-		var blurb := _make_title_label(
-			tr(&"events.chanda_ask") % [festival.display_name, ask],
-			14, text_color
+		# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+		# autowraps, and LabelSettings + autowrap ghosts on this project's
+		# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+		# own doc comment for the full investigation.
+		var blurb := UiTheme.make_wrapping_label(
+			tr(&"events.chanda_ask") % [festival.display_name, ask], 14, text_color
 		)
-		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 		box.add_child(blurb)
 
 		var buttons := HBoxContainer.new()
 		buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		buttons.add_theme_constant_override("separation", 8)
+		buttons.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 		var can_afford: bool = data["can_afford_chanda"]
 		var give_button := UiTheme.make_chunky_button(
@@ -343,7 +346,7 @@ func _build_daily_tasks_card(data: Dictionary) -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 14)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	box.add_child(_make_title_label(tr(&"events.daily_tasks_title") % data["gems"], 17))
 
@@ -367,7 +370,7 @@ func _build_daily_task_row(row: Dictionary) -> HBoxContainer:
 
 	var hbox := HBoxContainer.new()
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_theme_constant_override("separation", 8)
+	hbox.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var left := _make_title_label(
 		"%s %s %s" % ["✅" if claimed else "▫️", task_def.emoji, task_def.display_name], 14
@@ -404,7 +407,7 @@ func _build_tier_row(
 ) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var left := _make_title_label(
 		tr(&"events.tier_row") % ["✅" if reached else "▫️", tier_number, threshold], 14
@@ -429,16 +432,16 @@ func _build_progress_bar(progress: float) -> ProgressBar:
 	bar.step = 0.0
 	bar.value = progress
 	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 14)
+	bar.custom_minimum_size = Vector2(0, UiTheme.scale_px(14))
 
 	var bg_style := StyleBoxFlat.new()
 	bg_style.bg_color = SOIL_BROWN_DARK
-	bg_style.set_corner_radius_all(7)
+	bg_style.set_corner_radius_all(UiTheme.scale_px(7))
 	bar.add_theme_stylebox_override("background", bg_style)
 
 	var fill_style := StyleBoxFlat.new()
 	fill_style.bg_color = FIELD_GREEN_LIGHT
-	fill_style.set_corner_radius_all(7)
+	fill_style.set_corner_radius_all(UiTheme.scale_px(7))
 	bar.add_theme_stylebox_override("fill", fill_style)
 
 	return bar

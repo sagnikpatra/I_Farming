@@ -6398,3 +6398,32 @@ is a genuinely new finding, not a duplicate.
 Cleaned up all scratchpad APKs/screenshots (`day-review.apk`,
 `lock-badge-review.apk`, `day_review.png`, `lock_badge_review.png`) and
 device sdcard copies after review.
+
+## 2026-08-23 (cont.) — Global UI scale fix + major text-rendering bug found+fixed
+
+User report: "options look very small, need to zoom a lot." Real, confirmed
+cause: `project.godot`'s viewport is a raw 1080px-wide canvas, but every
+font/button/icon size in the codebase was authored assuming a ~360-420dp
+logical width (carried over from the pre-migration Kotlin/Compose app's
+sp/dp units with no conversion). Fixed via `UiTheme.UI_SCALE = 2.6`
+(density math: 1080px / ~411dp typical device logical width), applied
+centrally in every `UiTheme.make_*()` helper plus `scale_px()`/
+`scale_font()` for the handful of call sites that build controls directly.
+Verified dramatically improved on-device (screenshots before/after).
+
+**Second, deeper bug found while verifying the scale fix**: `LabelSettings`
++ `autowrap_mode` ghosts/doubles text on this pinned `gl_compatibility`
+renderer. Extensive on-device isolation (many build/install/screenshot
+cycles) ruled out spacing, duplicate nodes, ALIGNMENT_CENTER, the shadow
+effect alone, an adjacent emoji sibling, and scroll staleness before
+isolating it to LabelSettings+autowrap specifically. Fix: new
+`UiTheme.make_wrapping_label()` (plain Control theme overrides, no
+LabelSettings) -- migrated all 16 affected call sites across 9 files.
+Documented in `docs/engine-reference/godot/breaking-changes.md`.
+
+Verified: full GUT suite 634/634 twice; on-device confirmation across
+Farmhouse, Mandi, and Polyhouse sheets, all clean.
+
+Comic-pop entrance animation (the other half of the original request) is
+still open -- not started this pass; scoped as a bouncier `bottom_sheet.gd`
+Tween easing change per the user's confirmed preference.

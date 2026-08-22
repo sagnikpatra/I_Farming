@@ -176,7 +176,7 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var emoji_label := Label.new()
 	emoji_label.text = "🏠"
@@ -185,20 +185,22 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label(tr(&"polyhouse.build_title"), 18, SOIL_BROWN_DARK)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	box.add_child(title_label)
-
-	# A11Y fix (§5, HIGH): 13px -> this project's 14px floor.
-	var blurb_label := _make_title_label(
-		tr(&"polyhouse.build_blurb") % GameData.POLYHOUSE_PLOT_COUNT,
-		14,
+	# ONE combined Label (title+blurb joined by a newline), built via
+	# UiTheme.make_wrapping_label() (not _make_title_label()/LabelSettings)
+	# since this text autowraps -- LabelSettings + autowrap together ghost
+	# on this project's pinned gl_compatibility renderer. See that
+	# function's own doc comment and
+	# docs/engine-reference/godot/breaking-changes.md for the full
+	# investigation. Font size 16 keeps both lines at/above this project's
+	# 14px accessibility floor (§5, HIGH), same rationale the old separate
+	# blurb_label's own 14px already carried.
+	var title_blurb_label := UiTheme.make_wrapping_label(
+		"%s\n%s" % [tr(&"polyhouse.build_title"), tr(&"polyhouse.build_blurb") % GameData.POLYHOUSE_PLOT_COUNT],
+		16,
 		SOIL_BROWN_DARK
 	)
-	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	box.add_child(blurb_label)
+	title_blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title_blurb_label)
 
 	box.add_child(_build_subsidy_card(data))
 
@@ -213,7 +215,7 @@ func _build_subsidy_card(data: Dictionary) -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 14)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var title := tr(&"polyhouse.subsidy_unlocked") if data["subsidy_unlocked"] else tr(&"polyhouse.subsidy_quest")
 	box.add_child(_make_title_label(title, 14))
@@ -231,16 +233,16 @@ func _build_progress_bar(progress: float) -> ProgressBar:
 	bar.step = 0.0
 	bar.value = progress
 	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 14)
+	bar.custom_minimum_size = Vector2(0, UiTheme.scale_px(14))
 
 	var bg_style := StyleBoxFlat.new()
 	bg_style.bg_color = Color(0.0, 0.0, 0.0, 0.3)
-	bg_style.set_corner_radius_all(7)
+	bg_style.set_corner_radius_all(UiTheme.scale_px(7))
 	bar.add_theme_stylebox_override("background", bg_style)
 
 	var fill_style := StyleBoxFlat.new()
 	fill_style.bg_color = RIPE_GOLD
-	fill_style.set_corner_radius_all(7)
+	fill_style.set_corner_radius_all(UiTheme.scale_px(7))
 	bar.add_theme_stylebox_override("fill", fill_style)
 
 	return bar
@@ -249,7 +251,7 @@ func _build_progress_bar(progress: float) -> ProgressBar:
 func _build_upgrades_row(data: Dictionary) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	row.add_child(_build_chip(
 		tr(&"polyhouse.fan_pad_active") if data["has_fan_pad"] else tr(&"polyhouse.fan_pad"), data["has_fan_pad"], _on_fan_pad_pressed
@@ -273,14 +275,14 @@ func _build_chip(label_text: String, active: bool, on_pressed: Callable) -> Butt
 	var style := StyleBoxFlat.new()
 	style.bg_color = RIPE_GOLD if active else WOOD_BROWN_LIGHT
 	style.set_corner_radius_all(50)
-	style.set_border_width_all(2)
+	style.set_border_width_all(UiTheme.scale_px(2))
 	style.border_color = SAFFRON_DARK if active else GOLD_LIGHT
-	style.shadow_size = 3
+	style.shadow_size = UiTheme.scale_px(3)
 	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.content_margin_left = UiTheme.scale_px(10)
+	style.content_margin_right = UiTheme.scale_px(10)
+	style.content_margin_top = UiTheme.scale_px(8)
+	style.content_margin_bottom = UiTheme.scale_px(8)
 	for state_name in ["normal", "hover", "pressed", "focus"]:
 		chip.add_theme_stylebox_override(state_name, style)
 	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
@@ -289,7 +291,7 @@ func _build_chip(label_text: String, active: bool, on_pressed: Callable) -> Butt
 	# for white text.
 	chip.add_theme_color_override("font_color", SOIL_BROWN_DARK if active else Color.WHITE)
 	# A11Y fix (§5, HIGH): 12px -> this project's 14px floor.
-	chip.add_theme_font_size_override("font_size", 14)
+	chip.add_theme_font_size_override("font_size", UiTheme.scale_font(14))
 	chip.pressed.connect(on_pressed)
 	return chip
 

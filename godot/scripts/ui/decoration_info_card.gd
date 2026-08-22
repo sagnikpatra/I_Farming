@@ -83,7 +83,7 @@ func _populate() -> void:
 	var button_row := HBoxContainer.new()
 	button_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	button_row.add_theme_constant_override("separation", 8)
+	button_row.add_theme_constant_override("separation", UiTheme.scale_px(8))
 	button_row.add_child(_make_icon_button("↻", WOOD_BROWN_LIGHT, _on_rotate_pressed))
 	button_row.add_child(_make_icon_button("⇋", WOOD_BROWN_LIGHT, _on_flip_pressed))
 	button_row.add_child(_make_text_button(tr(&"decoration_info.remove_button"), SOIL_BROWN_DARK, _on_remove_pressed))

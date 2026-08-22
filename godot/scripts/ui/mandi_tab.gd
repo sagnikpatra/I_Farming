@@ -215,7 +215,7 @@ func _build_build_card() -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var emoji_label := Label.new()
 	emoji_label.text = "🏛️"
@@ -224,14 +224,18 @@ func _build_build_card() -> VBoxContainer:
 	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label(tr(&"mandi.register_title"), 18, SOIL_BROWN_DARK)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title_label)
-
-	var blurb_label := _make_title_label(tr(&"mandi.register_blurb"), 13, SOIL_BROWN_DARK)
-	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	box.add_child(blurb_label)
+	# ONE combined Label (title+blurb joined by a newline), built via
+	# UiTheme.make_wrapping_label() (not make_title_label()/LabelSettings)
+	# since this text autowraps -- LabelSettings + autowrap together ghost
+	# on this project's pinned gl_compatibility renderer. See that
+	# function's own doc comment and
+	# docs/engine-reference/godot/breaking-changes.md for the full
+	# investigation.
+	var title_blurb_label := UiTheme.make_wrapping_label(
+		"%s\n%s" % [tr(&"mandi.register_title"), tr(&"mandi.register_blurb")], 15, SOIL_BROWN_DARK
+	)
+	title_blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title_blurb_label)
 
 	var build_button := _make_chunky_button(tr(&"mandi.register_button") % GameData.MANDI_UNLOCK_COST, SAFFRON_DARK)
 	build_button.pressed.connect(_on_build_pressed)
@@ -243,13 +247,16 @@ func _build_build_card() -> VBoxContainer:
 func _build_intro() -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	var title_label := _make_title_label(tr(&"mandi.intro_title"), 18, SOIL_BROWN_DARK)
 	box.add_child(title_label)
 
-	var blurb_label := _make_title_label(tr(&"mandi.intro_blurb"), 12, SOIL_BROWN_DARK)
-	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	var blurb_label := UiTheme.make_wrapping_label(tr(&"mandi.intro_blurb"), 12, SOIL_BROWN_DARK)
 	box.add_child(blurb_label)
 
 	return box
@@ -277,7 +284,7 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var info_row := HBoxContainer.new()
 	info_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -286,7 +293,7 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 	var left := HBoxContainer.new()
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 10)
+	left.add_theme_constant_override("separation", UiTheme.scale_px(10))
 
 	var emoji_label := Label.new()
 	emoji_label.text = crop_def.emoji
@@ -298,7 +305,7 @@ func _build_crop_row(row_data: Dictionary) -> PanelContainer:
 	name_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var name_row := HBoxContainer.new()
 	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_row.add_theme_constant_override("separation", 4)
+	name_row.add_theme_constant_override("separation", UiTheme.scale_px(14))
 	var name_label := _make_title_label(crop_def.display_name, 14)
 	name_row.add_child(name_label)
 	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §5,

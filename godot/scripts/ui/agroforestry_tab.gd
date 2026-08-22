@@ -125,7 +125,7 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(8))
 
 	var emoji_label := Label.new()
 	emoji_label.text = "🌳"
@@ -134,18 +134,23 @@ func _build_build_card(data: Dictionary) -> VBoxContainer:
 	emoji_label.label_settings = _make_label_settings(48, SOIL_BROWN_DARK)
 	box.add_child(emoji_label)
 
-	var title_label := _make_title_label(tr(&"agroforestry.build_title"), 18, SOIL_BROWN_DARK)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title_label)
-
-	var blurb_label := _make_title_label(
-		tr(&"agroforestry.build_blurb") % [GameData.AGROFORESTRY_GRID_SIZE, GameData.AGROFORESTRY_GRID_SIZE],
-		14,
+	# ONE combined Label (title+blurb joined by a newline), built via
+	# UiTheme.make_wrapping_label() (not _make_title_label()/LabelSettings)
+	# since this text autowraps -- LabelSettings + autowrap together ghost
+	# on this project's pinned gl_compatibility renderer. See that
+	# function's own doc comment and
+	# docs/engine-reference/godot/breaking-changes.md for the full
+	# investigation.
+	var title_blurb_label := UiTheme.make_wrapping_label(
+		"%s\n%s" % [
+			tr(&"agroforestry.build_title"),
+			tr(&"agroforestry.build_blurb") % [GameData.AGROFORESTRY_GRID_SIZE, GameData.AGROFORESTRY_GRID_SIZE],
+		],
+		16,
 		SOIL_BROWN_DARK
 	)
-	blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	blurb_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	box.add_child(blurb_label)
+	title_blurb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title_blurb_label)
 
 	# §2.4 disabled-button state.
 	var can_afford_build: bool = _economy.state.coins >= int(data["cost"])
@@ -178,11 +183,11 @@ func _build_security_chip(data: Dictionary) -> Button:
 func _build_hint_label() -> Label:
 	# A11Y: sits directly on the cream background -- see _build_build_card()'s note.
 	# Also raised 12px -> this project's 14px floor (§5, HIGH).
-	var label := _make_title_label(
-		tr(&"agroforestry.hint"), 14, SOIL_BROWN_DARK
-	)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	return label
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	return UiTheme.make_wrapping_label(tr(&"agroforestry.hint"), 14, SOIL_BROWN_DARK)
 
 
 # Track A consolidation: every helper below now delegates to ui_theme.gd

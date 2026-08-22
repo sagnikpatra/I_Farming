@@ -134,7 +134,7 @@ func _build_header(data: Dictionary) -> VBoxContainer:
 	var header := VBoxContainer.new()
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
-	header.add_theme_constant_override("separation", 2)
+	header.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	# A11Y (village-board-and-management-sheets-audit-2026-08-21.md, §1):
 	# this header sits directly on BottomSheet's cream background, not inside
@@ -147,15 +147,29 @@ func _build_header(data: Dictionary) -> VBoxContainer:
 	emoji_label.label_settings = _make_label_settings(44, SOIL_BROWN_DARK)
 	header.add_child(emoji_label)
 
-	var name_label := _make_title_label(current.display_name, 20, SOIL_BROWN_DARK)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.add_child(name_label)
-
-	var level_label := _make_title_label(
-		tr(&"farmhouse.level_of") % [current.level, GameData.farmhouse_max_level()], 12, SOIL_BROWN_DARK
+	# ONE combined Label (title + subtitle joined by a newline), not two
+	# separate stacked Labels. Found 2026-08-23, on-device: a
+	# BoxContainer.ALIGNMENT_CENTER VBoxContainer holding 2+ adjacent Label
+	# children renders with the later Label's glyphs visibly ghosting up
+	# into the earlier Label's box on this project's pinned gl_compatibility
+	# renderer -- confirmed NOT a spacing/layout bug (logcat-verified real
+	# Control positions were always correctly non-overlapping, even with a
+	# 168px real gap; a colored-ColorRect-behind-each-Label test showed the
+	# LAYOUT RECTS never overlap while the painted GLYPHS still did) and NOT
+	# explained by the shadow effect, the sibling emoji Label, or scroll
+	# redraw staleness (all ruled out by direct on-device tests). Collapsing
+	# to a single Label/single text-rendering call sidesteps it entirely.
+	# Full write-up: docs/engine-reference/godot/breaking-changes.md's
+	# "Project-Specific Findings" section. Every other sheet using the same
+	# ALIGNMENT_CENTER-card-with-title+blurb pattern (mandi_tab.gd,
+	# polyhouse_tab.gd, agroforestry_tab.gd, niche_farming_tab.gd) gets the
+	# same fix.
+	var combo_label := _make_title_label(
+		"%s\n%s" % [current.display_name, tr(&"farmhouse.level_of") % [current.level, GameData.farmhouse_max_level()]],
+		18, SOIL_BROWN_DARK
 	)
-	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.add_child(level_label)
+	combo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_child(combo_label)
 
 	return header
 
@@ -164,7 +178,7 @@ func _build_bonuses_card(title: String, def: FarmhouseLevelDef) -> PanelContaine
 	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	box.add_child(_make_title_label(title, 16))
 	# A11Y fix (§5, HIGH): all 3 raised 13px -> this project's 14px floor --
@@ -182,7 +196,7 @@ func _build_storage_card(data: Dictionary) -> PanelContainer:
 	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
 
 	box.add_child(_make_title_label(tr(&"farmhouse.storage_label") % [data["storage_used"], data["storage_cap"]], 16))
 	box.add_child(_build_storage_bar(data["storage_progress"]))
@@ -199,16 +213,16 @@ func _build_storage_bar(progress: float) -> ProgressBar:
 	bar.step = 0.0
 	bar.value = progress
 	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 14)
+	bar.custom_minimum_size = Vector2(0, UiTheme.scale_px(14))
 
 	var bg_style := StyleBoxFlat.new()
 	bg_style.bg_color = SOIL_BROWN_DARK
-	bg_style.set_corner_radius_all(7)
+	bg_style.set_corner_radius_all(UiTheme.scale_px(7))
 	bar.add_theme_stylebox_override("background", bg_style)
 
 	var fill_style := StyleBoxFlat.new()
 	fill_style.bg_color = RIPE_GOLD
-	fill_style.set_corner_radius_all(7)
+	fill_style.set_corner_radius_all(UiTheme.scale_px(7))
 	bar.add_theme_stylebox_override("fill", fill_style)
 
 	return bar
@@ -216,9 +230,12 @@ func _build_storage_bar(progress: float) -> ProgressBar:
 
 func _build_max_level_message() -> Label:
 	# A11Y: sits directly on the cream background -- see _build_header()'s note.
-	var label := _make_title_label(tr(&"farmhouse.max_level_message"), 14, SOIL_BROWN_DARK)
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation.
+	var label := UiTheme.make_wrapping_label(tr(&"farmhouse.max_level_message"), 14, SOIL_BROWN_DARK)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD
 	return label
 
 

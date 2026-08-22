@@ -103,11 +103,58 @@ const LEVEL_BADGE_BLUE := Color("#1976D2")
 const TEXT_SHADOW_COLOR := Color(0.0, 0.0, 0.0, 0.7)
 const UNAFFORDABLE_ALPHA: float = 0.4
 
+## Global visual scale -- found 2026-08-23 from a direct user report
+## ("need to zoom a lot to see the options"). Root cause: project.godot's
+## viewport is a raw 1080px-wide canvas_items-stretch canvas, but every
+## literal size in this file (and every *_tab.gd/*_picker.gd/*_row.gd call
+## site) was authored assuming a ~360-420dp LOGICAL width -- the unit the
+## pre-migration Kotlin/Compose app's sp/dp values used, carried over
+## directly as raw px during the Godot port with no conversion. A typical
+## real device in this project's own tested class (technical-preferences.md:
+## OnePlus OPD2403) is ~411dp logical width at ~2.625x density, i.e. 1 of
+## this codebase's "dp-shaped" units is only ~1080/411 =~ 2.6 raw canvas
+## pixels wide on screen -- so every font/button/icon rendered at roughly a
+## third of its intended size. This is the ONE place that conversion
+## happens: every make_*() helper below multiplies its caller's existing
+## "logical" size argument (unchanged call sites -- e.g. `48` for a button
+## height, `15` for a button label, exactly as before) by UI_SCALE before
+## applying it to a real Control. A file that sets a size directly instead
+## of through a make_*() helper should wrap its own literal with
+## scale_px()/scale_font() below, not hardcode a second factor.
+##
+## 2.6 chosen from the device-density math above, not an arbitrary "make it
+## bigger" guess -- verified on-device (real hardware) after landing this
+## change, per this project's standard practice for anything touching the
+## pinned engine's actual rendering.
+const UI_SCALE: float = 2.6
+
 ## §2.2: "Every sheet's content column gets a fixed 16-20px side margin...
 ## so cards visibly float on CREAM_BACKDROP." Applied at bottom_sheet.tscn's
 ## shared ContentSlot MarginContainer (one edit point, cascades to all 9
-## management/picker sheets), not per-sheet.
-const GUTTER_MARGIN: int = 20
+## management/picker sheets), not per-sheet. Pre-scaled directly (20 * 2.6 =
+## 52) rather than computed at load time -- GDScript const initializers must
+## be constant-foldable, and this keeps the const's declared value exact and
+## grep-able rather than an expression.
+const GUTTER_MARGIN: int = 52
+
+
+## Converts one of this file's own "logical" pixel values (a diameter,
+## height, margin -- anything that ISN'T a font size, see scale_font() for
+## those) to the real canvas pixel size, per UI_SCALE's doc comment above.
+## Exposed for the handful of *_tab.gd/*_picker.gd/*_row.gd call sites that
+## build a Control's custom_minimum_size directly instead of going through
+## a make_*() helper (worker_assignment_row.gd's OptionButton, the picker
+## rows' custom_minimum_size, etc.) -- keeps them on the same one scale
+## factor rather than inventing their own.
+static func scale_px(logical_px: float) -> int:
+	return roundi(logical_px * UI_SCALE)
+
+
+## Same conversion, named separately from scale_px() only so a call site
+## reads self-documenting about which kind of literal it's scaling (a font
+## size vs. a layout dimension) -- both currently do the same multiply.
+static func scale_font(logical_px: int) -> int:
+	return roundi(float(logical_px) * UI_SCALE)
 
 # ---------------------------------------------------------------------------
 # Curated texture assets (see class doc for sourcing/curation rationale).
@@ -194,7 +241,8 @@ static func make_panel(role_color: Color, ornate: bool = false) -> PanelContaine
 static func make_circular_panel(role_color: Color, diameter: int = 44) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.custom_minimum_size = Vector2(diameter, diameter)
+	var scaled_diameter := scale_px(diameter)
+	panel.custom_minimum_size = Vector2(scaled_diameter, scaled_diameter)
 	var style := StyleBoxTexture.new()
 	style.texture = BUTTON_ROUND_GREY_TEXTURE
 	style.modulate_color = role_color
@@ -207,14 +255,14 @@ static func _tinted_panel_stylebox(texture: Texture2D, role_color: Color) -> Sty
 	var style := StyleBoxTexture.new()
 	style.texture = texture
 	style.modulate_color = role_color
-	style.texture_margin_left = 14
-	style.texture_margin_right = 14
-	style.texture_margin_top = 14
-	style.texture_margin_bottom = 14
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.texture_margin_left = scale_px(14)
+	style.texture_margin_right = scale_px(14)
+	style.texture_margin_top = scale_px(14)
+	style.texture_margin_bottom = scale_px(14)
+	style.content_margin_left = scale_px(14)
+	style.content_margin_right = scale_px(14)
+	style.content_margin_top = scale_px(10)
+	style.content_margin_bottom = scale_px(10)
 	return style
 
 
@@ -238,7 +286,7 @@ static func make_chunky_button(
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.focus_mode = Control.FOCUS_NONE
 	button.disabled = not enabled
-	button.custom_minimum_size = Vector2(0, 48)
+	button.custom_minimum_size = Vector2(0, scale_px(48))
 
 	var normal_style := _tinted_button_stylebox(role_color, false, enabled)
 	var pressed_style := _tinted_button_stylebox(role_color, true, enabled)
@@ -252,7 +300,7 @@ static func make_chunky_button(
 	for color_slot in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
 		button.add_theme_color_override(color_slot, effective_font_color)
 	button.add_theme_font_override("font", font_bold())
-	button.add_theme_font_size_override("font_size", 15)
+	button.add_theme_font_size_override("font_size", scale_font(15))
 	return button
 
 
@@ -269,7 +317,8 @@ static func make_icon_button(icon: Texture2D, role_color: Color, diameter: int =
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.focus_mode = Control.FOCUS_NONE
 	button.disabled = not enabled
-	button.custom_minimum_size = Vector2(diameter, diameter)
+	var scaled_diameter := scale_px(diameter)
+	button.custom_minimum_size = Vector2(scaled_diameter, scaled_diameter)
 
 	var style := StyleBoxTexture.new()
 	style.texture = BUTTON_ROUND_GREY_TEXTURE
@@ -282,7 +331,7 @@ static func make_icon_button(icon: Texture2D, role_color: Color, diameter: int =
 	icon_rect.texture = icon
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon_rect.custom_minimum_size = Vector2(diameter, diameter) * 0.5
+	icon_rect.custom_minimum_size = Vector2(scaled_diameter, scaled_diameter) * 0.5
 	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	icon_rect.modulate.a = 1.0 if enabled else UNAFFORDABLE_ALPHA
 	button.add_child(icon_rect)
@@ -300,7 +349,8 @@ static func make_circular_emoji_button(glyph: String, role_color: Color, diamete
 	button.text = ""
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(diameter, diameter)
+	var scaled_diameter := scale_px(diameter)
+	button.custom_minimum_size = Vector2(scaled_diameter, scaled_diameter)
 
 	var style := StyleBoxTexture.new()
 	style.texture = BUTTON_ROUND_GREY_TEXTURE
@@ -314,6 +364,9 @@ static func make_circular_emoji_button(glyph: String, role_color: Color, diamete
 	glyph_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	glyph_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	glyph_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# diameter (unscaled) * 0.32, then scaled -- matches make_label_settings()'s
+	# own "font_size argument is a logical value, scaled once inside" contract
+	# rather than scaling an already-scaled diameter a second time.
 	glyph_label.label_settings = make_label_settings(roundi(diameter * 0.32), Color.WHITE)
 	glyph_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	button.add_child(glyph_label)
@@ -332,14 +385,14 @@ static func _tinted_button_stylebox(role_color: Color, pressed: bool, enabled: b
 	else:
 		style.texture = BUTTON_LONG_GREY_PRESSED_TEXTURE if pressed else BUTTON_LONG_GREY_TEXTURE
 		style.modulate_color = role_color if enabled else Color(role_color.r, role_color.g, role_color.b, UNAFFORDABLE_ALPHA)
-	style.texture_margin_left = 22
-	style.texture_margin_right = 22
-	style.texture_margin_top = 10
-	style.texture_margin_bottom = 10
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.texture_margin_left = scale_px(22)
+	style.texture_margin_right = scale_px(22)
+	style.texture_margin_top = scale_px(10)
+	style.texture_margin_bottom = scale_px(10)
+	style.content_margin_left = scale_px(18)
+	style.content_margin_right = scale_px(18)
+	style.content_margin_top = scale_px(10)
+	style.content_margin_bottom = scale_px(10)
 	return style
 
 
@@ -362,6 +415,41 @@ static func make_title_label(
 	return label
 
 
+## For any Label that will have `autowrap_mode` set to something other than
+## AUTOWRAP_OFF. Found 2026-08-23, on-device: a `LabelSettings`-styled Label
+## (make_title_label()/make_label_settings() above) with autowrap enabled
+## renders with visibly ghosted/doubled glyphs on this project's pinned
+## gl_compatibility renderer -- confirmed via extensive on-device isolation
+## (logcat-verified correct layout positions, ruled out ALIGNMENT_CENTER,
+## multi-Label-stacking, the shadow effect alone, and an adjacent emoji
+## sibling one at a time) that this is specifically about LabelSettings +
+## autowrap together: a short LabelSettings Label with NO wrapping (e.g.
+## farmhouse_tab.gd's 2-line combo header, joined by an explicit \n, no
+## autowrap needed) renders clean; the exact same LabelSettings approach
+## with autowrap_mode enabled on longer text does not, even with
+## shadow_size forced to 0. Switching to plain Control theme property
+## overrides (this function, no LabelSettings resource involved at all)
+## instead of LabelSettings fixes it completely -- confirmed on-device.
+## Full write-up: docs/engine-reference/godot/breaking-changes.md's
+## "Project-Specific Findings" section.
+##
+## Trade-off: no drop-shadow (LabelSettings.shadow_* has no direct
+## Control-theme-property equivalent) -- acceptable here since every
+## confirmed real call site is body/description/blurb text, not a bold
+## header (which stays on make_title_label(), safe without autowrap).
+static func make_wrapping_label(
+	text: String, font_size: int, color: Color = Color.WHITE, bold: bool = true, accessibility_scale: float = 1.0
+) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	label.add_theme_font_override("font", font_bold() if bold else font_regular())
+	label.add_theme_font_size_override("font_size", roundi(float(font_size) * UI_SCALE * accessibility_scale))
+	label.add_theme_color_override("font_color", color)
+	return label
+
+
 ## Replaces every sheet's `_make_label_settings(font_size, color)`.
 ## `accessibility_scale` defaults to 1.0 (unscaled) -- preserves each
 ## existing call site's current behavior exactly (only hud.gd wired real
@@ -374,9 +462,13 @@ static func make_label_settings(
 ) -> LabelSettings:
 	var settings := LabelSettings.new()
 	settings.font = font_bold() if bold else font_regular()
-	settings.font_size = roundi(float(font_size) * accessibility_scale)
+	settings.font_size = roundi(float(font_size) * UI_SCALE * accessibility_scale)
 	settings.font_color = color
-	settings.shadow_size = 4
+	# Shadow size/offset scaled with UI_SCALE too -- at an unscaled 4px/(2,3),
+	# a UI_SCALE-enlarged font's shadow would look proportionally thin/washed
+	# out rather than matching the crisp readability the original design
+	# intended at its authored (pre-1080px-canvas) size.
+	settings.shadow_size = scale_px(4)
 	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3)
+	settings.shadow_offset = Vector2(2, 3) * UI_SCALE
 	return settings

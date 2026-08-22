@@ -565,7 +565,7 @@ func _fit_and_place_top_center(control: Control) -> void:
 func _build_top_left_title() -> void:
 	_top_left_title = VBoxContainer.new()
 	_top_left_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_top_left_title.add_theme_constant_override("separation", 2)
+	_top_left_title.add_theme_constant_override("separation", UiTheme.scale_px(14))
 	add_child(_top_left_title)
 
 	_top_left_title.add_child(_make_title_label("Kisan Khet", 24))
@@ -575,13 +575,13 @@ func _build_top_left_title() -> void:
 func _build_top_right_resources() -> void:
 	_top_right_resources = HBoxContainer.new()
 	_top_right_resources.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_top_right_resources.add_theme_constant_override("separation", 12)
+	_top_right_resources.add_theme_constant_override("separation", UiTheme.scale_px(12))
 	add_child(_top_right_resources)
 
 	var coin_panel := _make_panel(SOIL_BROWN_DARK, 24)
 	var coin_row := HBoxContainer.new()
 	coin_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	coin_row.add_theme_constant_override("separation", 6)
+	coin_row.add_theme_constant_override("separation", UiTheme.scale_px(14))
 	var coin_emoji := Label.new()
 	coin_emoji.text = "🪙"
 	coin_emoji.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -611,7 +611,7 @@ func _build_top_right_resources() -> void:
 func _build_bottom_left_panel() -> void:
 	_bottom_left_panel = VBoxContainer.new()
 	_bottom_left_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bottom_left_panel.add_theme_constant_override("separation", 10)
+	_bottom_left_panel.add_theme_constant_override("separation", UiTheme.scale_px(10))
 	add_child(_bottom_left_panel)
 
 	# Ported as a Button (was a plain PanelContainer before EPIC-M4 slice 3's
@@ -626,7 +626,7 @@ func _build_bottom_left_panel() -> void:
 
 	_inventory_row = HBoxContainer.new()
 	_inventory_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_inventory_row.add_theme_constant_override("separation", 8)
+	_inventory_row.add_theme_constant_override("separation", UiTheme.scale_px(8))
 	_bottom_left_panel.add_child(_inventory_row)
 
 	_sell_all_button = _make_chunky_button(tr(&"hud.sell_all"), SAFFRON_DARK)
@@ -650,7 +650,7 @@ func _build_bottom_right_shop() -> void:
 	_bottom_right_shop = VBoxContainer.new()
 	_bottom_right_shop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bottom_right_shop.alignment = BoxContainer.ALIGNMENT_CENTER
-	_bottom_right_shop.add_theme_constant_override("separation", 10)
+	_bottom_right_shop.add_theme_constant_override("separation", UiTheme.scale_px(10))
 	add_child(_bottom_right_shop)
 
 	# A11Y fix (village-board-and-management-sheets-audit-2026-08-21.md §4,
@@ -668,7 +668,7 @@ func _build_bottom_right_shop() -> void:
 	# time rather than repeating that gap in a brand-new control.
 	var zoom_row := HBoxContainer.new()
 	zoom_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	zoom_row.add_theme_constant_override("separation", 8)
+	zoom_row.add_theme_constant_override("separation", UiTheme.scale_px(8))
 	_zoom_out_button = UiTheme.make_circular_emoji_button("−", WOOD_BROWN_LIGHT, 44)
 	_zoom_out_button.pressed.connect(_on_zoom_out_pressed)
 	_zoom_in_button = UiTheme.make_circular_emoji_button("+", WOOD_BROWN_LIGHT, 44)
@@ -719,7 +719,7 @@ func _build_bottom_right_shop() -> void:
 func _build_bottom_center_nav() -> void:
 	_bottom_center_nav = HBoxContainer.new()
 	_bottom_center_nav.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bottom_center_nav.add_theme_constant_override("separation", 8)
+	_bottom_center_nav.add_theme_constant_override("separation", UiTheme.scale_px(8))
 	add_child(_bottom_center_nav)
 
 	var targets := [
@@ -774,10 +774,15 @@ func _build_toast() -> void:
 	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_toast_panel)
 
-	_toast_label = _make_title_label("", 16)
+	# UiTheme.make_wrapping_label(), not _make_title_label() -- this text
+	# autowraps, and LabelSettings + autowrap ghosts on this project's
+	# pinned gl_compatibility renderer. See UiTheme.make_wrapping_label()'s
+	# own doc comment for the full investigation. accessibility_scale
+	# threaded through explicitly (make_wrapping_label() has no local
+	# wrapper here to carry it implicitly, unlike _make_title_label()).
+	_toast_label = UiTheme.make_wrapping_label("", 16, Color.WHITE, true, _accessibility_scale())
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_toast_label.custom_minimum_size = Vector2(280, 0)
+	_toast_label.custom_minimum_size = Vector2(UiTheme.scale_px(280), 0)
 	_toast_panel.add_child(_toast_label)
 
 	_toast_timer = Timer.new()
@@ -790,7 +795,7 @@ func _make_inventory_chip(emoji: String, count: int) -> PanelContainer:
 	var chip := _make_panel(WOOD_BROWN_LIGHT, 10)
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 4)
+	row.add_theme_constant_override("separation", UiTheme.scale_px(14))
 	var emoji_label := Label.new()
 	emoji_label.text = emoji
 	emoji_label.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -6195,3 +6195,36 @@ point for this specific thread, not an oversight.
 now this partial agents/skills check) is done for this session. Looking
 for the next genuine target -- game code, game content, or further
 device-based verification once the phone is free again.
+
+## 2026-08-23 (cont'd) -- fresh-build live verification, user confirmed phone available
+
+User confirmed the phone was unlocked and available. Exported a
+completely fresh debug build from the current committed HEAD (not
+reusing an earlier APK), installed, launched, confirmed clean boot via
+logcat. Verified two things live:
+
+1. **The walking-animation fix, on a genuinely fresh build**: captured
+   another real Congregating moment (two villagers converging, holding
+   position together, arm pose visibly changing between frames) --
+   independent reconfirmation beyond this morning's original fix
+   verification, on today's very latest commit.
+2. **Core UI interaction still intact**: tapped the Farmhouse zone (a
+   static, reliably-hittable target, unlike the moving villagers), the
+   real Farmhouse Progression sheet opened correctly showing "Humble
+   Hut / Farmhouse Level 0 of 7," current bonuses, the storage bar, and
+   the real "Next: Kutcha House" upgrade preview -- confirms the
+   zone-tap-to-management-sheet path survived every change made today
+   (villager.gd, board_interactor.gd, and the many doc/tooling fixes).
+
+A villager-tap attempt missed (they'd already walked apart by the time
+the tap landed, real movement + input latency, not a bug) -- didn't
+chase it further given the already-strong dedicated headless end-to-end
+coverage (`test_villager_tap_interaction.gd`) and this session's earlier
+real on-device confirmation of that exact card opening successfully.
+
+Evidence saved:
+`production/qa/evidence/fresh-build-congregating-confirmed.png`,
+`fresh-build-farmhouse-sheet-works.png`.
+
+**Next step**: continuing to watch for further genuine work per the
+standing instruction.

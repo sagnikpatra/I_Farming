@@ -5738,3 +5738,30 @@ Full suite run twice: 632/632 (up from 626), non-flaky.
 
 **Next step**: continuing to scan for further genuine gaps per the
 standing instruction.
+
+## 2026-08-23 (cont'd) -- another stale-testing-status claim found and fixed
+
+Kept pulling the thread from the audio-comment cluster: searched broadly
+for other "not yet"/"as of this pass" phrasing across `godot/scripts/`.
+Found one more real, actively-spreading staleness: `.claude/docs/
+technical-preferences.md`'s own "Platform Notes" line still said "not yet
+tested on physical hardware" -- directly contradicted by the SAME
+document's own Performance Budgets section a few dozen lines down (real
+OnePlus OPD2403 hardware measurements, dated 2026-08-22), and by this
+entire session's repeated real-device verification passes. Worse: this
+stale line had already propagated into new code -- `hud.gd`'s own layout
+comment quoted it verbatim as justification for not doing a precise
+dp/density conversion.
+
+Fixed both: the source-of-truth line in `technical-preferences.md` (real
+hardware testing has happened extensively; what's still genuinely
+untested is a SPREAD of screen sizes/densities, not physical hardware
+itself), and `hud.gd`'s comment to match -- its underlying reasoning
+(fixed pixel margins, no density-aware scaling) still holds, just no
+longer justified by a false "never tested on real hardware" premise.
+
+Confirmed no other file quotes the same stale phrase. Docs/comments only,
+full suite re-run to confirm zero impact: 632/632, unchanged.
+
+**Next step**: continuing to scan for further genuine gaps per the
+standing instruction.

@@ -34,10 +34,14 @@
 ## bar for this round; the beveled gloss/shadow overlay look is deferred
 ## polish, the same way EPIC-M1 staged toon-shading after an MVP layout pass.
 ## Likewise, layout uses fixed pixel margins (not a true dp/density-aware
-## conversion of FarmScreen.kt's `.dp` values) -- this project has no
-## density-aware UI scaling yet and is "not yet tested on physical hardware
-## or other screen sizes/densities" per technical-preferences.md, so a
-## precise dp conversion would be false precision.
+## conversion of FarmScreen.kt's `.dp` values) -- this project still has no
+## density-aware UI scaling. Update (2026-08-23): the project HAS since
+## been extensively verified on real physical hardware (technical-
+## preferences.md's own "not yet tested on physical hardware" line had
+## gone stale and was corrected), but every real-device pass so far has
+## used the same one or two actual devices, never a spread of screen
+## sizes/densities -- so a precise dp conversion would still be false
+## precision without that broader data.
 ##
 ## mouse_filter is set EXPLICITLY on every node built here, never left at
 ## Godot's default, specifically to make the input-stealing bug class

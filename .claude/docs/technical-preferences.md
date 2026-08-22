@@ -29,7 +29,7 @@
 - **Primary Input**: Touch
 - **Gamepad Support**: None
 - **Touch Support**: Full -- tap-to-select, long-press-then-drag (structures/decorations), pinch-zoom + drag-pan (village board camera)
-- **Platform Notes**: Developed/tested against an Android Emulator AVD ("Medium_Phone", API 35/36), not yet tested on physical hardware or other screen sizes/densities.
+- **Platform Notes**: Developed against an Android Emulator AVD ("Medium_Phone", API 35/36). **Update (2026-08-23)**: this line had gone stale -- extensively verified on real physical hardware since (a OnePlus OPD2403 for the formal EPIC-M6 performance pass, per this doc's own Performance Budgets section below, plus repeated ad hoc real-device verification passes across many features throughout the Godot migration). Still open: testing on more than one physical device/screen size -- every real-hardware pass so far has used the same one or two devices, not a spread of screen sizes/densities.
 
 ## Naming Conventions
 

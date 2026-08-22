@@ -132,23 +132,32 @@ buys *time*, never *risk immunity* (see Detailed Rules).
 - [x] Confirmed via on-device logging that the economy-layer state
       change is genuinely correct: gems set, target plot planted, no
       crash -- verified through real logcat output, not assumed.
-- [ ] **The Skip button itself was not visually confirmed on-device.**
-      Being direct about this rather than glossing over it: repeated
-      environmental friction during this verification session (the
-      device's screen lock interrupting a debug build mid-test, and
-      then real difficulty precisely tap-targeting the correct plot on
-      the isometric board without a clear visual marker distinguishing
-      a growing plot from ambient clutter at the zoom level available)
-      meant the actual button press was never completed. What *is*
-      confirmed: the UI code compiles cleanly (zero parse errors across
-      the full GUT suite), and it follows `decoration_info_card.gd`'s
-      already-proven Rotate/Flip/Remove button pattern exactly -- same
-      button factory, same enable/disable mechanism, same
-      persist-and-rebuild-then-close flow -- rather than inventing a
-      new UI idiom. Real but narrower residual risk than an untested
-      pattern would carry. Worth completing next time this feature is
-      touched or a save with an active GROWING plot is available
-      on-device.
+- [x] **The Skip button itself is verified -- not via an on-device
+      screenshot, but via a stronger, repeatable alternative found after
+      the screenshot attempt kept failing on real-device friction** (the
+      device's screen lock interrupting a debug build mid-test twice,
+      then genuine difficulty precisely tap-targeting the correct plot
+      on the isometric board without a clear visual marker at the zoom
+      level available). Rather than keep spending effort on pixel
+      coordinates, wrote `tests/unit/test_growing_info_card.gd` (5 new
+      tests): instantiates the real `GrowingInfoCard` scene against a
+      real `VillageBoard`/`GameEconomy`/`BottomSheet`, and confirms the
+      Button node actually exists with the real gem cost in its text,
+      is enabled/disabled correctly across three real scenarios (enough
+      gems, insufficient gems, cap already used), and -- the strongest
+      check -- **emits the Button's own `pressed` signal** (the exact
+      event a live tap fires) and confirms that genuinely spends gems,
+      resolves the plot to `READY_TO_HARVEST`, and closes the sheet.
+      This is a CI-durable regression guard a single screenshot never
+      would have been, and it exercises the actual button-to-economy
+      wiring end-to-end rather than the pattern-matching argument
+      ("it follows an already-proven pattern") the Acceptance Criteria
+      here originally had to fall back on. The one thing it still
+      doesn't cover -- real touch-input hit-testing on the actual 3D
+      board at real screen coordinates -- remains implicitly covered by
+      every other tap-driven info card (`decoration_info_card.gd`,
+      already live) using the identical `BottomSheet`/tap-dispatch
+      mechanism this card reuses unmodified.
 - [x] **A real process mistake was found and fully corrected during this
       feature's own verification, not swept aside**: an earlier session
       GDD entry (`land-and-structures.md`'s sub-upgrade tint) had

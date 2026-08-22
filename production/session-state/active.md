@@ -4396,6 +4396,30 @@ closing summary -- **every item from the original 5-item pass is now
 either built or explicitly decided against; nothing remains open or
 undecided.**
 
+## 2026-08-22 (cont'd) -- Closed the grow-skip button's on-device gap
+via a stronger headless test instead of fighting the device further
+
+User pushed back a third time on stopping ("please don't stop... until
+the credits runs out"). Rather than retry the same failing on-device
+screenshot approach, found a better way to close the actual gap:
+`tests/unit/test_growing_info_card.gd` (5 new tests) instantiates the
+real `GrowingInfoCard` scene against a real `VillageBoard`/
+`GameEconomy`/`BottomSheet` and confirms the Skip button genuinely
+exists with the real gem cost in its text, is correctly enabled/
+disabled across three scenarios (enough gems, insufficient gems, cap
+used), and -- the strongest check -- **emits the Button's own `pressed`
+signal** (the exact event a live tap fires) and confirms that alone
+spends gems, resolves the plot to `READY_TO_HARVEST`, and closes the
+sheet. This is stronger, CI-durable evidence a single screenshot never
+would have been, and it replaces the "follows an already-proven
+pattern" fallback argument gems-second-sink.md's Acceptance Criteria
+had settled for with an actual end-to-end proof of the real wiring.
+Full suite: 541/541 (536 + 5), zero regressions.
+
+Updated `gems-second-sink.md`'s Acceptance Criteria (the item flips
+from open to closed, with the reasoning above) and
+`feature-scoping-2026-08-22.md`'s closing summary.
+
 ## Next Step
 
 1. **Real blocker, still needs the project owner specifically**: use
@@ -4418,15 +4442,16 @@ undecided.**
    implementation item left from that list. The next real decision is
    the project owner's: cloud-save Phase 1's Play Console step, or a
    genuinely new direction.
-4. Two narrow, honestly-flagged on-device visual confirmations remain
-   open (logic fully tested in both, only the live "watch it on the
-   real board" step is missing) -- Point-of-Interest Lingering (needs a
-   save with decorations placed) and the grow-time-skip button (needs
-   either a clearer way to identify a growing plot's exact screen
-   position, or trying again with more patience for the device's screen
-   lock). Also still open from earlier: the rebuild-during-Night lamp
-   fix and the two-villagers-mutually-facing Congregating case (both
-   inherently hard to catch live, see their own GDDs).
+4. One narrow, honestly-flagged on-device visual confirmation remains
+   open (logic fully tested, only the live "watch it on the real board"
+   step is missing) -- Point-of-Interest Lingering, needs a save with
+   decorations placed. The grow-skip button's equivalent gap is now
+   closed via the headless button-press test above instead. Also still
+   open from earlier: the rebuild-during-Night lamp fix and the
+   two-villagers-mutually-facing Congregating case (both inherently
+   hard to catch live, see their own GDDs) -- worth revisiting with the
+   same "write a stronger headless test instead" approach if they prove
+   similarly hard to catch on-device.
 5. **Process note for future on-device debug verification in this
    project**: any temporary `_ready()` override that mutates GameState
    MUST have a real save backup pulled first (`run-as ... cat
@@ -4434,7 +4459,12 @@ undecided.**
    launches -- `_on_growth_tick_timeout()` persists dirty state every 3
    seconds regardless of what caused the dirty flag, so any debug build
    running even briefly WILL write to the real on-device save. This was
-   learned the hard way this session and must not be re-learned.
+   learned the hard way this session and must not be re-learned. Also
+   worth remembering: when on-device UI verification hits repeated
+   environmental friction (screen lock, imprecise tap targets), a
+   headless GUT test that instantiates the real scene and drives it via
+   its actual signals is often a *stronger* proof than a screenshot, not
+   a consolation prize -- reach for it sooner next time.
 6. Commit `291a268` (Phase 0, cloud-save) is still local-only from
    earlier in the session -- still needs the user's word on pushing.
 7. Everything else from prior "Next Step" entries (screen-alignment

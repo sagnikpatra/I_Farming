@@ -254,12 +254,18 @@ gem-exclusive decorations), both for the same reason: pursuing them
 would have meant either resolving an unrelated open architecture
 question as a side effect of a visual feature, or taking on real new
 3D-asset content-creation scope this pass deliberately stayed out of.
-Nothing on this list remains open or undecided. Two items carry an
+Nothing on this list remains open or undecided. One item carries an
 honestly-flagged, narrower residual gap: Point-of-Interest Lingering's
-and the grow-time skip button's on-device visual confirmations weren't
-completed (see their own GDDs' Acceptance Criteria) -- the underlying
-logic is fully unit-tested in both cases, only the "watch it happen on
-the real board" step is outstanding. Cloud save is tracked separately in
+on-device visual confirmation wasn't completed (see that GDD's
+Acceptance Criteria) -- the underlying logic is fully unit-tested, only
+the "watch it happen on the real board" step is outstanding. The
+grow-time skip button had the same gap initially, closed differently:
+repeated real-device friction (screen lock, imprecise tap-targeting on
+the isometric board) blocked the screenshot, so it was verified instead
+via a headless test that instantiates the real UI scene and presses the
+actual Button node's `pressed` signal -- a stronger, CI-durable check
+than a single screenshot would have been (see `gems-second-sink.md`).
+Cloud save is tracked separately in
 `adr-0003-cloud-save-and-player-accounts.md` (Proposed, not yet
 actioned). The project owner's next move, per the Collaborative Design
 Principle, is a genuinely new direction -- the cloud-save ADR's

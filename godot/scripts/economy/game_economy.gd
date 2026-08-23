@@ -31,6 +31,9 @@
 class_name GameEconomy
 extends RefCounted
 
+# Preload CropVarietyDef so GDScript can resolve type hints
+const _CropVarietyDef = preload("res://scripts/economy/crop_variety_def.gd")
+
 var state: GameState
 ## FIFO queue of not-yet-consumed notifications. See game_event.gd (bugfix b).
 var pending_events: Array[GameEvent] = []
@@ -105,10 +108,14 @@ func is_film_active(now: int) -> bool:
 ## Not underscore-prefixed (see was_sandalwood_stolen()'s doc comment for the
 ## same rationale) so tests/unit/test_crop_economy.gd can cover TR-crop-002's
 ## per-plot-kind weather-risk table directly.
-func effective_weather_risk_percent(plot_kind: PlotKind.Kind, crop: int, now: int) -> int:
+## Optional `variety` parameter (defaults to 0) applies variety weather-risk
+## multiplier to open-field crops only. Managed tiers ignore it.
+func effective_weather_risk_percent(plot_kind: PlotKind.Kind, crop: int, now: int, variety: int = 0) -> int:
 	match plot_kind:
 		PlotKind.Kind.OPEN_FIELD:
-			return GameData.crop_def(crop).weather_risk_percent
+			var base_risk := GameData.crop_def(crop).weather_risk_percent
+			var variety_def := GameData.crop_variety_def(crop, variety)
+			return roundi(float(base_risk) * variety_def.weather_risk_multiplier)
 		PlotKind.Kind.POLYHOUSE:
 			return 0 if is_film_active(now) else GameData.POLYHOUSE_UNPROTECTED_RISK_PERCENT
 		# Sandalwood's risk is theft, handled separately in
@@ -532,7 +539,7 @@ func buy_farmhouse_upgrade() -> void:
 
 # --- Crop lifecycle: plant / harvest / sell --------------------------------------
 
-func plant_seed(plot_id: int, crop: int, now: int) -> void:
+func plant_seed(plot_id: int, crop: int, now: int, variety: int = 0) -> void:
 	# Sandalwood has its own entry point (adjacency + host-dependent duration).
 	if crop == CropType.Kind.SANDALWOOD:
 		return
@@ -547,7 +554,12 @@ func plant_seed(plot_id: int, crop: int, now: int) -> void:
 	if crop == CropType.Kind.SAFFRON and not is_electricity_active(now):
 		_push_event(tr(&"event.plant_needs_electricity"), true)
 		return
-	if state.coins < crop_def.seed_cost:
+
+	# Apply variety modifiers to seed cost
+	var variety_def := GameData.crop_variety_def(crop, variety)
+	var adjusted_seed_cost := roundi(float(crop_def.seed_cost) * variety_def.seed_cost_multiplier)
+
+	if state.coins < adjusted_seed_cost:
 		_push_event(tr(&"event.plant_not_enough_coins") % crop_def.display_name, true)
 		return
 
@@ -560,10 +572,14 @@ func plant_seed(plot_id: int, crop: int, now: int) -> void:
 	var monsoon_multiplier: float = 1.0
 	if crop_def.required_plot_kind == PlotKind.Kind.OPEN_FIELD and is_monsoon_active(now):
 		monsoon_multiplier = GameData.MONSOON_SPEED_MULTIPLIER
-	var effective_seconds: int = maxi(roundi(after_fan_pad * _growth_speed_multiplier() * monsoon_multiplier), 1)
 
-	state.coins -= crop_def.seed_cost
+	# Apply variety grow-time modifier
+	var variety_grow_multiplier: float = variety_def.grow_time_multiplier
+	var effective_seconds: int = maxi(roundi(after_fan_pad * variety_grow_multiplier * _growth_speed_multiplier() * monsoon_multiplier), 1)
+
+	state.coins -= adjusted_seed_cost
 	plot.state = PlotState.new_growing(crop, now, effective_seconds)
+	plot.selected_variety = variety  # Store the selected variety for later reference (harvest, display)
 	_bump_daily_task_progress(DailyTaskKind.Kind.PLANT, 1, now)
 	_mark_dirty()
 
@@ -1065,7 +1081,7 @@ func remove_host(plot_id: int) -> void:
 	_mark_dirty()
 
 
-func plant_sandalwood(plot_id: int, now: int) -> void:
+func plant_sandalwood(plot_id: int, now: int, variety: int = 0) -> void:
 	var plot := _find_plot(plot_id)
 	if plot == null:
 		return
@@ -1083,14 +1099,18 @@ func plant_sandalwood(plot_id: int, now: int) -> void:
 		_push_event(tr(&"event.sandalwood_needs_host"), true)
 		return
 	var crop_def := GameData.crop_def(CropType.Kind.SANDALWOOD)
-	if state.coins < crop_def.seed_cost:
+	var variety_def := GameData.crop_variety_def(CropType.Kind.SANDALWOOD, variety)
+	var adjusted_seed_cost := roundi(float(crop_def.seed_cost) * variety_def.seed_cost_multiplier)
+	if state.coins < adjusted_seed_cost:
 		_push_event(tr(&"event.sandalwood_need_coins"), true)
 		return
 	var base_seconds: int = GameData.SANDALWOOD_GROW_SECONDS_ACACIA if has_acacia_host else GameData.SANDALWOOD_GROW_SECONDS_BASE
-	var effective_seconds: int = maxi(roundi(base_seconds * _growth_speed_multiplier()), 1)
+	var variety_grow_multiplier: float = variety_def.grow_time_multiplier
+	var effective_seconds: int = maxi(roundi(float(base_seconds) * variety_grow_multiplier * _growth_speed_multiplier()), 1)
 
-	state.coins -= crop_def.seed_cost
+	state.coins -= adjusted_seed_cost
 	plot.state = PlotState.new_growing(CropType.Kind.SANDALWOOD, now, effective_seconds)
+	plot.selected_variety = variety
 	_mark_dirty()
 
 

@@ -14,6 +14,9 @@
 class_name GameData
 extends RefCounted
 
+# Preload CropVarietyDef so GDScript can resolve type hints
+const _CropVarietyDef = preload("res://scripts/economy/crop_variety_def.gd")
+
 # --- Land -------------------------------------------------------------------
 
 ## A poor farmer doesn't start with a sprawling holding -- just enough to get
@@ -292,6 +295,49 @@ static func _ensure_crop_defs() -> void:
 	_crop_defs[CropType.Kind.SAFFRON] = CropDef.new(
 		"Saffron", "🌸", 800, 90 * 60, 3_500, 0, PlotKind.Kind.VERTICAL_FARM
 	)
+	# Tier 1: Additional Open Field crops (Indian staples)
+	_crop_defs[CropType.Kind.SUGARCANE] = CropDef.new(
+		"Sugarcane", "🌾", 50, 8 * 60 * 60, 400, 20, PlotKind.Kind.OPEN_FIELD
+	)
+	_crop_defs[CropType.Kind.MUSTARD] = CropDef.new(
+		"Mustard", "🟨", 20, 4 * 60 * 60, 180, 10, PlotKind.Kind.OPEN_FIELD
+	)
+	_crop_defs[CropType.Kind.LENTIL] = CropDef.new(
+		"Lentil (Daal)", "🟤", 30, 6 * 60 * 60, 250, 14, PlotKind.Kind.OPEN_FIELD
+	)
+	_crop_defs[CropType.Kind.CHICKPEA] = CropDef.new(
+		"Chickpea (Chana)", "🟫", 25, 5 * 60 * 60, 200, 12, PlotKind.Kind.OPEN_FIELD
+	)
+	_crop_defs[CropType.Kind.MAIZE] = CropDef.new(
+		"Maize (Corn)", "🌽", 40, 7 * 60 * 60, 280, 18, PlotKind.Kind.OPEN_FIELD
+	)
+	# Tier 2: Polyhouse crops (protected cultivation)
+	_crop_defs[CropType.Kind.CUCUMBER] = CropDef.new(
+		"Cucumber", "🥒", 80, 35 * 60, 450, 0, PlotKind.Kind.POLYHOUSE
+	)
+	_crop_defs[CropType.Kind.SPINACH] = CropDef.new(
+		"Spinach (Palak)", "🥬", 60, 30 * 60, 350, 0, PlotKind.Kind.POLYHOUSE
+	)
+	_crop_defs[CropType.Kind.BRINJAL] = CropDef.new(
+		"Brinjal (Eggplant)", "🍆", 120, 50 * 60, 550, 0, PlotKind.Kind.POLYHOUSE
+	)
+	# Tier 3: Agroforestry (long-term, high-value)
+	_crop_defs[CropType.Kind.NEEM] = CropDef.new(
+		"Neem Tree", "🌳", 2_000, 10 * 24 * 60 * 60, 150_000, 0, PlotKind.Kind.AGROFORESTRY
+	)
+	_crop_defs[CropType.Kind.COCONUT] = CropDef.new(
+		"Coconut Palm", "🥥", 3_000, 12 * 24 * 60 * 60, 200_000, 0, PlotKind.Kind.AGROFORESTRY
+	)
+	# Tier 4: Specialty/Medicinal crops
+	_crop_defs[CropType.Kind.TURMERIC] = CropDef.new(
+		"Turmeric", "🟡", 150, 8 * 60 * 60, 800, 0, PlotKind.Kind.AQUACULTURE
+	)
+	_crop_defs[CropType.Kind.GINGER] = CropDef.new(
+		"Ginger", "🟠", 180, 9 * 60 * 60, 900, 0, PlotKind.Kind.AQUACULTURE
+	)
+	_crop_defs[CropType.Kind.CARDAMOM] = CropDef.new(
+		"Cardamom (Elaichi)", "⚪", 500, 120 * 60, 2_500, 0, PlotKind.Kind.VERTICAL_FARM
+	)
 
 
 ## Crop ordinals whose `required_plot_kind` matches `kind`, in CropType.Kind's
@@ -485,3 +531,169 @@ static func chanda_festival_def(cycle_index: int) -> ChandaFestivalDef:
 static func festival_count() -> int:
 	_ensure_festivals()
 	return _festivals.size()
+
+# --- Crop Varieties (Regional Specialties) --------------------------------
+
+## Maps crop ordinal -> array of variety definitions, indexed by variety ordinal.
+## A crop with no variants (or a single default variant) still has an array of
+## size 1 at index 0. This ensures GameEconomy.plant_seed() can always safely
+## call varieties_for_crop(crop)[0] for backwards compatibility.
+static var _crop_varieties: Dictionary = {}
+
+
+static func _ensure_crop_varieties() -> void:
+	if not _crop_varieties.is_empty():
+		return
+
+	# Wheat variants
+	_crop_varieties[CropType.Kind.WHEAT] = [
+		CropVarietyDef.new("Standard Wheat", "🌾", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Basmati Wheat", "🌾", 1.1, 1.15, 1.25, 0.9) as CropVarietyDef,  # slower, more valuable, less hardy
+	] as Array[CropVarietyDef]
+
+	# Paddy variants
+	_crop_varieties[CropType.Kind.PADDY] = [
+		CropVarietyDef.new("Standard Paddy", "🌱", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Jasmine Rice", "🌱", 0.95, 1.2, 1.35, 0.85) as CropVarietyDef,  # faster, premium, slightly hardier
+	] as Array[CropVarietyDef]
+
+	# Tomato variants
+	_crop_varieties[CropType.Kind.TOMATO] = [
+		CropVarietyDef.new("Standard Tomato", "🍅", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Heirloom Tomato", "🍅", 1.15, 1.25, 1.4, 0.95) as CropVarietyDef,  # slower, expensive seed, premium price
+	] as Array[CropVarietyDef]
+
+	# Capsicum variants (Polyhouse)
+	_crop_varieties[CropType.Kind.CAPSICUM] = [
+		CropVarietyDef.new("Standard Capsicum", "🫑", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Hybrid Capsicum", "🫑", 0.85, 1.3, 1.5, 1.0) as CropVarietyDef,  # hybrid vigor: faster, premium
+	] as Array[CropVarietyDef]
+
+	# Dutch Rose variants (Polyhouse)
+	_crop_varieties[CropType.Kind.DUTCH_ROSE] = [
+		CropVarietyDef.new("Standard Rose", "🌹", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Premium Red Rose", "🌹", 1.05, 1.4, 1.6, 1.0) as CropVarietyDef,  # slightly slower, much costlier, luxury
+	] as Array[CropVarietyDef]
+
+	# Sandalwood variants (Agroforestry)
+	_crop_varieties[CropType.Kind.SANDALWOOD] = [
+		CropVarietyDef.new("Standard Sandalwood", "🪵", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Kashmiri Sandalwood", "🪵", 0.9, 1.5, 1.8, 1.0) as CropVarietyDef,  # faster maturity, rarer, premium
+	] as Array[CropVarietyDef]
+
+	# Makhana variants (Aquaculture)
+	_crop_varieties[CropType.Kind.MAKHANA] = [
+		CropVarietyDef.new("Standard Makhana", "🪷", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Premium Makhana", "🪷", 1.1, 1.2, 1.25, 1.0) as CropVarietyDef,  # slower, premium variety
+	] as Array[CropVarietyDef]
+
+	# Pond Fish variants (Aquaculture)
+	_crop_varieties[CropType.Kind.POND_FISH] = [
+		CropVarietyDef.new("Standard Fish", "🐟", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Silver Carp", "🐟", 0.9, 1.1, 1.3, 1.0) as CropVarietyDef,  # faster, good yield
+	] as Array[CropVarietyDef]
+
+	# Saffron variants (Vertical Farm) - most varieties, highest specialization
+	_crop_varieties[CropType.Kind.SAFFRON] = [
+		CropVarietyDef.new("Standard Saffron", "🌸", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Kashmiri Saffron", "🌸", 1.15, 2.0, 2.2, 1.0) as CropVarietyDef,  # legendary, expensive, premium
+		CropVarietyDef.new("Assamese Saffron", "🌸", 0.95, 1.5, 1.6, 1.0) as CropVarietyDef,  # regional specialty, efficient
+	] as Array[CropVarietyDef]
+
+	# Sugarcane variants (Open Field)
+	_crop_varieties[CropType.Kind.SUGARCANE] = [
+		CropVarietyDef.new("Standard Sugarcane", "🌾", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Co-86 Hybrid", "🌾", 0.9, 1.2, 1.4, 0.9) as CropVarietyDef,  # fast, premium
+	] as Array[CropVarietyDef]
+
+	# Mustard variants (Open Field)
+	_crop_varieties[CropType.Kind.MUSTARD] = [
+		CropVarietyDef.new("Standard Mustard", "🟨", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Rai Mustard", "🟨", 1.05, 1.1, 1.15, 1.0) as CropVarietyDef,  # slightly slower, hardy
+	] as Array[CropVarietyDef]
+
+	# Lentil variants (Open Field)
+	_crop_varieties[CropType.Kind.LENTIL] = [
+		CropVarietyDef.new("Standard Lentil", "🟤", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Masoor Premium", "🟤", 0.95, 1.15, 1.25, 1.0) as CropVarietyDef,  # faster, premium
+	] as Array[CropVarietyDef]
+
+	# Chickpea variants (Open Field)
+	_crop_varieties[CropType.Kind.CHICKPEA] = [
+		CropVarietyDef.new("Standard Chickpea", "🟫", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Kabuli Chana", "🟫", 1.1, 1.2, 1.3, 0.95) as CropVarietyDef,  # specialty, hardy
+	] as Array[CropVarietyDef]
+
+	# Maize variants (Open Field)
+	_crop_varieties[CropType.Kind.MAIZE] = [
+		CropVarietyDef.new("Standard Maize", "🌽", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Hybrid Maize", "🌽", 0.85, 1.25, 1.35, 1.0) as CropVarietyDef,  # fast, premium
+	] as Array[CropVarietyDef]
+
+	# Cucumber variants (Polyhouse)
+	_crop_varieties[CropType.Kind.CUCUMBER] = [
+		CropVarietyDef.new("Standard Cucumber", "🥒", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Dutch Cucumber", "🥒", 0.9, 1.3, 1.45, 1.0) as CropVarietyDef,  # fast hybrid, premium
+	] as Array[CropVarietyDef]
+
+	# Spinach variants (Polyhouse)
+	_crop_varieties[CropType.Kind.SPINACH] = [
+		CropVarietyDef.new("Standard Spinach", "🥬", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Organic Palak", "🥬", 1.05, 1.15, 1.25, 1.0) as CropVarietyDef,  # premium organic
+	] as Array[CropVarietyDef]
+
+	# Brinjal variants (Polyhouse)
+	_crop_varieties[CropType.Kind.BRINJAL] = [
+		CropVarietyDef.new("Standard Brinjal", "🍆", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Long Brinjal", "🍆", 0.95, 1.2, 1.3, 1.0) as CropVarietyDef,  # faster, specialty
+	] as Array[CropVarietyDef]
+
+	# Neem variants (Agroforestry)
+	_crop_varieties[CropType.Kind.NEEM] = [
+		CropVarietyDef.new("Standard Neem", "🌳", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("High-Yield Neem", "🌳", 0.95, 1.3, 1.4, 1.0) as CropVarietyDef,  # faster, premium
+	] as Array[CropVarietyDef]
+
+	# Coconut variants (Agroforestry)
+	_crop_varieties[CropType.Kind.COCONUT] = [
+		CropVarietyDef.new("Standard Coconut", "🥥", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Hybrid Coconut", "🥥", 0.9, 1.4, 1.5, 1.0) as CropVarietyDef,  # fast, premium
+	] as Array[CropVarietyDef]
+
+	# Turmeric variants (Specialty)
+	_crop_varieties[CropType.Kind.TURMERIC] = [
+		CropVarietyDef.new("Standard Turmeric", "🟡", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Erode Turmeric", "🟡", 1.05, 1.35, 1.5, 1.0) as CropVarietyDef,  # premium medicinal
+	] as Array[CropVarietyDef]
+
+	# Ginger variants (Specialty)
+	_crop_varieties[CropType.Kind.GINGER] = [
+		CropVarietyDef.new("Standard Ginger", "🟠", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Kerala Ginger", "🟠", 1.1, 1.3, 1.4, 1.0) as CropVarietyDef,  # premium regional
+	] as Array[CropVarietyDef]
+
+	# Cardamom variants (Vertical Farm)
+	_crop_varieties[CropType.Kind.CARDAMOM] = [
+		CropVarietyDef.new("Standard Cardamom", "⚪", 1.0, 1.0, 1.0, 1.0) as CropVarietyDef,
+		CropVarietyDef.new("Green Cardamom", "⚪", 1.15, 1.8, 2.0, 1.0) as CropVarietyDef,  # luxury spice
+	] as Array[CropVarietyDef]
+
+
+## Returns all varieties available for a crop (always non-empty).
+## Crops without explicit varieties have a single default variant.
+static func varieties_for_crop(crop: int) -> Array[CropVarietyDef]:
+	_ensure_crop_varieties()
+	if _crop_varieties.has(crop):
+		return _crop_varieties[crop]
+	# Fallback: single default variety (1.0x on all modifiers)
+	return [CropVarietyDef.new("Default", "❓", 1.0, 1.0, 1.0, 1.0)]
+
+
+## Looks up a specific variety definition. Falls back to variety 0 (default)
+## for out-of-range ordinals, matching the SEC-001 defensive pattern.
+static func crop_variety_def(crop: int, variety: int) -> CropVarietyDef:
+	var varieties := varieties_for_crop(crop)
+	if variety < 0 or variety >= varieties.size():
+		push_error("GameData.crop_variety_def: crop %d variety %d out of range -- falling back to variety 0" % [crop, variety])
+		return varieties[0]
+	return varieties[variety]

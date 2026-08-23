@@ -163,3 +163,18 @@ event.mandi_need_coins,Need ₹%d to register at the Local Mandi.,स्था�
 event.mandi_registered,🏛️ Registered at the Local Mandi -- e-NAM auctions are now open to you.,🏛️ स्थानीय मंडी में पंजीकरण हो गया -- ई-नाम नीलामी अब आपके लिए खुली है।
 event.mandi_terminal_need_coins,Need ₹%d for a digital auction terminal.,डिजिटल नीलामी टर्मिनल के लिए ₹%d चाहिए।
 event.mandi_sold,🏛️ Mandi bought %d %s at %d%% market rate for ₹%d,मंडी ने %d %s को %d%% बाज़ार दर पर ₹%d में खरीदा
+farmhouse.title,🏠 Farmhouse,🏠 फार्महाउस
+farmhouse.current_level,%s %s · Level %d,%s %s · स्तर %d
+farmhouse.passive_income,⏰ Passive Income: ₹%d/hour,⏰ निष्क्रिय आय: ₹%d/घंटा
+farmhouse.upgrade_cost,Upgrade to %s for ₹%d,₹%d में %s में अपग्रेड करें
+farmhouse.unlocks_title,Unlocks:,अनलॉक:
+farmhouse.upgrade_action,Upgrade,अपग्रेड करें
+farmhouse.max_level_reached,🎉 Max Level Reached,🎉 अधिकतम स्तर पर पहुंचा
+event.passive_income_collected,💰 Collected ₹%d passive income.,💰 ₹%d निष्क्रिय आय एकत्र की।
+event.plant_off_season,%s can't be planted during %s.,%s को %s के दौरान नहीं लगाया जा सकता।
+thief.appeared,🕵️ A thief is eyeing your farm! ₹%d at risk.,🕵️ एक चोर आपके खेत पर नज़र रख रहा है! ₹%d खतरे में है।
+thief.title,🕵️ Thief Spotted!,🕵️ चोर दिखा!
+thief.at_risk,₹%d at risk,₹%d खतरे में
+thief.let_go,Let Them Go,जाने दें
+thief.pay_bribe,Pay Bribe,रिश्वत दें
+thief.chase_off,Chase Them Off,भगा दें

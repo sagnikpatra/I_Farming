@@ -20,9 +20,20 @@ duplicate the source document's content.
   pre-migration Kotlin/LibGDX app and has since been ported to Godot;
   the design is stable and implemented, the label just reflects how the
   doc came to exist (written from working code, not before it)
+- 🚧 **Partially Shipped** — core logic implemented and unit-tested, but
+  the doc's own Acceptance Criteria section lists real, named gaps (not
+  just "on-device unverified") — read that section before assuming the
+  system is reachable in actual gameplay
 
-Every GDD in this project is currently either ✅ or 📄 — there is no
-GDD describing a not-yet-built system as of this index's creation date.
+Added 2026-08-23: the first two 🚧 entries below. Both were reverse-
+documented the same way as the 📄 entries (written from working code,
+after the fact) but for a different reason -- a prior session's 8-feature
+sprint had claimed all 8 as done via unverified per-agent checkmarks; a
+follow-up review found only these 2 (plus Farmhouse Progression's
+passive-income addition, folded into the existing 📄 doc above) had real,
+compiling logic behind them once independently checked. See
+`production/session-state/active.md` for the full accounting, including
+the 5 features that turned out to be inert/unwired stub files.
 
 ## Core Economy (Foundation)
 
@@ -42,6 +53,8 @@ GDD describing a not-yet-built system as of this index's creation date.
 | Gems: Grow-Time Skip | [`gems-second-sink.md`](gems-second-sink.md) | ✅ | Gems' second sink — one capped, gem-costed grow-time skip per real calendar day. |
 | Festival Visiting NPCs (Chanda) | [`festival-visiting-npcs.md`](festival-visiting-npcs.md) | ✅ | A recurring low-stakes neighbor visit collecting a small community donation for a rotating real Indian festival; giving grants a modest time-limited sell-price blessing. Includes an on-board 3D visitor NPC, not just a sheet card. |
 | Worker Economy | [`worker-economy.md`](worker-economy.md) | ✅ | Assigns an existing ambient villager to a structure zone, where it automates that zone's plot labor (harvest + replant) for a wage, lazily resolved offline like crop growth. |
+| Seasonal Crop Rotation | [`seasonal-crop-rotation.md`](seasonal-crop-rotation.md) | 🚧 | Ties crop plantability to 4 real-world-calendar seasons; gates `plant_seed()`. Core detection/lookup logic is real and tested; seed-picker UI greying-out is not yet implemented (plant attempt is rejected with a toast instead). |
+| Thief NPC Visitor | [`thief-system.md`](thief-system.md) | 🚧 | Periodic, cooldown-gated, wealth-scaled chance of a thief visit; security investment reduces probability. Probability/steal-amount math, board-tile placement, and the player-choice UI are each independently correct and tested, but not wired together yet — no coin loss actually happens today. |
 
 ## Village Board & Presentation
 

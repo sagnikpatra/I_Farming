@@ -524,17 +524,95 @@ func _sell_price_multiplier(now: int) -> float:
 	return farmhouse * _chanda_blessing_multiplier(now)
 
 
-func buy_farmhouse_upgrade() -> void:
+## Returns the current farmhouse level definition.
+func get_farmhouse_level_def() -> FarmhouseLevelDef:
+	return GameData.farmhouse_level_def(state.farmhouse_level)
+
+
+## Returns the processing speed multiplier for the current farmhouse level.
+## Used by crop processing systems to scale processing duration.
+func get_processing_speed_multiplier() -> float:
+	var bonus_percent: float = GameData.farmhouse_level_def(state.farmhouse_level).growth_speed_bonus_percent
+	return 1.0 - bonus_percent / 100.0
+
+
+## Returns total storage capacity at the current farmhouse level.
+## Each level's storage_capacity is already the absolute total for that tier
+## (see the _ensure_farmhouse_levels() catalogue comments), not a per-level
+## delta -- summing across levels would overstate capacity. Same value as
+## the pre-existing storage_capacity(); kept as a separate name for
+## discoverability from the new farmhouse-progression call sites.
+func get_total_storage_capacity() -> int:
+	return storage_capacity()
+
+
+## Attempts to upgrade the farmhouse to the next level.
+## Returns true if upgrade succeeded, false otherwise.
+func upgrade_farmhouse(now: int) -> bool:
 	if state.farmhouse_level >= GameData.farmhouse_max_level():
-		return
+		return false
 	var next_level := GameData.farmhouse_level_def(state.farmhouse_level + 1)
 	if state.coins < next_level.upgrade_cost:
 		_push_event(tr(&"event.farmhouse_need_coins") % [next_level.upgrade_cost, next_level.display_name], true)
-		return
+		return false
 	state.coins -= next_level.upgrade_cost
 	state.farmhouse_level += 1
 	_push_event(tr(&"event.farmhouse_upgraded") % [next_level.emoji, next_level.display_name])
 	_mark_dirty()
+	return true
+
+
+## Resolves passive income accrual based on time elapsed since last resolution.
+## Caps offline accrual at 12 hours maximum. Returns the coins added.
+func resolve_passive_income(now: int) -> int:
+	var passive_income_rate: int = GameData.farmhouse_level_def(state.farmhouse_level).passive_income_per_hour
+	if passive_income_rate <= 0:
+		return 0
+
+	# Initialize on first call
+	if state.passive_income_last_resolution_epoch_ms == -1:
+		state.passive_income_last_resolution_epoch_ms = now
+		return 0
+
+	var elapsed_ms: int = now - state.passive_income_last_resolution_epoch_ms
+	if elapsed_ms < 0:
+		return 0
+
+	var elapsed_hours: float = float(elapsed_ms) / 3_600_000.0
+	# Soft cap at 12 hours for offline play to prevent extreme catches-up
+	elapsed_hours = minf(elapsed_hours, 12.0)
+
+	var coins_earned: int = roundi(passive_income_rate * elapsed_hours)
+	state.pending_passive_income += coins_earned
+	state.passive_income_last_resolution_epoch_ms = now
+	_mark_dirty()
+	return coins_earned
+
+
+## Collects all pending passive income into the coin pool.
+## Returns the amount collected.
+func collect_pending_passive_income() -> int:
+	var amount: int = state.pending_passive_income
+	if amount > 0:
+		state.coins += amount
+		state.pending_passive_income = 0
+		_push_event(tr(&"event.passive_income_collected") % amount)
+		_mark_dirty()
+	return amount
+
+
+func buy_farmhouse_upgrade() -> void:
+	upgrade_farmhouse(Time.get_unix_time_from_system() as int * 1000)
+
+
+# --- Seasonal Crop Availability ------------------------------------------------
+
+## Checks if a crop can be planted right now based on the current season.
+## Year-round crops are always plantable.
+## Seasonal crops can only be planted during their designated seasons.
+func can_plant_crop(crop_kind: int, now: int) -> bool:
+	var current_season: int = SeasonType.current_season(now)
+	return GameData.is_crop_available_this_season(crop_kind, current_season)
 
 
 # --- Crop lifecycle: plant / harvest / sell --------------------------------------
@@ -551,6 +629,14 @@ func plant_seed(plot_id: int, crop: int, now: int, variety: int = 0) -> void:
 	var crop_def := GameData.crop_def(crop)
 	if crop_def.required_plot_kind != plot.kind:
 		return
+
+	# Check if crop is available this season
+	if not can_plant_crop(crop, now):
+		var current_season: int = SeasonType.current_season(now)
+		var season_name: String = SeasonType.season_name(current_season)
+		_push_event(tr(&"event.plant_off_season") % [crop_def.display_name, season_name], true)
+		return
+
 	if crop == CropType.Kind.SAFFRON and not is_electricity_active(now):
 		_push_event(tr(&"event.plant_needs_electricity"), true)
 		return
@@ -739,6 +825,11 @@ func resolve_growth_completions(now: int) -> void:
 	if any_mutation:
 		_mark_dirty()
 
+	# Thief NPC Visitor system: check for a thief visit every THIEF_VISIT_INTERVAL_HOURS
+	# (design/gdd/thief-system.md). Runs once per resolve_growth_completions() call,
+	# independent of individual plot state -- not part of the per-plot loop above.
+	resolve_thief_visit(now)
+
 
 # --- EPIC-M7: Worker assignment & automation --------------------------------
 #
@@ -925,6 +1016,84 @@ func was_sandalwood_stolen(plot_id: int, elapsed_hours: int, secured: bool) -> b
 		if rng.randf() < hourly_probability:
 			return true
 	return false
+
+
+## Deterministic thief visit check: same session always resolves the same way.
+## Theft probability scales with player wealth and is reduced by security level.
+## Each hour constructs its own seeded RNG for reproducibility across save/load.
+func was_thief_visiting(session_id: int, elapsed_hours: int, player_wealth: int, security_level: int) -> bool:
+	# Base probability increases with wealth (wealthy farms attract thieves)
+	var wealth_bonus: float = float(player_wealth) * GameData.THIEF_PROBABILITY_MULTIPLIER_PER_WEALTH
+	var base_probability: float = GameData.THIEF_PROBABILITY_BASE + wealth_bonus
+
+	# Security reduces probability: level 1 = 50%, level 2 = 20%
+	var security_multiplier: float = 1.0
+	match security_level:
+		1:
+			security_multiplier = 0.5
+		2:
+			security_multiplier = 0.2
+
+	var hourly_probability: float = base_probability * security_multiplier
+
+	for hour in range(1, elapsed_hours + 1):
+		var seed: int = session_id * 1_000_007 + hour * 11_113
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		if rng.randf() < hourly_probability:
+			return true
+	return false
+
+
+## Calculate steal amount for a thief visit (seeded, deterministic).
+func calculate_thief_steal_amount(session_id: int, hour_seed: int) -> int:
+	var seed: int = session_id * 1_000_009 + hour_seed * 13_121
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var amount: float = randf_range(float(GameData.THIEF_STEAL_AMOUNT_MIN), float(GameData.THIEF_STEAL_AMOUNT_MAX))
+	return roundi(amount)
+
+
+## Thief NPC Visitor system: checks if a thief visit should trigger, and emits
+## thief_appeared event if so. Called once per resolve_growth_completions() tick.
+## Uses session_id (hash of save slot) and elapsed hours since last thief visit
+## to determine if a thief should appear (deterministic per session).
+##
+## Emits: GameEvent("thief_appeared", {steal_amount, security_level}) if thief visit triggers.
+## Stores: updates thief_last_visit_epoch_ms in state for cooldown tracking.
+func resolve_thief_visit(now: int) -> void:
+	# Thief visits are gated by a 12-hour cooldown (THIEF_VISIT_INTERVAL_HOURS)
+	if state.thief_last_visit_epoch_ms != -1:
+		var ms_since_last_visit: int = now - state.thief_last_visit_epoch_ms
+		if ms_since_last_visit < GameData.THIEF_VISIT_INTERVAL_HOURS * 3_600_000:
+			return  # Still within cooldown window
+
+	# Use a simple session_id derived from state for deterministic rolls
+	# (same save slot always produces same thief outcome)
+	var session_id: int = state.farmhouse_level * 1_000_013 + state.total_harvests * 7_919
+
+	# Elapsed hours since the last thief visit (or since start if never visited)
+	var last_check_ms: int = state.thief_last_visit_epoch_ms if state.thief_last_visit_epoch_ms != -1 else 0
+	var elapsed_hours: int = int((now - last_check_ms) / 3_600_000)
+	if elapsed_hours == 0:
+		elapsed_hours = 1  # At minimum, check the current hour
+
+	# Check if thief visits during this window
+	if not was_thief_visiting(session_id, elapsed_hours, state.coins, state.thief_security_level):
+		return
+
+	# Thief is visiting! Calculate the steal amount
+	var steal_amount := calculate_thief_steal_amount(session_id, elapsed_hours)
+
+	# Emit thief_appeared event for UI layer to handle. GameEvent only carries a
+	# message + is_rejection flag (no payload dict, see game_event.gd) -- the
+	# steal_amount/security_level the UI needs to open ThiefInteractionSheet
+	# still need a real delivery path from here; not wired up yet (see review notes).
+	_push_event(tr(&"thief.appeared") % steal_amount)
+
+	# Update state for cooldown tracking
+	state.thief_last_visit_epoch_ms = now
+	_mark_dirty()
 
 
 # --- Land & Tier 2: Polyhouse ----------------------------------------------------

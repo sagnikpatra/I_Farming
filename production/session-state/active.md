@@ -276,6 +276,57 @@ corrupting the *local verification copy* on the Windows side, not the
 actual on-device file; re-verified with `adb shell md5sum` run entirely
 on-device, which matched exactly).
 
+## Update 2026-08-23, night: screen-rotation bug (user-reported)
+
+User report: "when screen rotation is on, if the screen is rotated then
+screen gets off." Root cause found and fixed.
+
+- `godot/project.godot`'s `[display]` section had
+  `window/handheld/orientation=6` (`SCREEN_SENSOR`), letting the OS
+  rotate the app into landscape. Every screen in this game (`hud.gd`,
+  every bottom sheet) is a hand-built portrait-only layout, and the
+  viewport baseline itself (`1080x2280`) is portrait -- rotating into
+  landscape broke the display entirely, matching the report. Fixed to
+  `=1` (`SCREEN_PORTRAIT`, hard lock). Verified this is the *only* place
+  orientation is configured -- `export_presets.cfg` has no separate
+  Android-preset override to conflict with it.
+- **Note for future sessions**: an explanatory comment was added above
+  the line at fix time, but Godot's own tooling (a headless
+  `--import`/`--export-debug` run) silently rewrites `project.godot` and
+  strips any comments not part of its own serialization -- confirmed by
+  diffing the file before/after an export. Don't rely on inline comments
+  in this specific file surviving a build; this note here is the durable
+  record instead.
+- Verified via `aapt2 dump xmltree` on both the freshly-exported APK and
+  the actually-*installed* one (pulled back from the device) --
+  `android:screenOrientation=1` confirmed present in the real installed
+  package, ruling out an export/install mismatch.
+- **On-device testing initially appeared to show the fix not working** --
+  screenshots after installing the fixed build still rendered in
+  landscape with the device physically rotated. Root cause: this test
+  device (OnePlus OPD2403) had a WindowManager-level
+  `ignoreOrientationRequest=true` flag set (`adb shell cmd window
+  get-ignore-orientation-request -d 0`) -- a real Android flag, part of
+  the large-screen/orientation-restriction-override framework, that
+  makes the OS ignore *every* app's manifest orientation lock, not
+  specific to this game. This is not a mainstream end-user Settings
+  toggle -- it's set via exactly the `adb shell cmd window
+  set-ignore-orientation-request` command this session used to test it,
+  which strongly suggests it was left on from earlier testing on this
+  same device (this project's or a prior one) and never reset to
+  Android's own default (`false`). Toggled it off, relaunched, confirmed
+  the app now renders correctly in portrait (2120x3000) even with the
+  device still physically held sideways -- definitive proof the code fix
+  works -- then **restored the flag back to `true`** (what was found)
+  rather than deciding unilaterally to change a persistent device
+  setting. **Flagging for the user**: this device likely still has that
+  override active, so testing on it again may still show rotation
+  regardless of this fix, purely from device state, not a code issue --
+  worth turning off deliberately (`adb shell cmd window
+  set-ignore-orientation-request -d 0 false`) if this device is going to
+  keep being used for on-device verification, since it silently masks
+  this entire class of orientation bug.
+
 ## Next steps
 
 1. ~~Wire thief visit to a board NPC + interaction sheet~~ -- done, see

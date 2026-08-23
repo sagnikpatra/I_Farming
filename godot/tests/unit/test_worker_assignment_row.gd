@@ -53,7 +53,7 @@ func test_pressing_assign_assigns_the_selected_character() -> void:
 	board.get_economy().unassign_worker(PlotKind.Kind.OPEN_FIELD)
 
 	var row := _make_row(board, PlotKind.Kind.OPEN_FIELD)
-	row._on_assign_pressed()  # default OptionButton selection is index 0 ("Barbarian")
+	row._on_assign_pressed()  # default OptionButton selection is index 0 ("Ramesh")
 
 	var assignment := board.get_economy().get_worker_assignment(PlotKind.Kind.OPEN_FIELD)
 	assert_not_null(assignment)
@@ -68,7 +68,7 @@ func test_assigned_zone_shows_a_status_label_and_unassign_button() -> void:
 	var row := _make_row(board, PlotKind.Kind.OPEN_FIELD)
 
 	var found_status_label := _has_descendant(
-		row, func(n: Node) -> bool: return n is Label and n.text.contains("Ranger")
+		row, func(n: Node) -> bool: return n is Label and n.text.contains("Vijay")
 	)
 	var found_unassign_button := _has_descendant(
 		row, func(n: Node) -> bool: return n is Button and n.text == "Unassign"

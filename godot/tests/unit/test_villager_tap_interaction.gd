@@ -44,7 +44,7 @@ func test_opening_a_villager_info_card_shows_the_real_character_in_the_real_shee
 	var hud := get_tree().get_first_node_in_group("hud") as Hud
 	var sheet := hud.get_bottom_sheet()
 	assert_eq(sheet.get_state(), BottomSheet.State.OPEN, "a real villager tap must actually open the real shared BottomSheet")
-	assert_not_null(_find_label_with_text(sheet, "Knight"), "the real sheet content must show the real tapped character's name")
+	assert_not_null(_find_label_with_text(sheet, "Arjun"), "the real sheet content must show the real tapped character's name")
 	assert_not_null(_find_label_with_text(sheet, "Namaste"), "and the real greeting")
 
 
@@ -56,5 +56,5 @@ func test_opening_a_second_villager_info_card_replaces_the_first() -> void:
 
 	var hud := get_tree().get_first_node_in_group("hud") as Hud
 	var sheet := hud.get_bottom_sheet()
-	assert_not_null(_find_label_with_text(sheet, "Mage"))
-	assert_null(_find_label_with_text(sheet, "Barbarian"), "the first card's content must be gone, not stacked underneath")
+	assert_not_null(_find_label_with_text(sheet, "Deepak"))
+	assert_null(_find_label_with_text(sheet, "Ramesh"), "the first card's content must be gone, not stacked underneath")

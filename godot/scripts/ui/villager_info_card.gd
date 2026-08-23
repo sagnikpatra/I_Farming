@@ -24,16 +24,20 @@ extends VBoxContainer
 
 const SOIL_BROWN_DARK := UiTheme.SOIL_BROWN_DARK
 
-## One glyph per CHARACTER_SCENES key -- a class icon for this card only,
-## not a claim about what the on-board model is holding (every fantasy
-## prop is already hidden per villager.gd's own visual-pass comment).
+## One glyph per CHARACTER_SCENES key. Was a fantasy-class icon (⚔️/🔮/🏹/
+## etc.) matching the old RPG-class display names -- replaced 2026-08-23
+## alongside Villager.CHARACTER_DISPLAY_NAMES' switch to real Hindi names,
+## since a crystal ball or dagger next to "Deepak" or "Sunita" reads as a
+## mismatch, not a claim about what the on-board model is holding (every
+## fantasy prop is already hidden per villager.gd's own visual-pass
+## comment either way).
 const CHARACTER_EMOJI: Dictionary = {
-	"barbarian": "💪",
-	"knight": "🛡️",
-	"mage": "🔮",
-	"ranger": "🏹",
-	"rogue": "🗡️",
-	"rogue_hooded": "🥷",
+	"barbarian": "👨🏽‍🌾",
+	"knight": "🧑🏽‍🌾",
+	"mage": "👴🏽",
+	"ranger": "👨🏻‍🌾",
+	"rogue": "👩🏽‍🌾",
+	"rogue_hooded": "👵🏽",
 }
 const _DEFAULT_EMOJI := "🧑"
 

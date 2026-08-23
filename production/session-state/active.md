@@ -6494,3 +6494,140 @@ shadow fix + breaking-changes.md doc) together -- mirror `master` +
 Then resume Track B / general design-polish work per the standing
 "design, UI, lightings" priority, continuing autonomously per the standing
 instruction.
+
+Committed as `4c3eab5`, mirrored to `master`, both pushed to origin.
+
+## 2026-08-23 (cont.) — User report: villager names, T-pose workers, building variety
+
+User: "the workers name are not hindu enough . Add hindu names , The
+workers showuld showws that they are working , when assigned they stand
+in a t shape and no work is showing . When building is upgraded then
+building should show that worker is building it and different models
+should be there for the buildiungs and now all the models are just
+basinc" -- four distinct asks. Triaged by tractability before touching
+code:
+
+1. **"Not Hindu enough" names**: real finding, not an exaggeration --
+   `Villager.CHARACTER_DISPLAY_NAMES` was literally the raw KayKit
+   fantasy-class labels ("Barbarian", "Knight", "Mage", "Ranger", "Rogue",
+   "Hooded Rogue") shown verbatim as the villager's name in both
+   `villager_info_card.gd` (tap-a-roamer card) and
+   `worker_assignment_row.gd` (assign-a-worker dropdown + status text) --
+   not "not Hindu enough," literally not names at all.
+2. **T-pose/no-work-showing assigned workers**: also a real, previously
+   self-documented gap -- `worker_station.gd`'s own comment already called
+   the paused-Walking_A-first-frame held pose a "known minor polish item,
+   not a dedicated working animation," explicitly because (it claimed)
+   "this asset's animation library has no such clip."
+3. **Building-upgrade-shows-a-worker-building-it**: no such mechanic
+   exists at all today -- farmhouse upgrades are instant
+   (`GameEconomy`, paid via coins, no construction-duration state).
+4. **"All the models are just basic," building variety**: partially true.
+   Farmhouse already has 5 real model tiers by level
+   (`village_fixture_data.gd`'s `FARMHOUSE_MODEL_TIER_1..5`,
+   `farmhouse_model_path()`). Mandi/Aquaculture/Vertical Farm/Agroforestry
+   each have exactly ONE static model regardless of level (no tiers at
+   all); Polyhouse has no model whatsoever (placeholder box) -- the
+   README already documents no greenhouse shape exists in the sourced
+   kits.
+
+**Items 1 and 2 were concretely scoped and low-risk -- implemented this
+pass.** Items 3 and 4 need real new-mechanic design work and/or asset
+curation the sourced kit may not even have -- presented to the user as a
+scoped plan rather than started blind (see below).
+
+### Item 1: Hindu names, shipped
+
+Direct glTF inspection first (this project's standing "verify, don't
+guess" discipline) rather than assuming what's in the asset kit --
+dumped every clip name from both `Rig_Medium_General.glb` and
+`Rig_Medium_MovementBasic.glb` via a throwaway headless `SceneTree`
+script (written, run, deleted -- not committed). Confirmed General.glb
+has `Interact`/`PickUp`/`Use_Item` clips beyond the already-used
+`Idle_A`/`Idle_B` -- directly enables item 2 below too.
+
+`Villager.CHARACTER_DISPLAY_NAMES` values changed (character_key strings
+unchanged -- asset lookup/save data/OptionButton selection all
+unaffected, only what the player reads changed):
+barbarian→Ramesh, knight→Arjun, mage→Deepak, ranger→Vijay, rogue→Sunita,
+rogue_hooded→Kamla. `villager_info_card.gd`'s `CHARACTER_EMOJI` also
+swapped from fantasy-class icons (⚔️/🔮/🏹/🥷) to farmer-themed person
+emoji (👨🏽‍🌾/🧑🏽‍🌾/👴🏽/👩🏽‍🌾/👵🏽) -- a crystal-ball emoji next to "Deepak"
+would have been its own mismatch. `rogue_hooded`→Kamla→👵🏽 is a
+deliberate pairing: that character's sculpted hood (kept, per
+villager.gd's own doc comment, as "a farmer wearing a hood is plausible")
+reads naturally as an elder woman's shawl.
+
+Updated every test that hardcoded the old literal names
+(`test_villager_info_card.gd`, `test_villager_tap_interaction.gd`,
+`test_worker_assignment_row.gd`) to the new ones. Left
+`test_localization.gd`'s one hardcoded "Knight" untouched -- that test
+verifies the Hindi `%s`-substitution translation infrastructure itself,
+not the roster, so any string proves the same thing.
+
+### Item 2: working animation, shipped
+
+`villager.gd`: generalized `_merge_idle_clips_into()` →
+`_merge_general_clips_into(library, clip_names)` and added
+`WORK_CLIP_NAMES: Array[String] = ["PickUp"]`, merged alongside
+`IDLE_CLIP_NAMES` in `setup()`. `_force_every_clip_to_loop()` already
+iterates the library AFTER this merge, so PickUp gets `LOOP_LINEAR` for
+free -- no separate fix needed there.
+
+`worker_station.gd`: replaced the paused-Walking_A held pose with
+`WORKING_POSE_CLIP = "PickUp"`, played and left running (not paused) --
+a stationed worker now visibly loops a bend-down-grab-stand motion for as
+long as it's assigned, directly closing the gap
+`design/gdd/worker-economy.md` rule 6 already specified ("performing a
+work-appropriate pose/animation") but the old implementation only
+partially met.
+
+Rewrote `test_worker_station.gd`'s two held-pose-specific tests (which
+asserted the OLD paused behavior) into
+`test_setup_plays_the_working_pose_animation`/
+`test_working_pose_clip_is_loop_forced`, asserting the new one. Added
+`test_villager.gd`'s `test_every_character_key_wires_the_work_clips_without_error()`,
+mirroring the existing idle-clip coverage pattern.
+
+**Verified**: GUT suite 635/635 passing twice (634 -> 635, +1 net new
+test after accounting for the two rewritten ones). Fresh debug APK
+exported, installed on real device (`5bc7f547`). On-device: both
+stationed workers' arms read as bent forward/down (reaching-down pose),
+not the old T-pose-style horizontal spread -- zoomed screenshots of both
+mat-stationed workers confirm this. Did NOT get a clean tap-and-confirm
+screenshot of the villager_info_card showing a new Hindu name on a live
+roaming villager -- three tap attempts all missed because the ambient
+roamer had already walked to a new position by the time each screenshot
+â†’tap round-trip landed (same known limitation as prior sessions'
+villager-tap attempts). Did not chase further given
+`test_villager_tap_interaction.gd` already exercises the exact same
+`_open_villager_info_card()` code path end-to-end and passes, asserting
+"Arjun"/"Deepak" appear in the real sheet -- equally valid evidence per
+this project's own precedent for this exact class of hard-to-hit-live
+target.
+
+Cleaned up all scratchpad APKs/screenshots and device sdcard copies
+after review.
+
+### Items 3 & 4: presented as a scoped plan, not started
+
+Both need real design/asset work, not a quick fix -- deliberately did
+NOT start either blind:
+- **Construction-worker-on-upgrade visual**: no transient/timed state
+  exists anywhere in the economy model today; every upgrade
+  (`GameEconomy`) is instant. Needs a real design decision (a GDD-level
+  call, not just code): does an upgrade gain a short animated
+  "under construction" window with a temporary worker figure at the
+  structure, and if so, how long, triggered from which event, positioned
+  how per zone?
+- **Building model variety**: Farmhouse already tiers (5 models); Mandi/
+  Aquaculture/Vertical Farm/Agroforestry each have exactly one static
+  model with no tier variety; Polyhouse has no model at all (kit has no
+  greenhouse shape, already documented in assets_3d/README.md). Real
+  work here is sourcing/curating additional tiered models per zone from
+  the existing 627-asset library (or accepting some zones can't get
+  tiers, same as Polyhouse's documented constraint), then wiring
+  level-based swaps the way `farmhouse_model_path()` already does.
+
+Awaiting user's steer on scope/sequencing for these two before spending
+build cycles on either.

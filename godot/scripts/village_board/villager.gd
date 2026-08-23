@@ -42,13 +42,24 @@ const CHARACTER_SCENES: Dictionary = {
 ## duplicated as a private copy in worker_assignment_row.gd) so that file
 ## and villager_info_card.gd (the new tap-interaction card, see
 ## design/gdd/villagers.md rule 8) share one source instead of drifting.
+##
+## Found 2026-08-23: these were the raw KayKit fantasy-class labels
+## ("Barbarian", "Knight", ...) shown verbatim as the villager's name --
+## not Indian names at all, just the asset kit's own class tags leaking
+## into player-facing text on an Indian-farming-themed game. Every prop
+## that would have visually justified a class identity (helmet, cape,
+## weapon, mask) is already hidden per this file's own visual-pass header
+## comment, so the class label was pure leftover metadata with nothing on
+## screen to back it up. Replaced with real, common Hindi first names --
+## the character_key (used for asset lookup, save data, OptionButton
+## selection, etc.) is unchanged, only what the player reads changed.
 const CHARACTER_DISPLAY_NAMES: Dictionary = {
-	"barbarian": "Barbarian",
-	"knight": "Knight",
-	"mage": "Mage",
-	"ranger": "Ranger",
-	"rogue": "Rogue",
-	"rogue_hooded": "Hooded Rogue",
+	"barbarian": "Ramesh",
+	"knight": "Arjun",
+	"mage": "Deepak",
+	"ranger": "Vijay",
+	"rogue": "Sunita",
+	"rogue_hooded": "Kamla",
 }
 
 ## Both animation-library files share the "Rig_Medium" skeleton/bone naming
@@ -64,6 +75,14 @@ const MOVEMENT_LIBRARY_PATH := "res://assets_3d/kaykit-adventurers/glTF/Animatio
 ## unrelated combat/death/spawn clips with no ambient-villager use).
 const GENERAL_LIBRARY_PATH := "res://assets_3d/kaykit-adventurers/glTF/Animations/Rig_Medium_General.glb"
 const IDLE_CLIP_NAMES: Array[String] = ["Idle_A", "Idle_B"]
+## Found 2026-08-23, direct glTF inspection of GENERAL_LIBRARY_PATH: it has
+## real Interact/PickUp/Use_Item clips on the same shared skeleton, not just
+## the Idle_A/Idle_B pair already pulled in above. `PickUp` (bend down, grab,
+## stand) is the closest visual match to farm work available in this asset --
+## WorkerStation.gd uses it as its WORKING_POSE_CLIP instead of the previous
+## paused-mid-walk-frame placeholder. See worker_station.gd's own doc comment
+## for the on-device verification.
+const WORK_CLIP_NAMES: Array[String] = ["PickUp"]
 const DEFAULT_ANIMATION := "Walking_A"
 const ANIMATION_LIBRARY_KEY := "moves"
 
@@ -118,7 +137,7 @@ func setup(character_key: String = "ranger") -> void:
 	if library == null:
 		push_error("Villager.setup: could not load movement animation library")
 		return
-	_merge_idle_clips_into(library)
+	_merge_general_clips_into(library, IDLE_CLIP_NAMES + WORK_CLIP_NAMES)
 	_force_every_clip_to_loop(library)
 
 	# Track paths inside the library are relative to the AnimationPlayer's
@@ -161,22 +180,25 @@ func _load_movement_library() -> AnimationLibrary:
 	return library
 
 
-## Copies IDLE_CLIP_NAMES from Rig_Medium_General.glb into `library` (the
-## movement library, already assigned to the AnimationPlayer under the
-## "moves" key) in place, so play_animation("Idle_A") resolves through the
-## exact same "moves/X" lookup play_animation() already uses -- no change
-## to that method's convention needed. Missing clips are skipped silently
-## (mirrors play_animation()'s own no-op-on-missing-clip guard) rather than
-## erroring, since a missing idle clip should degrade to "never idles," not
-## break character setup entirely.
-func _merge_idle_clips_into(library: AnimationLibrary) -> void:
+## Copies the given clip names from Rig_Medium_General.glb into `library`
+## (the movement library, already assigned to the AnimationPlayer under the
+## "moves" key) in place, so play_animation("Idle_A")/play_animation("PickUp")
+## resolve through the exact same "moves/X" lookup play_animation() already
+## uses -- no change to that method's convention needed. Missing clips are
+## skipped silently (mirrors play_animation()'s own no-op-on-missing-clip
+## guard) rather than erroring, since a missing clip should degrade to "one
+## fewer pose available," not break character setup entirely. Originally
+## idle-only (see IDLE_CLIP_NAMES); generalized 2026-08-23 to also pull in
+## WORK_CLIP_NAMES from the same source library rather than open a second,
+## near-identical load/merge function for one more clip.
+func _merge_general_clips_into(library: AnimationLibrary, clip_names: Array[String]) -> void:
 	var anim_scene: PackedScene = load(GENERAL_LIBRARY_PATH)
 	var anim_root := anim_scene.instantiate()
 	var source_player := _find_animation_player(anim_root)
 	if source_player != null:
 		var general_library := source_player.get_animation_library("")
 		if general_library != null:
-			for clip_name in IDLE_CLIP_NAMES:
+			for clip_name in clip_names:
 				if general_library.has_animation(clip_name):
 					library.add_animation(clip_name, general_library.get_animation(clip_name))
 	anim_root.free()
@@ -195,12 +217,13 @@ func _merge_idle_clips_into(library: AnimationLibrary) -> void:
 ## statistically almost every time for Idle_B). Exactly the "frozen
 ## mid-stride" defect villagers.md's own Acceptance Criteria already
 ## calls out as a thing to avoid -- this was silently violating it the
-## whole time. Mutates every clip in `library` (Walking_A/B/C, Idle_A/B)
-## rather than special-casing which ones are ambiently used, since
-## nothing in this project's design wants a non-looping ambient clip;
-## worker_station.gd's HELD_POSE_CLIP use of Walking_A pauses playback
-## explicitly (unaffected by loop_mode, which only governs what happens
-## when playback reaches the end on its own).
+## whole time. Mutates every clip in `library` (Walking_A/B/C, Idle_A/B,
+## and -- since 2026-08-23 -- PickUp) rather than special-casing which
+## ones are ambiently used, since nothing in this project's design wants
+## a non-looping ambient or work clip; worker_station.gd plays PickUp on
+## loop continuously for its WORKING_POSE_CLIP (see that file's own doc
+## comment), which depends on this loop_mode fix to read as repeated work
+## rather than freezing after one cycle.
 func _force_every_clip_to_loop(library: AnimationLibrary) -> void:
 	for clip_name in library.get_animation_list():
 		var clip: Animation = library.get_animation(clip_name)

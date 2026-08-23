@@ -104,6 +104,24 @@ func test_every_character_key_wires_the_idle_clips_without_error() -> void:
 			)
 
 
+## worker_station.gd's WORKING_POSE_CLIP fix (2026-08-23) -- PickUp, merged
+## in from the same Rig_Medium_General.glb source as the idle clips above,
+## must resolve through the same "moves/X" lookup for every character, not
+## just the ones spot-checked while building the fix.
+func test_every_character_key_wires_the_work_clips_without_error() -> void:
+	for character_key in Villager.CHARACTER_SCENES.keys():
+		var villager := VILLAGER_SCENE.instantiate() as Villager
+		add_child_autofree(villager)
+		villager.setup(character_key)
+
+		var anim_player := villager.get_animation_player()
+		for clip_name in Villager.WORK_CLIP_NAMES:
+			assert_true(
+				anim_player.has_animation("moves/%s" % clip_name),
+				"character '%s' should have the shared %s clip" % [character_key, clip_name]
+			)
+
+
 func test_play_animation_can_switch_to_an_idle_clip() -> void:
 	var villager := VILLAGER_SCENE.instantiate() as Villager
 	add_child_autofree(villager)

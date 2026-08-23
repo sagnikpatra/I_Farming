@@ -21,7 +21,7 @@ func _find_label_with_text(node: Node, substring: String) -> Label:
 func test_card_shows_the_real_display_name_for_a_known_character() -> void:
 	var card: VillagerInfoCard = add_child_autofree(VillagerInfoCardScene.instantiate())
 	card.configure("mage")
-	assert_not_null(_find_label_with_text(card, "Mage"))
+	assert_not_null(_find_label_with_text(card, "Deepak"))
 
 
 func test_card_shows_the_real_emoji_for_a_known_character() -> void:

@@ -724,4 +724,18 @@ economy backend, visual stationing, and this UI, is built, tested
 
 ---
 
+**Migration fully closed out (2026-08-23)**: per explicit instruction ("make
+[Godot] the main project, remove the old one"), the frozen pre-migration
+LibGDX/Compose fallback (`app/`, `core/`, the root Gradle toolchain) that
+this roadmap's rollback plan had kept available since ADR-0001 was removed
+from the repository. This was the last open item from ADR-0001's Migration
+Plan/Rollback plan — parity had already been verified 2026-08-21 (above),
+satisfying the rollback plan's own stated condition for when the fallback
+could go. `godot/` is now the only application codebase in the repository.
+See ADR-0001's "Last Verified" entry and `.claude/docs/directory-structure.md`/
+`.claude/docs/technical-preferences.md` (both updated the same day to drop
+the "current vs. target" dual-stack framing) for the full account.
+
+---
+
 *Full epic-by-epic detail (M1–M8) including named risks, Godot API mappings for each of the 8 documented on-device bug classes, and the villager/worker-specific constraints is preserved in this session's transcript. Expand into `/create-epics`-formatted epic files as each epic starts, per the "begin M0 now, backfill docs when needed" kickoff decision.*

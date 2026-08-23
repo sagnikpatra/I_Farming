@@ -10,6 +10,19 @@ Accepted
 
 ## Last Verified
 
+2026-08-23 -- **Rollback plan closed out**: per explicit instruction ("make
+[Godot] the main project, remove the old one"), the frozen pre-migration
+LibGDX/Compose fallback (`app/`, `core/`, the root Gradle toolchain) was
+removed from the repository. This is consistent with the Rollback plan's
+own stated condition below ("remains intact... until the Godot migration
+reaches feature parity and is verified on-device") -- that condition was
+already satisfied (parity verified 2026-08-21, EPIC-M5) before removal was
+requested. The Rollback plan section below is now historical -- reverting
+to Alternative 1 is no longer possible without restoring from git history
+(the commits predating this removal), not from a live fallback in the
+working tree. See `production/session-state/active.md` for the removal
+commit.
+
 2026-08-22 -- Validation Criteria synced against `godot-migration-roadmap.md`'s real EPIC-M0–M7 completion status (see that section's own 2026-08-22 update note)
 
 ## Decision Makers
@@ -326,13 +339,19 @@ cover:
 4. Establish performance baselines and the first formal frame/memory/APK
    budgets once a Godot build exists to measure
 
-**Rollback plan**: The current LibGDX/Compose implementation remains intact
+**Rollback plan (historical -- closed out 2026-08-23, see Last Verified
+above)**: The current LibGDX/Compose implementation remains intact
 on its existing branch/commits until the Godot migration reaches feature
 parity and is verified on-device; no destructive changes to the current
 working app happen as part of accepting this ADR. If the migration stalls or
 proves substantially more costly than estimated, reverting to Alternative 1
 (in-place LibGDX fix) remains available since none of that implementation is
-deleted by this decision alone.
+deleted by this decision alone. **This held true through 2026-08-21's
+verified parity; the fallback itself was then removed from the working
+tree 2026-08-23 per explicit instruction, since it was no longer needed.**
+A revert is still technically possible via git history (the commits
+predating removal) but is no longer a live, zero-effort fallback sitting in
+the working tree.
 
 ## Validation Criteria
 
@@ -388,5 +407,5 @@ Godot 4 rather than LibGDX/Compose from this point forward.
 - Full technical-director analysis (four root causes, alternatives, code
   references) preserved in this session's transcript; not duplicated in full
   here to keep this ADR at a reviewable length
-- Code (current, pre-migration): `core/src/main/kotlin/com/zonkrik/ifarming/village3d/`, `app/src/main/java/com/zonkrik/ifarming/ui/gdx/`
+- Code (pre-migration, removed 2026-08-23 -- see Last Verified above; recoverable from git history predating the removal commit, not present in the working tree): `core/src/main/kotlin/com/zonkrik/ifarming/village3d/`, `app/src/main/java/com/zonkrik/ifarming/ui/gdx/`
 - Godot Android docs: https://docs.godotengine.org/en/stable/tutorials/platform/android/android_library.html, https://docs.godotengine.org/en/stable/tutorials/platform/android/android_plugin.html, https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html

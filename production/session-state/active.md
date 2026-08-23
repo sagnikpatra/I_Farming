@@ -6631,3 +6631,92 @@ NOT start either blind:
 
 Awaiting user's steer on scope/sequencing for these two before spending
 build cycles on either.
+
+Committed as `da22451`, mirrored to `master`, both pushed to origin.
+
+## 2026-08-23 (cont.) — Item 4 (building variety) tackled, per user's chosen sequencing
+
+User picked "Building variety first" over the construction-worker mechanic
+(the other real option, "both GDD-first," wasn't picked). Also confirmed:
+"one better model per zone" (a single-model reskin using assets already in
+the repo), not "add real per-zone levels first" (which would have meant
+designing a whole new leveled-upgrade mechanic for 5 zones -- correctly
+recognized as much bigger scope than the user actually asked for).
+
+**Asset survey before touching code** (this project's "verify, don't
+guess" discipline applied to asset selection, not just code): grepped the
+full `assets_3d/city-kit-suburban/` and `assets_3d/fantasy-town-kit/`
+source directories against what's actually curated into
+`godot/assets_3d/`. Found real headroom: city-kit-suburban has 21
+`building-type-*` house shells total, only 5 curated (all already spoken
+for by Farmhouse's own tiers) -- 16 completely unused. fantasy-town-kit
+has a `watermill-wide.obj` variant beyond the currently-used `watermill.obj`.
+Also found a real constraint: fantasy-town-kit has no standalone "market
+building" object at all, only individual stall props (all similar scale)
+and generic wall/roof/stairs *parts* that would need real composite-
+building authoring to assemble into something bigger than what Mandi
+already has -- out of scope for a single-model-swap pass.
+
+**Shipped**: `village_fixture_data.gd` --
+`VERTICAL_FARM_MODEL`: `windmill.obj` → `building-type-b.obj` (copied
+into `godot/assets_3d/city-kit-suburban/`, second-largest of the 16
+unused shells by file size, same "size as complexity/grandeur proxy"
+precedent `farmhouse_model_path()`'s own tiers already established; also
+a better content fit -- a windmill is milling/irrigation flavor, not
+vertical farming). `AQUACULTURE_MODEL`: `watermill.obj` → `watermill-wide.obj`
+(copied into `godot/assets_3d/fantasy-town-kit/`, a real kit-provided
+distinct variant, same pond-infrastructure theme). Both new files use the
+exact same shared `Textures/colormap.png` material reference every
+already-working model in these kits uses -- same import pipeline, not a
+new pattern.
+
+**Deliberately left unchanged, documented why in the same comment block**:
+Mandi (no better single-object option exists in the sourced kit -- see
+constraint above) and Agroforestry (`hedge-large.obj` is still the best
+enclosure-reading shape available; reusing a `nature-kit` tree model
+already reserved for the ambient tree-ring would blur the "ambient
+decoration vs. purchasable zone" visual language). Polyhouse untouched
+too -- still no greenhouse shape in any sourced kit, already documented,
+genuinely needs new sourcing, not a swap.
+
+**Verified**: GUT suite 635/635 passing twice (headless load proves both
+new `.obj`/`.mtl` files parse and import cleanly -- a malformed file or
+bad material reference would have thrown loudly here). Fresh debug APK
+exported and installed on real device (`5bc7f547`).
+
+**Real verification gap, stated plainly, not glossed over**: could NOT
+get a visual on-device screenshot of the actual Vertical Farm/Aquaculture
+zones with their new models. The save's zones are all real/unlocked
+(confirmed via `run-as ... cat files/save.tres`), but they're positioned
+off the initial camera framing, and three separate attempts to move the
+camera to find them all had zero effect on the rendered frame: the HUD's
+`-`/`+` buttons (unrelated to board zoom -- board zoom is two-finger
+pinch per `board_interactor.gd`, not a button), and two different
+`adb shell input swipe` attempts (varying start point, duration, avoiding
+UI/villager overlap) meant to trigger `board_interactor.gd`'s real
+single-finger drag-pan. All three screenshots were pixel-identical to the
+starting frame. Concluded this is a tooling limitation -- `adb`'s
+synthetic swipe likely doesn't produce the intermediate touch-move events
+Godot's Android gesture recognizer needs to distinguish a drag from a tap
+-- the same class of gap as the earlier `screenrecord` permission wall,
+not evidence anything is wrong with the actual change. Stopped after 3
+failed attempts per this project's own "don't rabbit-hole on hard-to-hit
+on-device targets" precedent (same call made earlier this session for the
+ambient-villager tap-name verification) rather than keep guessing gesture
+parameters blindly.
+
+Cleaned up all scratchpad APKs/screenshots and device sdcard copies.
+
+**Net evidence for this change**: headless-verified file validity (GUT
+635/635 x2) + the same documented content-fit/size-proxy judgment call
+this codebase already relies on elsewhere, explicitly NOT a pixel-verified
+on-device screenshot. Told the user this plainly rather than claim visual
+confirmation that wasn't obtained -- if either new model looks wrong in
+person, it's a one-line revert in `village_fixture_data.gd` (old paths
+`windmill.obj`/`watermill.obj` still exist, uncurated copies untouched in
+the root `assets_3d/`).
+
+**Next**: commit this change. Item 3 (construction-worker-on-upgrade
+visual) remains the one deferred ask -- still needs a real GDD-level
+design decision (duration/trigger/positioning) before any code, not
+started.

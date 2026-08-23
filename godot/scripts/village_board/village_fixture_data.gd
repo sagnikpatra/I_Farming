@@ -62,8 +62,33 @@ static func farmhouse_model_path(level: int) -> String:
 ## ZoneFixture.use_translucent_placeholder / VillageSnapshotMapper's
 ## Polyhouse builder) so it reads as "glass structure" rather than a solid
 ## opaque box.
-const AQUACULTURE_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/watermill.obj"
-const VERTICAL_FARM_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/windmill.obj"
+##
+## Update 2026-08-23 (user report: "the models are just basic"): none of
+## Mandi/Polyhouse/Aquaculture/Vertical Farm/Agroforestry have a level
+## number in GameState (only farmhouse_level does) -- there is no "tier by
+## level" mechanism to extend to them the way farmhouse_model_path() below
+## works, so this pass is a one-time single-model upgrade per zone using
+## content already sourced into assets_3d/ (see that directory's README),
+## not new tiering. Only 5 of city-kit-suburban's 21 building-type-* shells
+## were ever curated into godot/assets_3d/ (all 5 already spoken for by
+## Farmhouse's own tiers above) -- building-type-b.obj/.mtl newly copied in
+## for Vertical Farm below, the other 15 remain unused/uncurated. Real
+## constraint found while sourcing this pass: fantasy-town-kit has no
+## standalone "market building" object, only individual stall props
+## (stall/stall-red/stall-green, all similar scale) and generic wall/roof/
+## stairs *parts* that would need real composite-building authoring to
+## assemble into something bigger -- out of scope for a single-model-swap
+## pass, so Mandi and Agroforestry are UNCHANGED here (no available asset
+## reads as a clear improvement over what's already picked); documented
+## rather than silently left looking like an oversight.
+const AQUACULTURE_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/watermill-wide.obj"
+## Was windmill.obj -- swapped 2026-08-23 for a real building shell.
+## Windmill is milling/irrigation flavor, not vertical farming; a
+## multi-story building is both a better content fit AND (per this file's
+## own "pick by size as a complexity/grandeur proxy" precedent, same one
+## farmhouse_model_path() above uses) the more substantial-looking option
+## among the 16 previously-uncurated building-type-* shells.
+const VERTICAL_FARM_MODEL := "res://assets_3d/city-kit-suburban/OBJ format/building-type-b.obj"
 const AGROFORESTRY_MODEL := "res://assets_3d/fantasy-town-kit/OBJ format/hedge-large.obj"
 
 ## Curated decoration models (EPIC-M5 parity pass) -- replaces the flat

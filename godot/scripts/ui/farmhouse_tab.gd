@@ -115,6 +115,7 @@ func _on_upgrade_pressed() -> void:
 	_economy.buy_farmhouse_upgrade()
 	if _economy.dirty:
 		_play_audio(&"progression_farmhouse_upgrade")
+		_village_board.play_construction_effect(VillageSnapshotMapper.ZONE_ID_FARMHOUSE)
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 

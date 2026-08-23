@@ -241,3 +241,40 @@ func test_an_unlocked_zone_does_not_render_a_lock_badge() -> void:
 	# precedent as the lamp tests above.
 	var new_polyhouse_node: Node3D = board._zone_nodes_by_id[VillageSnapshotMapper.ZONE_ID_POLYHOUSE]
 	assert_false(new_polyhouse_node.has_node("LockBadge"), "unlocking Polyhouse must remove the badge a fresh board started with")
+
+
+## User report (2026-08-23): "When building is upgraded then building
+## should show that worker is building it." play_construction_effect() is
+## the resulting API -- farmhouse_tab.gd/polyhouse_tab.gd/agroforestry_tab.gd/
+## niche_farming_tab.gd's two handlers all call it right after their own
+## mutating GameEconomy call succeeds (see each file's own `if _economy.dirty`
+## block). Covered here at the VillageBoard level rather than in each tab's
+## own test file, matching those files' own established precedent of
+## testing only pure build_view_data() logic, not button-press/scene-tree
+## wiring (see test_polyhouse_tab.gd's header comment).
+func test_play_construction_effect_spawns_a_villager_at_the_zones_center() -> void:
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+
+	board.play_construction_effect(VillageSnapshotMapper.ZONE_ID_FARMHOUSE)
+
+	var farmhouse_zone: ZoneFixture = board._zones_by_id[VillageSnapshotMapper.ZONE_ID_FARMHOUSE]
+	var expected_position := board._zone_center_world(farmhouse_zone)
+	var found_effect := false
+	for child in board.get_node("ActorLayer").get_children():
+		if child is ConstructionEffect:
+			found_effect = true
+			assert_eq(child.position, expected_position, "the effect must spawn at the zone's center, same spot _zone_center_world() computes")
+	assert_true(found_effect, "play_construction_effect() must actually add a ConstructionEffect under ActorLayer")
+
+
+## Defensive guard: called with a zone_id that isn't currently rendered
+## (a bad id, or a real call site racing a rebuild) -- must not crash, and
+## must not add a stray effect node with a garbage position.
+func test_play_construction_effect_is_a_safe_no_op_for_an_unknown_zone_id() -> void:
+	var board: VillageBoard = add_child_autofree(VillageBoardScene.instantiate())
+	var actor_layer := board.get_node("ActorLayer")
+	var children_before := actor_layer.get_child_count()
+
+	board.play_construction_effect("not_a_real_zone")
+
+	assert_eq(actor_layer.get_child_count(), children_before, "an unknown zone_id must not spawn anything")

@@ -87,6 +87,7 @@ func _on_build_pressed() -> void:
 	_economy.buy_agroforestry()
 	if _economy.dirty:
 		_play_audio(&"progression_structure_unlock")
+		_village_board.play_construction_effect(VillageSnapshotMapper.ZONE_ID_AGROFORESTRY)
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 

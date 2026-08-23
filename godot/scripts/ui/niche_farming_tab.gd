@@ -138,6 +138,7 @@ func _on_build_aquaculture_pressed() -> void:
 	_economy.buy_aquaculture()
 	if _economy.dirty:
 		_play_audio(&"progression_structure_unlock")
+		_village_board.play_construction_effect(VillageSnapshotMapper.ZONE_ID_AQUACULTURE)
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -146,6 +147,7 @@ func _on_build_vertical_farm_pressed() -> void:
 	_economy.buy_vertical_farm()
 	if _economy.dirty:
 		_play_audio(&"progression_structure_unlock")
+		_village_board.play_construction_effect(VillageSnapshotMapper.ZONE_ID_VERTICAL_FARM)
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 

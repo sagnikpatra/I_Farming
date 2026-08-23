@@ -81,8 +81,12 @@ const IDLE_CLIP_NAMES: Array[String] = ["Idle_A", "Idle_B"]
 ## stand) is the closest visual match to farm work available in this asset --
 ## WorkerStation.gd uses it as its WORKING_POSE_CLIP instead of the previous
 ## paused-mid-walk-frame placeholder. See worker_station.gd's own doc comment
-## for the on-device verification.
-const WORK_CLIP_NAMES: Array[String] = ["PickUp"]
+## for the on-device verification. `Interact` (a reach-forward gesture) was
+## added the same day for ConstructionEffect.gd's transient "worker is
+## building it" flourish -- deliberately a different clip from PickUp so the
+## momentary construction crew reads as visually distinct from an ongoing
+## stationed worker, not a duplicate of the same pose.
+const WORK_CLIP_NAMES: Array[String] = ["PickUp", "Interact"]
 const DEFAULT_ANIMATION := "Walking_A"
 const ANIMATION_LIBRARY_KEY := "moves"
 

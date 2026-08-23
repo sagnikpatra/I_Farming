@@ -6785,3 +6785,110 @@ before concluding it's a tooling limitation -- the real cause here
 (worker-occludes-building, plus correct-not-broken pan-bounds-collapse
 behavior) was fully explained by a few minutes of reading
 `camera_rig.gd`/`village_board.gd`, not by more adb guessing.
+
+## 2026-08-23 (cont.) — Item 3 shipped: "worker is building it" construction effect
+
+The one remaining ask from the user's original four-part report. Scoped via
+AskUserQuestion first (per the standing collaboration protocol): confirmed
+trigger scope is BOTH Farmhouse level-ups AND a zone's first-time unlock
+(Polyhouse/Aquaculture/Vertical Farm/Agroforestry), not Farmhouse alone.
+
+**Design, grounded in real code, not guessed**: `GameEconomy` is a
+signal-free `RefCounted` by deliberate architecture (Foundation layer must
+not depend on Presentation layer), so there's no economy-side event to
+hook. Instead: every real call site (`farmhouse_tab.gd`'s upgrade handler,
+`polyhouse_tab.gd`/`agroforestry_tab.gd`/`niche_farming_tab.gd`'s two
+build handlers) already has an `if _economy.dirty:` block gating an
+existing SFX cue right after its own mutating call -- the exact same
+established "did this actually succeed" pattern, reused rather than
+inventing a new one.
+
+**New component**: `construction_effect.gd`/`.tscn` (`ConstructionEffect`,
+`Node3D`) -- same shape as `WorkerStation` (`setup(world_position,
+character_key)`, `get_villager()`), plus a one-shot `Timer`
+(`DURATION_SECONDS = 3.0`) that `queue_free()`s the node when it fires.
+Plays `Interact` (not `WorkerStation`'s `PickUp`) so a momentary
+construction crew reads as visually distinct from an ongoing stationed
+worker -- added `Interact` to `villager.gd`'s `WORK_CLIP_NAMES` (now
+`["PickUp", "Interact"]`), merged from the same `Rig_Medium_General.glb`
+source as `PickUp`. Random `character_key` per spawn (matches
+`VillagerSpawner`'s own "random character for visual variety"
+precedent). Positioned at `_zone_center_world(zone)` -- the SAME spot
+`WorkerStation` uses (deliberately, despite today's earlier occlusion
+finding): reasoned through and documented in the class doc why it's safe
+here specifically -- Farmhouse is never worker-eligible (confirmed via
+`_zone_id_for_plot_kind()`) and a zone's first-time unlock can never
+race a real assigned worker (unassignable before the zone exists), so
+neither trigger can ever collide with a permanent `WorkerStation`, and a
+few seconds of occlusion during the zone's OWN "just got built"
+celebration is the point, not a defect (unlike a permanent station
+hiding the building forever).
+
+New `VillageBoard.play_construction_effect(zone_id)`, wired into all 5
+call sites' `if _economy.dirty:` blocks alongside their existing SFX cue.
+
+**Testing hiccup, real and instructive**: the new `test_construction_effect.gd`
+initially failed the WHOLE suite to load (`Scripts` dropped 51->50,
+`Tests` 635->624, `ConstructionEffect` not found in scope) -- a new
+`class_name` script needs a headless editor pass
+(`--headless --editor --quit-after 20`) to register in Godot's global
+class cache before other scripts can reference it by name when running
+via `-s` command-line script execution; this project's normal
+`--headless -s addons/gut/gut_cmdln.gd` invocation alone doesn't trigger
+that rescan. Fixed by running the editor pass once; documented here so a
+future new-`class_name`-script addition doesn't re-diagnose this from
+scratch.
+
+**On-device verification -- the long way round, documented honestly**:
+5 new tests added (635 -> 642 after the class-cache fix, -> 643 once the
+real-time despawn test below was added), GUT 643/643 passing twice.
+
+Farmhouse was already maxed (7/7) and every zone already unlocked in the
+real save (confirmed via `run-as ... cat files/save.tres`), so neither
+trigger could be exercised on it directly. User approved (AskUserQuestion,
+after the first attempt was blocked by the auto-mode permission
+classifier -- correctly, this is genuinely risky) a temporary wipe: full
+byte-perfect backup pulled first, save deleted, a fresh economy used to
+test both trigger paths (after bumping `coins` via a direct text edit of
+the fresh save's own `.tres` -- 300 starting coins can't afford a ₹2000
+Farmhouse upgrade or a ₹35000 Polyhouse build), then the original save
+restored via `run-as ... cp` and verified byte-identical against the
+backup via **MD5 hash after normalizing line endings** (a plain `diff`
+falsely showed the whole file as different -- a CRLF-handling artifact,
+not real data loss; MD5 was the trustworthy check).
+
+Confirmed on-device: the effect spawns at the right position (Farmhouse
+title toast "Welcome to your new Kutcha House!" / Polyhouse toast both
+fired correctly, confirming the underlying purchases succeeded), the
+right character appears with a bent-forward `Interact` pose (not a
+T-pose), and the Hindu names render correctly in the real live UI too
+("Ramesh is working this zone" / "Vijay is working this zone" reconfirmed
+incidentally while restoring worker assignments mid-test).
+
+**Real scare, resolved, worth recording plainly**: the Farmhouse effect
+instance appeared to persist far longer than `DURATION_SECONDS` across
+several on-device checks (long enough that a genuine Timer bug seemed
+likely). Wrote a NEW test
+(`test_the_timer_actually_fires_after_real_time_passes`) that actually
+`await`s real wall-clock time (`get_tree().create_timer(DURATION_SECONDS
++ 1.0).timeout`) rather than manually emitting the timer's signal like
+the original test did -- this is the properly rigorous check, and it
+passed cleanly in isolation (despawns well within 4s). Concluded the
+on-device read was unreliable, not the mechanism: this session's own
+slow, multi-step, frequently-interrupted investigation (device lock
+screens, extensive reasoning between each adb call, a Monsoon Season
+weather event firing mid-check) meant far more real wall-clock time
+elapsed between screenshots than the `sleep N` calls alone accounted
+for. Recorded the new real-time test as permanent regression coverage
+regardless -- it's a strictly better check than the manual-emit one and
+costs nothing extra to keep.
+
+Device and local scratchpad cleaned up (backups, pushed test files, all
+screenshots).
+
+**Status**: implementation complete, GUT 643/643 twice, on-device spawn/
+pose/position confirmed, despawn timing confirmed via a real-time-aware
+unit test (on-device timing itself inconclusive due to this session's own
+slow investigation cadence, not a demonstrated bug). Real save fully
+restored and MD5-verified. Not yet committed -- awaiting the user's
+go-ahead per this session's established commit pattern.

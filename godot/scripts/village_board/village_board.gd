@@ -182,6 +182,7 @@ var _worker_stations_by_plot_kind: Dictionary = {}
 var _chanda_visitor_node: ChandaVisitor = null
 const WORKER_STATION_SCENE: PackedScene = preload("res://scenes/village_board/worker_station.tscn")
 const CHANDA_VISITOR_SCENE: PackedScene = preload("res://scenes/village_board/chanda_visitor.tscn")
+const CONSTRUCTION_EFFECT_SCENE: PackedScene = preload("res://scenes/village_board/construction_effect.tscn")
 
 ## Audio pass: edge-detected Monsoon/Festival active state, so
 ## AudioManager.set_monsoon_active()/set_festival_active() are only called on
@@ -1800,6 +1801,28 @@ func get_villager_spawner() -> VillagerSpawner:
 ## tree-shape-coupled path of their own.
 func get_worker_station(plot_kind: int) -> WorkerStation:
 	return _worker_stations_by_plot_kind.get(plot_kind, null)
+
+
+## Spawns a transient "worker is building it" flourish at `zone_id`'s
+## center -- see construction_effect.gd's own class doc for the full
+## rationale (why center is safe here despite WorkerStation's occlusion
+## finding, why this isn't persisted, trigger list). Call sites:
+## farmhouse_tab.gd's upgrade handler and every zone-unlock tab's purchase
+## handler (polyhouse_tab.gd, agroforestry_tab.gd, niche_farming_tab.gd's
+## two handlers), each gated on `_economy.dirty` right after the mutating
+## call -- the same success-check pattern those files already use for
+## their SFX cue. No-op if `zone_id` isn't currently rendered (a bad id,
+## or called before the first rebuild()) -- defensive, not expected in
+## practice since every real call site fires after
+## persist_and_rebuild_if_dirty() has already run this frame.
+func play_construction_effect(zone_id: String) -> void:
+	var zone: ZoneFixture = _zones_by_id.get(zone_id)
+	if zone == null:
+		return
+	var effect := CONSTRUCTION_EFFECT_SCENE.instantiate()
+	_actor_layer.add_child(effect)
+	var character_key: String = Villager.CHARACTER_SCENES.keys().pick_random()
+	effect.setup(_zone_center_world(zone), character_key)
 
 
 ## Minimal read-only accessor, same rationale as get_economy() above -- lets

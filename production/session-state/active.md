@@ -6720,3 +6720,68 @@ the root `assets_3d/`).
 visual) remains the one deferred ask -- still needs a real GDD-level
 design decision (duration/trigger/positioning) before any code, not
 started.
+
+## 2026-08-23 (cont.) — The on-device verification gap, actually closed
+
+User pushed back on accepting the unverified-visual state and asked for
+the same on-device check to be completed properly, not left as a stated
+limitation. Rather than repeat the same failed pan/zoom guesses, read the
+real code this time before touching adb again -- found the actual
+explanation in three steps:
+
+1. `camera_rig.gd`'s own doc comment: "Pan bounds are now zoom-aware: at
+   the fully-zoomed-out default distance the whole board already fits on
+   screen, so pan bounds collapse to a single point." This is why every
+   earlier pan/zoom attempt (buttons, two `adb shell input swipe`
+   attempts, a manual multi-step `input motionevent DOWN/MOVE/UP` drag,
+   and the `🪷`/`🌸` quick-nav-chip recenter) produced a pixel-identical
+   frame -- not a tooling failure at all, correct engine behavior given
+   the whole populated board (verified via `zone_layout = {}` in the real
+   save -- no zone has been dragged from its default anchor) already fits
+   in one frame by design.
+2. `village_board.gd`'s `_sync_worker_stations()`: `station.setup(
+   _zone_center_world(zone), ...)` -- a `WorkerStation` renders AT its
+   zone's exact center. Cross-referenced the real save's
+   `worker_assignments` (`run-as ... cat files/save.tres`): Aquaculture
+   (plot_kind 3) has `barbarian`/Ramesh assigned, Vertical Farm (plot_kind
+   4) has `ranger`/Vijay assigned -- both buildings were sitting right
+   there in every earlier screenshot, fully hidden under their own
+   assigned worker's model.
+3. Used the REAL in-game "Unassign" flow (tapped the zone under the
+   worker to open its real management sheet -- which also incidentally
+   reconfirmed live that "Ramesh is working this zone"/"Vijay is working
+   this zone" render correctly) rather than editing the user's live save
+   file directly -- deliberately the safer path per this project's
+   "confirm before hard-to-reverse/outward-facing actions" standard, even
+   though this session already had file read access.
+
+**Verified, for real this time**: Aquaculture's `watermill-wide.obj`
+renders cleanly -- correct wood-toned shading, sits properly on its
+plinth, clear waterwheel silhouette. Vertical Farm's `building-type-b.obj`
+is a real substantial structure (tower/silo section + windows/door detail,
+much more building-like than the old windmill) but renders nearly flat
+cream-white with little shading contrast compared to every other model in
+the game -- flagged honestly to the user as a real, not-fully-explained
+difference (same shared-texture material setup as every working model, so
+likely this shell's actual pale color scheme interacting with the toon
+shader rather than an import defect, but not confirmed against engine
+source). Showed the zoomed crop directly in conversation and asked via
+AskUserQuestion rather than deciding alone -- **user chose to keep it as
+shipped**, judging it reads fine at normal game viewing scale and is a
+real upgrade over the windmill regardless of the shading quirk.
+
+**Restored state exactly**: unassigning was done through the real UI for
+this verification, so both workers were reassigned back through the same
+real UI afterward -- verified byte-for-byte via `worker_assignments` in
+the save file matching the original (`0: rogue, 1: knight, 3: barbarian,
+4: ranger`) before moving on. No lasting change to the user's real save
+from this verification pass.
+
+Cleaned up all scratchpad screenshots and device sdcard copies.
+
+**Lesson for next time this class of gap comes up**: when an on-device
+visual check seems blocked, check the actual camera/positioning code
+before concluding it's a tooling limitation -- the real cause here
+(worker-occludes-building, plus correct-not-broken pan-bounds-collapse
+behavior) was fully explained by a few minutes of reading
+`camera_rig.gd`/`village_board.gd`, not by more adb guessing.

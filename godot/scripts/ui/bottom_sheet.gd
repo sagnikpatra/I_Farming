@@ -69,6 +69,11 @@ enum State { CLOSED, OPEN }
 ## fixed, not content-driven (see class doc).
 const SHEET_HEIGHT_RATIO: float = 0.6
 const SLIDE_DURATION_SECONDS: float = 0.25
+## Comic-pop entrance duration -- slightly longer than SLIDE_DURATION_SECONDS
+## so TRANS_BACK's overshoot-then-settle has room to read on-screen instead
+## of being too quick to notice. Close keeps SLIDE_DURATION_SECONDS/CUBIC
+## (see _animate_to()) -- only the open direction pops.
+const POP_DURATION_SECONDS: float = 0.35
 const BACKDROP_COLOR := Color(0.0, 0.0, 0.0, 0.5)
 
 signal opened
@@ -168,8 +173,18 @@ func _animate_to(target_y: float, fading_in: bool) -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	_tween = create_tween()
-	_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	_tween.tween_property(_sheet_panel, "position:y", target_y, SLIDE_DURATION_SECONDS)
-	_tween.parallel().tween_property(_backdrop, "modulate:a", 1.0 if fading_in else 0.0, SLIDE_DURATION_SECONDS)
+	var duration: float
+	if fading_in:
+		# Comic-pop entrance: TRANS_BACK overshoots past target_y then eases
+		# back to rest -- reads as a playful "pop" rather than a flat slide.
+		# Close deliberately does NOT use this -- a bounce on exit reads as
+		# jittery, not playful, so close keeps the original flat curve below.
+		_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		duration = POP_DURATION_SECONDS
+	else:
+		_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		duration = SLIDE_DURATION_SECONDS
+	_tween.tween_property(_sheet_panel, "position:y", target_y, duration)
+	_tween.parallel().tween_property(_backdrop, "modulate:a", 1.0 if fading_in else 0.0, duration)
 	if not fading_in:
 		_tween.tween_callback(func(): visible = false)

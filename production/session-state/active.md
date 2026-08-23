@@ -6427,3 +6427,70 @@ Farmhouse, Mandi, and Polyhouse sheets, all clean.
 Comic-pop entrance animation (the other half of the original request) is
 still open -- not started this pass; scoped as a bouncier `bottom_sheet.gd`
 Tween easing change per the user's confirmed preference.
+
+## 2026-08-23 (cont.) — Comic-pop entrance animation shipped + new shadow-ghosting bug found+fixed
+
+Picked up the one open item from the segment above: `bottom_sheet.gd`'s
+`_animate_to()` now uses `Tween.TRANS_BACK`/`EASE_OUT` (new
+`POP_DURATION_SECONDS = 0.35`) for the OPEN direction only -- overshoots
+past `target_y` then settles, reading as a playful "pop." Close
+deliberately keeps the original flat `TRANS_CUBIC`/`EASE_OUT` -- a bounce on
+exit reads as jittery, not playful, per the user's original framing of this
+as an *entrance* animation. No new tests (animation timing is Visual/Feel
+territory per coding-standards.md, matching this file's existing test
+doc-comment) -- GUT suite 634/634 passing twice confirms no state-machine
+regression.
+
+**Verification limits, stated plainly**: tried to visually capture the
+bounce itself on-device. `adb shell screenrecord` is permission-denied on
+this device (`5bc7f547`) -- an OEM/device policy restriction, not something
+fixable from this session. Burst adb screenshots (up to 5 in a row
+immediately after the tap) were also too slow relative to the 0.35s
+animation to reliably land a mid-motion frame -- every burst landed on
+either the pre-tap or fully-settled frame. Did NOT fabricate visual
+confirmation of the bounce motion itself; what IS confirmed on-device: the
+sheet opens/closes correctly, shows correct content, clean logcat, no
+crashes, both before and after the change.
+
+**Real bug found while screenshotting for the above**: zoomed into the
+settled Farmhouse sheet screenshot and found the title
+("Modern Agricultural Estate" / "Farmhouse Level 7 of 7") and every
+bonus-list/storage line rendering with heavily doubled/ghosted glyphs --
+different from the already-fixed autowrap bug (this text doesn't wrap).
+Root cause: `UiTheme.make_label_settings()`'s drop shadow (`shadow_size`,
+`shadow_offset`) scales 1:1 with the 2.6x `UI_SCALE` from the same-day
+global-scale fix -- proportion was preserved, but at the resulting absolute
+pixel size (~10px shadow, ~5x8px offset) the near-black `TEXT_SHADOW_COLOR`
+shadow separates far enough from `SOIL_BROWN_DARK` text to read as a second
+overlapping copy rather than a receding shadow. This wasn't sheet-specific:
+`make_title_label`/`make_label_settings` are used 146 times across 17 UI
+files, so this was a global regression the earlier same-day verification
+pass missed (it didn't zoom in this close).
+
+User confirmed (via AskUserQuestion) fixing it now, in scope with their
+"design, UI, lightings -- like COC" priority. **Fix**: `shadow_size` now
+scales at half rate (`scale_px(2)`, ~5px) and `shadow_offset` shrunk +
+squared to `Vector2(1, 1) * UI_SCALE` (~2.6x2.6px) instead of the original
+`(2,3)` scaled 1:1. Documented in
+`docs/engine-reference/godot/breaking-changes.md`'s "Project-Specific
+Findings" section (new entry, same pattern as the glow/autowrap findings).
+
+**Verified**: GUT suite 634/634 passing twice after the shadow fix (4
+passes total this segment: animation change x2, shadow fix x2). Fresh debug
+APK exported, installed on real device `5bc7f547`, Farmhouse sheet
+screenshotted and zoom-cropped before/after -- confirmed the doubled text
+is now clean single glyphs with a subtle, legible drop shadow across the
+title, "Current Bonuses" heading, all three bullet lines, and the storage
+line.
+
+Cleaned up all scratchpad APKs/screenshots and device sdcard copies after
+review (`comic-pop.apk`, `comic-pop-shadow-fix.apk`, `pre_tap.png`,
+`mid_pop.png`, `settled.png`, `burst*.png`, `shadow_fix.png`, and two failed
+`screenrecord` attempts).
+
+**Next**: commit both changes (bottom_sheet.gd comic-pop + ui_theme.gd
+shadow fix + breaking-changes.md doc) together -- mirror `master` +
+`feature/isometric-village-view` per this session's established pattern.
+Then resume Track B / general design-polish work per the standing
+"design, UI, lightings" priority, continuing autonomously per the standing
+instruction.

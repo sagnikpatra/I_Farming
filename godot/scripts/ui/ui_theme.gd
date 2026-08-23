@@ -464,11 +464,19 @@ static func make_label_settings(
 	settings.font = font_bold() if bold else font_regular()
 	settings.font_size = roundi(float(font_size) * UI_SCALE * accessibility_scale)
 	settings.font_color = color
-	# Shadow size/offset scaled with UI_SCALE too -- at an unscaled 4px/(2,3),
-	# a UI_SCALE-enlarged font's shadow would look proportionally thin/washed
-	# out rather than matching the crisp readability the original design
-	# intended at its authored (pre-1080px-canvas) size.
-	settings.shadow_size = scale_px(4)
+	# Found 2026-08-23, on-device (zoomed screenshot of farmhouse_tab.gd's
+	# non-wrapping title/bonus-list labels): scaling BOTH shadow_size (to
+	# scale_px(4), ~10px) and shadow_offset (to (2,3)*UI_SCALE, ~5x8px) by
+	# the full 2.6x UI_SCALE preserves the pre-scale proportion, but at that
+	# absolute pixel size the shadow separates far enough from the glyph to
+	# read as a second overlapping copy of the text rather than a receding
+	# drop shadow -- worse against SOIL_BROWN_DARK fill, since TEXT_SHADOW_COLOR
+	# is near-black and low-contrast against dark-brown text specifically.
+	# Fix: scale shadow_size at half rate and shrink+square the offset so the
+	# shadow stays tucked close behind the glyph at any UI_SCALE instead of
+	# growing in lockstep with it. See breaking-changes.md's "Project-Specific
+	# Findings" section for the full isolation writeup.
+	settings.shadow_size = scale_px(2)
 	settings.shadow_color = TEXT_SHADOW_COLOR
-	settings.shadow_offset = Vector2(2, 3) * UI_SCALE
+	settings.shadow_offset = Vector2(1, 1) * UI_SCALE
 	return settings

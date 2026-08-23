@@ -160,6 +160,39 @@ header.
 built via `UiTheme.make_title_label()`/`make_label_settings()`. Use
 `UiTheme.make_wrapping_label()` instead for any text that needs to wrap.
 
+### `LabelSettings.shadow_size`/`shadow_offset` scaled 1:1 with `UI_SCALE` reads as doubled/ghosted text (found 2026-08-23)
+
+**Symptom**: distinct from the autowrap bug above — this hits non-wrapping
+`LabelSettings` Labels too (e.g. `farmhouse_tab.gd`'s title/bonus-list/
+storage lines, none of which wrap). At `UI_SCALE = 2.6` (landed same day as
+the global UI-scale fix), `make_label_settings()` scaled `shadow_size` to
+`scale_px(4)` (~10px) and `shadow_offset` to `(2,3) * UI_SCALE` (~5×8px) to
+"preserve the pre-scale proportion." The proportion was preserved, but at
+that absolute pixel size the shadow separates far enough from the glyph to
+read as a second overlapping copy of the text rather than a receding drop
+shadow — worse against `SOIL_BROWN_DARK` fill specifically, since
+`TEXT_SHADOW_COLOR` (near-black, alpha 0.7) is low-contrast against
+dark-brown text. Zoomed on-device screenshot comparison (before/after) is
+the evidence; this is legible-at-a-glance, not subtle.
+
+**Root cause**: preserving proportion isn't the same as preserving
+legibility — a shadow offset large enough to be a separate readable
+letterform at small scale becomes *more* separate, not equally subtle, once
+blown up 2.6x. Proportional scaling was the wrong model for this property.
+
+**Fix landed**: `make_label_settings()` now scales `shadow_size` at half
+rate (`scale_px(2)`, ~5px) and uses a much smaller, squared offset
+(`Vector2(1, 1) * UI_SCALE`, ~2.6×2.6px) instead of scaling the original
+`(2,3)` offset 1:1. Verified clean on-device (Farmhouse sheet title, bonus
+list, storage line all re-screenshotted and zoomed after the fix).
+
+**Practical rule for this project**: don't assume a `LabelSettings` visual
+property (shadow, outline, etc.) should scale 1:1 with `UI_SCALE` just
+because font size does — offset/spread properties can need sub-linear
+scaling to stay subtle at a larger absolute size. Verify zoomed, on-device,
+not just at a glance from the normal viewing distance a screenshot review
+happens at.
+
 ## Not Yet Covered
 
 This project has not yet upgraded past 4.7.1, so there is no 4.7→4.8+

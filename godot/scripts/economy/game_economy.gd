@@ -1050,7 +1050,12 @@ func calculate_thief_steal_amount(session_id: int, hour_seed: int) -> int:
 	var seed: int = session_id * 1_000_009 + hour_seed * 13_121
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
-	var amount: float = randf_range(float(GameData.THIEF_STEAL_AMOUNT_MIN), float(GameData.THIEF_STEAL_AMOUNT_MAX))
+	# Bugfix: was calling the global randf_range() (Godot's shared, OS-entropy-
+	# seeded RNG) instead of rng.randf_range() -- the locally seeded `rng` above
+	# was created and seeded but never actually used, so this was never
+	# deterministic despite the seeding. Caught by
+	# test_steal_amount_deterministic_per_session_and_hour actually running.
+	var amount: float = rng.randf_range(float(GameData.THIEF_STEAL_AMOUNT_MIN), float(GameData.THIEF_STEAL_AMOUNT_MAX))
 	return roundi(amount)
 
 

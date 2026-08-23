@@ -103,18 +103,25 @@ func test_level_9_unlocks_vertical_farm() -> void:
 	assert_true(def.unlocks.has("vertical_farm"))
 
 
-func test_storage_capacity_accumulates() -> void:
+func test_storage_capacity_is_the_current_levels_absolute_total() -> void:
+	## Each FarmhouseLevelDef.storage_capacity is already the absolute total
+	## for that tier (see _ensure_farmhouse_levels()'s catalogue comments --
+	## e.g. Level 4's stored value of 2500 already IS "Level 3's 1500 + this
+	## level's +1000", not a delta to sum again). get_total_storage_capacity()
+	## must return just the current level's value, not a sum across levels --
+	## bugfixed this session; this test originally encoded the pre-fix
+	## (summing) behavior and was corrected to match.
 	var economy := GameEconomy.new()
-	# Level 0: base 1000
+	# Level 0: 1000
 	assert_eq(economy.get_total_storage_capacity(), 1000)
 
 	economy.state.farmhouse_level = 1
-	# Levels 0+1: 1000 + 1500 = 2500
-	assert_eq(economy.get_total_storage_capacity(), 2500)
+	# Level 1: 1500 (not 1000+1500)
+	assert_eq(economy.get_total_storage_capacity(), 1500)
 
 	economy.state.farmhouse_level = 4
-	# Levels 0-4: 1000 + 1500 + 1500 + 1500 + 2500 = 8000
-	assert_eq(economy.get_total_storage_capacity(), 8000)
+	# Level 4: 2500 (not the sum of levels 0-4)
+	assert_eq(economy.get_total_storage_capacity(), 2500)
 
 
 func test_storage_level_1_adds_500() -> void:

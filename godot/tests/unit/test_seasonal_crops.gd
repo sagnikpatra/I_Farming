@@ -345,12 +345,18 @@ func test_harvest_works_regardless_of_season():
 	state.farmhouse_level = 0
 	economy.state = state
 
+	# GameState._init() already populates STARTING_PLOTS empty plots (id 0..N);
+	# clear them first so our id-0 plot below is the only one harvest_plot(0)
+	# can find (Plot lookup matches by id, and it would otherwise hit the
+	# auto-created empty plot at id 0 instead of this one).
+	economy.state.plots.clear()
+
 	# Create a ready-to-harvest plot with Wheat
 	var plot = Plot.new()
 	plot.id = 0
 	plot.kind = PlotKind.Kind.OPEN_FIELD
 	var now = Time.get_unix_time_from_system() * 1000
-	plot.state = PlotState.new_ready_to_harvest(CropType.Kind.WHEAT, now)
+	plot.state = PlotState.new_ready(CropType.Kind.WHEAT, false, now)
 	economy.state.plots.append(plot)
 
 	# Harvest should work regardless of season
@@ -390,7 +396,7 @@ func test_existing_plot_unaffected_by_season_change():
 func test_crop_available_seasons_returns_array():
 	# Verify crop_available_seasons returns an array
 	var wheat_seasons = GameData.crop_available_seasons(CropType.Kind.WHEAT)
-	assert_is(wheat_seasons, TYPE_ARRAY, "crop_available_seasons should return an array")
+	assert_typeof(wheat_seasons, TYPE_ARRAY, "crop_available_seasons should return an array")
 	assert_gt(wheat_seasons.size(), 0, "Wheat should have at least one season")
 
 

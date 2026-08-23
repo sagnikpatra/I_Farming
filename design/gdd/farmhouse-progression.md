@@ -147,16 +147,24 @@ Equivalent durations:
 
 ## Acceptance Criteria
 
-- [ ] Farmhouse UI displays current level (0–10) and cost to next upgrade
-- [ ] Player can upgrade farmhouse from Level 0 to Level 1 for ₹2,000
-- [ ] Level 2 upgrade costs ₹5,000 and unlocks 1 worker slot
-- [ ] Level 3 unlock activates 1.1x processing speed bonus
-- [ ] Level 5 generates ₹100/hour passive income
-- [ ] Passive income caps at 12-hour max offline accrual
-- [ ] Level 10 costs ₹1,500,000 and is maximum
-- [ ] Storage increases by 500 at L1, 1,000 at L4, 2,000 at L8, 3,000 at L10
-- [ ] Processing recipes complete faster at higher farmhouse levels
-- [ ] Farmhouse 3D model visually changes appearance at each level
-- [ ] "Max Level" message displays at Level 10
-- [ ] Unit tests pass: cost formula, upgrade logic, passive income
-- [ ] On-device APK: player can upgrade farmhouse and collect passive income
+**Verified on-device 2026-08-23** (real build, OnePlus OPD2403, per
+`production/session-state/active.md`): tapping the Farmhouse building
+opens `farmhouse_tab.gd` (pre-existing, reachable), which correctly shows
+"Modern Estate · Farmhouse Level 7 of 10", storage 113/2500 (matches the
+catalogue's Level 7 value exactly), and the Level 8 preview ("Grand
+Manor", 4,500 storage, "Upgrade for ₹168750") also matching the catalogue
+exactly.
+
+- [x] Farmhouse UI displays current level (0–10) and cost to next upgrade — via `farmhouse_tab.gd`, confirmed on-device
+- [x] Player can upgrade farmhouse from Level 0 to Level 1 for ₹2,000 — `farmhouse_tab.gd`'s upgrade button calls `buy_farmhouse_upgrade()` -> `upgrade_farmhouse()`, confirmed reachable on-device (not yet exercised through an actual purchase this session, but the wiring and cost display are both live and correct)
+- [x] Level 2 upgrade costs ₹5,000 and unlocks 1 worker slot
+- [x] Level 3 unlock activates 1.1x processing speed bonus (formula-verified; see `get_processing_speed_multiplier()`/`_growth_speed_multiplier()`)
+- [x] Level 5 generates ₹100/hour passive income (value correct in the catalogue) — **but see the gap below: nothing calls the function that resolves it**
+- [x] Passive income caps at 12-hour max offline accrual — `resolve_passive_income()`
+- [x] Level 10 costs ₹1,500,000 and is maximum
+- [x] Storage increases match the catalogue's absolute per-level values (confirmed on-device: L7=2500, L8=4500)
+- [ ] Processing recipes complete faster at higher farmhouse levels — the multiplier function exists and is correct, but the Crop Processing Pipeline itself has no queue logic to apply it to yet (see `crop-processing-pipeline.md`/systems-index.md — unwired stub)
+- [ ] Farmhouse 3D model visually changes appearance at each level — not verified this session (out of scope for this pass; see `farmhouse-visual-tiers.md` for that system's own doc)
+- [x] "Max Level" message displays at Level 10 — `farmhouse.max_level_reached`, wired in `farmhouse_tab.gd`
+- [x] Unit tests pass: cost formula, upgrade logic (hand-verified against `test_farmhouse_progression.gd`, GUT itself not yet run — see session-state)
+- [ ] **On-device APK: player can upgrade farmhouse and collect passive income** — upgrading is reachable and confirmed above; **collecting passive income is not**. `resolve_passive_income()` and `collect_pending_passive_income()` are never called from anywhere in the codebase (confirmed via grep, not just "not yet tested") — nothing accrues or surfaces `state.pending_passive_income` during real gameplay. The one UI that would show/collect it, `farmhouse_upgrade_sheet.gd`, is also never opened by anything — same "built but not wired up" gap this sprint's Thief System has (see `thief-system.md`). Passive income is implemented and unit-tested in isolation, but is not a reachable feature yet.

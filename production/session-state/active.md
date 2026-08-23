@@ -123,19 +123,113 @@ is a real substitute for a compile pass but not a substitute for actually
 running GUT (`godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests/unit -gexit --path godot`,
 per this project's coding-standards.md) -- that's still an open item.
 
+## Update 2026-08-23, later same day: committed + on-device verified
+
+- User confirmed the proposed commit split; committed as `85e6a75`
+  ("feat: seasonal crop rotation, farmhouse passive income, thief NPC
+  math"). The 5 stub files remain uncommitted in the working tree, as
+  planned.
+- Wrote the missing `design/gdd/thief-system.md` (reverse-documented) and
+  fixed `design/gdd/seasonal-crop-rotation.md` (it described 11 crops
+  that don't exist in `CropType.Kind` -- same root cause as bug #9 below;
+  corrected to the real 22-crop roster). Added both to
+  `systems-index.md` with a new 🚧 "Partially Shipped" status marker.
+- Godot editor found at `E:\Godot\Godot_v4.7.1-stable_win64.exe`. Ran a
+  real headless export (`--headless --export-debug "Android" ...`) --
+  **this is the compile check that wasn't possible earlier in this
+  session, and it completed with zero errors**, real confirmation the 10
+  fixes hold up. `adb` found at
+  `%LOCALAPPDATA%\Android\Sdk\platform-tools`. Installed the fresh APK on
+  the connected OnePlus OPD2403 and confirmed on-device: app boots clean,
+  Farmhouse tab shows "Modern Estate, Level 7 of 10", storage 113/2500
+  and the Level 8 preview (Grand Manor, 4500 storage, "Upgrade for
+  ₹168750") both matching the catalogue exactly -- confirms the locale-
+  CSV dedup fix (bug #10) is correct live, not just in theory.
+- **New finding from the on-device check** (not a bug -- a reachability
+  gap, now documented in `farmhouse-progression.md`'s Acceptance
+  Criteria): tapping the Farmhouse opens the pre-existing
+  `farmhouse_tab.gd`, not the new `farmhouse_upgrade_sheet.gd` -- nothing
+  in the codebase calls the new sheet at all. And nothing calls
+  `resolve_passive_income()`/`collect_pending_passive_income()` from
+  anywhere either (confirmed via grep). So while the upgrade-purchase
+  path is real and confirmed live, passive income is implemented and
+  unit-tested in isolation but not reachable in actual gameplay -- the
+  same "built but not wired up" pattern as the Thief System's UI gap.
+
+## Update 2026-08-23, later still: real GUT run found the commit split was broken
+
+Ran the actual GUT suite (previously blocked on not having a Godot path) --
+this surfaced problems the manual review and the headless export both
+missed, because both of those ran inside this main checkout, which still
+had the 5 "stub" files physically present on disk even though git didn't
+track them. An isolated `git worktree` checkout of commit `85e6a75` alone
+(no untracked files present) proved the real problem:
+
+- **The commit did not compile standalone.** `game_data.gd` (committed)
+  has hard compile-time type dependencies -- `VillagerHireDef`,
+  `VillagerHireRecord`, `MarketForecastDef`, `ProcessingBuildingDef`,
+  `ProcessingRecipeDef` -- on 5 of the 9 files left uncommitted as "stub
+  files, harmless to leave out." They are not harmless to leave out: the
+  catalogue code in `game_data.gd` needs their class definitions to parse
+  at all. Fixed by committing all 9 remaining stub `.gd` files (plus their
+  `.uid` sidecars, this project's normal convention) in a follow-up
+  commit -- they're still flagged as unwired/inert in the GDDs and
+  systems-index, just no longer literally missing from git. Lesson: when
+  splitting a commit by "which parts actually work," check compile-time
+  type dependencies across the split, not just which functions call which
+  -- a shared type reference is enough to make two "independent" pieces
+  actually inseparable.
+- **Two more real bugs found by the actual test run**, invisible to the
+  manual/static review:
+  - `calculate_thief_steal_amount()` created and seeded a local `rng`
+    (`RandomNumberGenerator`) but then called the *global* `randf_range()`
+    instead of `rng.randf_range()` -- the seeded instance was never
+    actually used, so the function was never deterministic despite
+    looking like it was. Caught by
+    `test_steal_amount_deterministic_per_session_and_hour` actually
+    running and getting two different values from the same seed. Fixed.
+  - Two of the 3 new test files had real defects of their own (not
+    compile bugs in the game code, bugs in the tests): `test_seasonal_crops.gd`
+    and `test_thief_system.gd` referenced nonexistent GUT methods
+    (`assert_ge`/`assert_le` -- this GUT version has `assert_gte`/`assert_lte`),
+    a nonexistent `PlotState.new_ready_to_harvest()` (real name:
+    `new_ready()`), untyped `:=` declarations from `abs()`'s Variant
+    return type (warnings-as-errors in this project), a field-name
+    mismatch (`thief_total_losses_coins` vs. the real
+    `GameState.total_theft_losses`), `assert_is()` used where
+    `assert_typeof()` was needed, and a test that appended a plot with
+    `id = 0` without clearing `GameState`'s auto-created starting plots
+    first, colliding with an existing id-0 plot. All fixed; one test
+    (`test_storage_capacity_accumulates`) was rewritten because it
+    literally encoded the pre-fix cumulative-storage bug as its expected
+    behavior, not the corrected one.
+- Compared the full GUT run against a clean baseline (`git worktree` at
+  the pre-session commit `49825db`) to separate real regressions from
+  this session's changes from a larger set of pre-existing failures (12
+  at baseline, some from the earlier "crop varieties + 50-item farm
+  equipment catalogue" commit that this session never reviewed). After
+  the fixes above, the 3 new test files pass cleanly; remaining failures
+  match the pre-existing set. Full before/after numbers: baseline 599
+  tests/587 passing/12 failing -> this session's first full run
+  637 tests/590 passing/47 failing (2 files silently skipped by GUT due
+  to parse errors, masking the true count) -> final, after all fixes,
+  716 tests/670 passing/46 failing, with the two previously-skipped files
+  now parsing and passing.
+
 ## Next steps
 
-1. Get user go-ahead to commit (project rule: no commits without
-   instruction). Proposed split: one commit for the 3 real+fixed systems
-   (Seasonal Rotation, Farmhouse Upgrades, Thief System) plus the shared
-   `game_data.gd`/`game_economy.gd`/`game_state.gd`/locale changes; the 5
-   stub files are harmless left uncommitted in the working tree if the
-   user wants to finish or discard them later -- flag this explicitly
-   rather than silently deciding.
-2. Run the real GUT suite once a Godot binary/path is available (user
-   mentioned their phone is connected -- worth asking if they also have
-   the Godot editor installed somewhere this session isn't finding).
-3. Wire `resolve_thief_visit()`'s output to actually spawn a
-   `ThiefVisitor` on the board and open `ThiefInteractionSheet` -- the
-   Thief system's one remaining real gap.
-4. Decide whether to finish or discard the 5 stub-only systems.
+1. Wire `resolve_thief_visit()`'s output to actually spawn a
+   `ThiefVisitor` on the board and open `ThiefInteractionSheet`.
+2. Wire `resolve_passive_income()` into the same lazy-resolution tick
+   `resolve_growth_completions()`/`resolve_thief_visit()` already use,
+   and wire `farmhouse_upgrade_sheet.gd` (or fold its passive-income
+   display into the reachable `farmhouse_tab.gd`) so a player can
+   actually see and collect it.
+3. Run the real GUT suite (`godot --headless -s addons/gut/gut_cmdln.gd
+   -gdir=res://tests/unit -gexit --path godot`) now that a Godot path is
+   known -- the headless export succeeding is strong evidence but isn't
+   the same as GUT's assertions actually running.
+4. Decide whether to finish or discard the 5 stub-only systems (Crop
+   Processing Pipeline, Villager Hiring, Government Subsidy Quests,
+   Real-Time Weather Events, E-NAM Market Forecasting) -- still
+   uncommitted in the working tree.

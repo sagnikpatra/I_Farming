@@ -74,8 +74,8 @@ func test_steal_amount_within_min_max_range() -> void:
 	## Steal amount is always between THIEF_STEAL_AMOUNT_MIN (500) and MAX (2000)
 	var session_id := 33333
 	var amount := eco.calculate_thief_steal_amount(session_id, 1)
-	assert_ge(amount, GameData.THIEF_STEAL_AMOUNT_MIN)
-	assert_le(amount, GameData.THIEF_STEAL_AMOUNT_MAX)
+	assert_gte(amount, GameData.THIEF_STEAL_AMOUNT_MIN)
+	assert_lte(amount, GameData.THIEF_STEAL_AMOUNT_MAX)
 
 
 func test_steal_amount_deterministic_per_session_and_hour() -> void:
@@ -155,9 +155,9 @@ func test_thief_placement_finds_adjacent_tile_to_farmhouse() -> void:
 	var thief_tile := ThiefVisitorPlacement.find_thief_tile(grid, grid_cols, grid_rows, farmhouse_tile)
 
 	# Verify result is adjacent to farmhouse (within 1 tile)
-	var dx := abs(thief_tile.x - farmhouse_tile.x)
-	var dy := abs(thief_tile.y - farmhouse_tile.y)
-	assert_le(maxi(dx, dy), 1)  # Chebyshev distance <= 1 (adjacent or diagonal)
+	var dx: int = absi(thief_tile.x - farmhouse_tile.x)
+	var dy: int = absi(thief_tile.y - farmhouse_tile.y)
+	assert_lte(maxi(dx, dy), 1)  # Chebyshev distance <= 1 (adjacent or diagonal)
 
 
 func test_thief_placement_skips_blocked_adjacent_tiles() -> void:
@@ -182,8 +182,8 @@ func test_thief_placement_skips_blocked_adjacent_tiles() -> void:
 	var thief_tile := ThiefVisitorPlacement.find_thief_tile(grid, grid_cols, grid_rows, farmhouse_tile)
 
 	# Should find a nearby tile (distance > 1)
-	var dx := abs(thief_tile.x - farmhouse_tile.x)
-	var dy := abs(thief_tile.y - farmhouse_tile.y)
+	var dx: int = absi(thief_tile.x - farmhouse_tile.x)
+	var dy: int = absi(thief_tile.y - farmhouse_tile.y)
 	assert_gt(maxi(dx, dy), 1)
 	assert_ne(thief_tile, Vector2i(-1, -1))
 
@@ -231,12 +231,12 @@ func test_state_tracks_thief_last_visit_epoch_ms() -> void:
 
 
 func test_state_tracks_total_theft_losses() -> void:
-	## GameState.thief_total_losses_coins cumulates theft amounts
-	assert_eq(eco.state.thief_total_losses_coins, 0)
-	eco.state.thief_total_losses_coins += 1000
-	assert_eq(eco.state.thief_total_losses_coins, 1000)
-	eco.state.thief_total_losses_coins += 500
-	assert_eq(eco.state.thief_total_losses_coins, 1500)
+	## GameState.total_theft_losses cumulates theft amounts
+	assert_eq(eco.state.total_theft_losses, 0)
+	eco.state.total_theft_losses += 1000
+	assert_eq(eco.state.total_theft_losses, 1000)
+	eco.state.total_theft_losses += 500
+	assert_eq(eco.state.total_theft_losses, 1500)
 
 
 func test_state_tracks_security_level() -> void:
@@ -284,9 +284,9 @@ func test_thief_visit_flow_let_them_go() -> void:
 	# Simulate player choice: let them go
 	var coins_lost := steal_amount
 	eco.state.coins -= coins_lost
-	eco.state.thief_total_losses_coins += coins_lost
+	eco.state.total_theft_losses += coins_lost
 	assert_eq(eco.state.coins, coins_before - 1000)
-	assert_eq(eco.state.thief_total_losses_coins, 1000)
+	assert_eq(eco.state.total_theft_losses, 1000)
 
 
 func test_thief_visit_flow_pay_bribe() -> void:
@@ -297,9 +297,9 @@ func test_thief_visit_flow_pay_bribe() -> void:
 	# Simulate player choice: pay bribe
 	var coins_lost := roundi(float(steal_amount) * GameData.THIEF_BRIBE_PERCENTAGE)
 	eco.state.coins -= coins_lost
-	eco.state.thief_total_losses_coins += coins_lost
+	eco.state.total_theft_losses += coins_lost
 	assert_eq(eco.state.coins, coins_before - 500)
-	assert_eq(eco.state.thief_total_losses_coins, 500)
+	assert_eq(eco.state.total_theft_losses, 500)
 
 
 func test_thief_visit_flow_chase_success() -> void:
@@ -310,9 +310,9 @@ func test_thief_visit_flow_chase_success() -> void:
 	# Simulate successful chase: lose 25%, recover 75%
 	var coins_lost := steal_amount - roundi(float(steal_amount) * GameData.THIEF_CHASE_RECOVERY_RATE)
 	eco.state.coins -= coins_lost
-	eco.state.thief_total_losses_coins += coins_lost
+	eco.state.total_theft_losses += coins_lost
 	assert_eq(eco.state.coins, coins_before - 250)
-	assert_eq(eco.state.thief_total_losses_coins, 250)
+	assert_eq(eco.state.total_theft_losses, 250)
 
 
 func test_thief_visit_flow_chase_failure() -> void:
@@ -323,9 +323,9 @@ func test_thief_visit_flow_chase_failure() -> void:
 	# Simulate failed chase: lose 100% + 50 penalty
 	var coins_lost := steal_amount + GameData.THIEF_CHASE_FAILURE_PENALTY
 	eco.state.coins -= coins_lost
-	eco.state.thief_total_losses_coins += coins_lost
+	eco.state.total_theft_losses += coins_lost
 	assert_eq(eco.state.coins, coins_before - 1050)
-	assert_eq(eco.state.thief_total_losses_coins, 1050)
+	assert_eq(eco.state.total_theft_losses, 1050)
 
 
 # --- Edge Cases ---------------------------------------------------------------

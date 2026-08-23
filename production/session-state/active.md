@@ -216,20 +216,82 @@ track them. An isolated `git worktree` checkout of commit `85e6a75` alone
   716 tests/670 passing/46 failing, with the two previously-skipped files
   now parsing and passing.
 
+## Update 2026-08-23, evening: thief + passive income actually wired up
+
+Continued past the compile/test fixes into the two real integration gaps
+flagged above. Both are now reachable in real gameplay, not just correct
+in isolation:
+
+**Thief System**: `resolve_thief_visit()` now sets
+`state.thief_pending_steal_amount` instead of just posting a toast.
+`village_board.gd` spawns/despawns a `ThiefVisitor` on the board keyed off
+a new `GameEconomy.thief_visit_awaiting_decision()` (exact same boolean-
+edge pattern as `_sync_chanda_visitor_if_needed()`). Tapping it opens
+`ThiefInteractionSheet` via `hud.gd`'s new `open_thief_interaction_sheet()`
+(mirrors `open_events_sheet()`); the player's choice calls a new
+`GameEconomy.resolve_thief_decision(coins_lost)`, which deducts coins
+(clamped at 0), tracks `total_theft_losses`, and clears the pending flag.
+Found and fixed 3 more real bugs while wiring this:
+- `thief_visitor.gd`'s pick area was missing the `board_id` meta
+  `board_interactor.gd._pick()` requires -- taps on the NPC would have
+  been silently ignored even with everything else wired correctly.
+- No `thief_visitor.tscn` scene file existed at all (chanda_visitor.tscn's
+  equivalent was never created) -- added, matching its exact minimal
+  structure.
+- `ThiefInteractionSheet._build_ui()` used raw `Button.new()`/`Label.new()`
+  with unscaled pixel spacers instead of this codebase's `UiTheme` helpers
+  every other sheet uses. **Confirmed on a real device**: the buttons
+  existed in the scene tree and worked if tapped blindly, but were
+  effectively invisible at this project's 2.6x UI_SCALE -- opening the
+  sheet showed the title and steal amount but no visible buttons at all.
+  Rewritten to use `UiTheme.make_chunky_button()`/`make_title_label()`/
+  `scale_px()`; screenshot-confirmed fixed on-device.
+
+**Passive income**: `resolve_passive_income(now)` is now called from
+`resolve_growth_completions()` (previously defined, never called from
+anywhere). Folded a real "Passive Income: ₹X/hour" display + "Collect ₹X"
+button into `farmhouse_tab.gd` -- the sheet that's actually reachable by
+tapping the Farmhouse -- rather than wiring up the second, still-
+unreachable `farmhouse_upgrade_sheet.gd`.
+
+Added 9 new unit tests (`test_thief_system.gd` x7,
+`test_farmhouse_progression.gd` x1 integration test, verified via the
+real GUT run: 724 tests/678 passing, same 46 pre-existing failures as
+before -- nothing regressed, all 9 new tests pass).
+
+**Full on-device verification of the real gameplay loop** (OnePlus
+OPD2403, this project's `SIGNAL A` device): backed up the real save
+(MD5-verified), temporarily reset `thief_last_visit_epoch_ms` to force a
+visit (this save's ~2.6M coin balance makes the visit-probability formula
+exceed 100%/hour, so cooldown alone had been silently preventing every
+visit since early in this session's earlier testing -- explains why nothing
+spawned on the first few checks, not a bug). Confirmed the full loop live:
+NPC spawns next to the Farmhouse -> tap opens the sheet with the correct
+steal amount -> "Let Them Go" deducts exactly that amount from
+`state.coins`, tracks it in `total_theft_losses`, clears the pending flag,
+and despawns the NPC. Restored the real save afterward, MD5-verified
+device-side (a first local-redirect verification attempt falsely flagged
+a mismatch -- that was Git Bash's own text-mode line-ending translation
+corrupting the *local verification copy* on the Windows side, not the
+actual on-device file; re-verified with `adb shell md5sum` run entirely
+on-device, which matched exactly).
+
 ## Next steps
 
-1. Wire `resolve_thief_visit()`'s output to actually spawn a
-   `ThiefVisitor` on the board and open `ThiefInteractionSheet`.
-2. Wire `resolve_passive_income()` into the same lazy-resolution tick
-   `resolve_growth_completions()`/`resolve_thief_visit()` already use,
-   and wire `farmhouse_upgrade_sheet.gd` (or fold its passive-income
-   display into the reachable `farmhouse_tab.gd`) so a player can
-   actually see and collect it.
-3. Run the real GUT suite (`godot --headless -s addons/gut/gut_cmdln.gd
-   -gdir=res://tests/unit -gexit --path godot`) now that a Godot path is
-   known -- the headless export succeeding is strong evidence but isn't
-   the same as GUT's assertions actually running.
+1. ~~Wire thief visit to a board NPC + interaction sheet~~ -- done, see
+   above.
+2. ~~Wire passive income into the tick + a reachable UI~~ -- done, see
+   above.
+3. ~~Run the real GUT suite~~ -- done, see above (724/678/46, stable).
 4. Decide whether to finish or discard the 5 stub-only systems (Crop
    Processing Pipeline, Villager Hiring, Government Subsidy Quests,
    Real-Time Weather Events, E-NAM Market Forecasting) -- still
    uncommitted in the working tree.
+5. `thief_security_level` still isn't purchasable anywhere (constants
+   exist -- `THIEF_SECURITY_FENCING_COST`/`THIEF_SECURITY_GUARD_POSTS_COST`
+   -- but no `buy_thief_security()`-equivalent function) -- one remaining
+   documented gap in `thief-system.md`'s Acceptance Criteria.
+6. Consider whether the thief visit-probability formula needs a cap --
+   it exceeds 100%/hour above ~1M coins (this session's real test save
+   included), which may or may not be the intended curve; flagged as a
+   Tuning Knob in `thief-system.md`, not changed without a design call.

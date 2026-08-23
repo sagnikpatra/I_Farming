@@ -201,6 +201,19 @@ func test_resolve_passive_income_first_call_initializes() -> void:
 	assert_eq(economy.state.passive_income_last_resolution_epoch_ms, now)
 
 
+func test_resolve_growth_completions_now_also_accrues_passive_income() -> void:
+	## resolve_passive_income() existed but was never called from anywhere
+	## (see production/session-state/active.md's 2026-08-23 entry) until it
+	## was wired into resolve_growth_completions() -- the tick every real
+	## playthrough already calls. This is the integration check for that
+	## wiring, not just the isolated function above.
+	var economy := GameEconomy.new()
+	economy.state.farmhouse_level = 5
+	economy.resolve_growth_completions(0)  # first call: initializes the clock
+	economy.resolve_growth_completions(3_600_000)  # 1 hour later
+	assert_eq(economy.state.pending_passive_income, 100)
+
+
 func test_resolve_passive_income_1_hour_earns_100() -> void:
 	var economy := GameEconomy.new()
 	economy.state.farmhouse_level = 5

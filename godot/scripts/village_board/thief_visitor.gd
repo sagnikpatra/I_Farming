@@ -91,6 +91,12 @@ func _build_pick_area() -> void:
 	pick_area.monitoring = false
 	pick_area.monitorable = false
 	pick_area.set_meta("board_kind", "thief_visitor")
+	# board_interactor.gd's _pick() requires every pick target to carry
+	# "board_id" (see its own guard: `not collider.has_meta("board_id")` ->
+	# rejected) -- this was missing, so a tap on the thief would have been
+	# silently ignored even once spawning was wired up. thief_id doubles as
+	# board_id here, matching chanda_visitor.gd's character_key-as-board_id.
+	pick_area.set_meta("board_id", thief_id)
 	pick_area.set_meta("thief_id", thief_id)
 	var shape := CollisionShape3D.new()
 	var box_shape := BoxShape3D.new()

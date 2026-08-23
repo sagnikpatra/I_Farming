@@ -64,6 +64,14 @@ func _populate() -> void:
 	_body.add_child(_build_header(data))
 	_body.add_child(_build_bonuses_card(tr(&"farmhouse.current_bonuses"), data["current"]))
 	_body.add_child(_build_storage_card(data))
+	# design/gdd/farmhouse-progression.md's passive income -- previously
+	# implemented (resolve_passive_income()/collect_pending_passive_income())
+	# but never reachable in-game: nothing called resolve_passive_income()
+	# from the tick, and the one UI that showed it (farmhouse_upgrade_sheet.gd)
+	# was never opened by anything. Folded into this actually-reachable sheet
+	# instead of wiring up the second, unreachable one.
+	if data["passive_income_per_hour"] > 0:
+		_body.add_child(_build_passive_income_card(data))
 	if data["is_max_level"]:
 		_body.add_child(_build_max_level_message())
 	else:
@@ -104,6 +112,8 @@ static func build_view_data(economy: GameEconomy) -> Dictionary:
 		"storage_used": storage_used,
 		"storage_cap": storage_cap,
 		"storage_progress": storage_progress,
+		"passive_income_per_hour": current.passive_income_per_hour,
+		"pending_passive_income": economy.state.pending_passive_income,
 	}
 
 
@@ -116,6 +126,14 @@ func _on_upgrade_pressed() -> void:
 	if _economy.dirty:
 		_play_audio(&"progression_farmhouse_upgrade")
 		_village_board.play_construction_effect(VillageSnapshotMapper.ZONE_ID_FARMHOUSE)
+	_village_board.persist_and_rebuild_if_dirty()
+	_populate()
+
+
+func _on_collect_passive_income_pressed() -> void:
+	_economy.collect_pending_passive_income()
+	if _economy.dirty:
+		_play_audio(&"ui_button_tap")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -227,6 +245,28 @@ func _build_storage_bar(progress: float) -> ProgressBar:
 	bar.add_theme_stylebox_override("fill", fill_style)
 
 	return bar
+
+
+## design/gdd/farmhouse-progression.md's passive income. Always shows the
+## per-hour rate; the Collect button only appears once there's something to
+## collect (data["pending_passive_income"] > 0) -- matches this file's
+## existing can_afford-gated button pattern in _populate() above.
+func _build_passive_income_card(data: Dictionary) -> PanelContainer:
+	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
+
+	box.add_child(_make_title_label(tr(&"farmhouse.passive_income") % data["passive_income_per_hour"], 16))
+
+	var pending: int = data["pending_passive_income"]
+	if pending > 0:
+		var collect_button := _make_chunky_button(tr(&"farmhouse.collect_passive_income") % pending, RIPE_GOLD, SOIL_BROWN_DARK)
+		collect_button.pressed.connect(_on_collect_passive_income_pressed)
+		box.add_child(collect_button)
+
+	card.add_child(box)
+	return card
 
 
 func _build_max_level_message() -> Label:

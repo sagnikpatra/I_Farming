@@ -168,38 +168,46 @@ project's data-driven gameplay-code rule.
 
 ## Acceptance Criteria
 
-**Implemented and verified this session** (hand-traced against
-`test_thief_system.gd`, 353 lines — GUT itself not yet run on this
-machine, see session-state):
+**Update 2026-08-23, evening: wired end-to-end and verified on a real
+device** (OnePlus OPD2403) — see `production/session-state/active.md`'s
+matching entry for the full account, including a real bug the on-device
+check caught (`ThiefInteractionSheet`'s buttons existed but were
+effectively invisible at this project's 2.6x UI scale, since it used raw
+`Button.new()` instead of `UiTheme.make_chunky_button()` like every other
+sheet — fixed and re-verified with a screenshot).
+
 - [x] Cooldown correctly gates repeat visits within `THIEF_VISIT_INTERVAL_HOURS`
 - [x] Visit-probability roll scales up with wealth, down with security level
 - [x] Steal-amount roll is independent of the visit roll and stays within `[MIN, MAX]`
 - [x] Rolls are deterministic/replayable for a given session_id + elapsed-hours window
 - [x] `ThiefVisitorPlacement.find_thief_tile()` finds a valid board tile (adjacent → nearby → any walkable → `Vector2i(-1,-1)` if none)
 - [x] `ThiefInteractionSheet` computes correct `coins_lost` for all three player choices
-
-**Not implemented — real gaps, not just untested:**
-- [ ] **No actual coin loss happens.** `resolve_thief_visit()` posts a
-      toast event and updates the cooldown timestamp, but never deducts
-      `state.coins`. The interaction sheet's `thief_choice_made` signal
-      (which does carry the right `coins_lost`) has no caller anywhere —
-      nothing connects it.
-- [ ] **No board NPC ever spawns.** Nothing calls
-      `ThiefVisitorPlacement.find_thief_tile()` or instantiates a
-      `ThiefVisitor` from `resolve_thief_visit()` or anywhere else.
-- [ ] **The interaction sheet never opens.** Nothing calls
-      `ThiefInteractionSheet.open_for_thief()`.
-- [ ] **Security level is not purchasable.** `state.thief_security_level`
+- [x] **A thief visit actually costs coins.** `resolve_thief_decision(coins_lost)`
+      deducts from `state.coins` (clamped at 0) and tracks
+      `state.total_theft_losses` — confirmed on-device: a real visit's
+      ₹1,751 steal amount, resolved via "Let Them Go", deducted exactly
+      ₹1,751 from the save's real coin balance.
+- [x] **The board NPC spawns and despawns correctly.** `village_board.gd`'s
+      `_sync_thief_visitor_if_needed()` (boolean-edge on
+      `thief_visit_awaiting_decision()`, same pattern as Chanda's own
+      sync) — confirmed on-device: NPC appeared next to the Farmhouse,
+      disappeared immediately after the player's choice resolved.
+- [x] **The interaction sheet opens on tap and is fully usable.**
+      `hud.gd`'s `open_thief_interaction_sheet()`, reached via
+      `board_interactor.gd`'s pick dispatch (which needed a `board_id`
+      meta fix on the NPC's pick area — see session-state) — confirmed
+      on-device with a screenshot showing all three properly-styled
+      buttons.
+- [ ] **Security level is still not purchasable.** `state.thief_security_level`
       is read by the probability formula but nothing ever sets it above
       0 — there's no `buy_thief_security()`-equivalent function, despite
       `THIEF_SECURITY_FENCING_COST`/`THIEF_SECURITY_GUARD_POSTS_COST`
-      existing as constants.
-- [ ] **`state.total_theft_losses` is never incremented.** Persisted field
-      with no writer.
-- [ ] On-device APK: not yet verified.
+      existing as constants. The one remaining real gap.
+- [x] On-device APK: verified (see above).
 
-Net effect right now: a thief visit is a periodic toast notification with
-no economic consequence. The math and the two presentation pieces (board
-NPC placement, choice sheet) are each independently correct and tested,
-but the three are not connected to each other or to `state.coins`. Wiring
-that up is the next real story here, not a small polish item.
+Net effect now: a thief visit spawns a real, tappable NPC, costs real
+coins based on the player's choice, and tracks cumulative losses — the
+full loop works. The only missing piece is a way to actually reduce
+`thief_security_level` in the first place; right now every player is
+permanently at level 0 (the highest-probability case) with no in-game way
+to change that.

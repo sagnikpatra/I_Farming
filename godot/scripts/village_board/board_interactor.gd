@@ -338,6 +338,11 @@ func _release_primary_touch() -> void:
 						# exact same Events sheet the LiveOps banner already
 						# opens, not a new give/decline UI of its own.
 						_open_chanda_visit_sheet()
+					elif pick.get("kind") == "thief_visitor":
+						# design/gdd/thief-system.md -- the only entry point
+						# into ThiefInteractionSheet; unlike Chanda there is
+						# no banner/other route to it, tapping the NPC is it.
+						_open_thief_interaction_sheet()
 					elif pick.get("kind") == "decoration":
 						# No selection highlight for decorations -- matches the
 						# Kotlin original (GdxSelection's info card IS the
@@ -918,6 +923,16 @@ func _open_chanda_visit_sheet() -> void:
 	if hud == null:
 		return
 	hud.open_events_sheet()
+
+
+## design/gdd/thief-system.md -- opens ThiefInteractionSheet via Hud, same
+## delegation reasoning as _open_chanda_visit_sheet() above (exactly one
+## place builds/configures the sheet).
+func _open_thief_interaction_sheet() -> void:
+	var hud := get_tree().get_first_node_in_group("hud") as Hud
+	if hud == null:
+		return
+	hud.open_thief_interaction_sheet()
 
 
 ## Opens the matching management sheet for a tapped ZONE, via the same

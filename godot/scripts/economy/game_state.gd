@@ -130,6 +130,12 @@ extends Resource
 @export var total_theft_losses: int = 0
 ## Security level against thief: 0 = none, 1 = fencing, 2 = guard posts.
 @export var thief_security_level: int = 0
+## Steal amount of the currently-pending thief visit awaiting a player
+## decision (let go / bribe / chase) -- 0 means no visit is currently
+## pending. Same "0 = nothing pending" convention as pending_passive_income
+## below. Set by GameEconomy.resolve_thief_visit() when a visit triggers;
+## cleared by resolve_thief_decision() once the player responds.
+@export var thief_pending_steal_amount: int = 0
 
 ## Farmhouse Progression (design/gdd/farmhouse-progression.md) -- passive income system.
 ## Coins earned from the farmhouse's passive income but not yet collected by the player.

@@ -403,6 +403,45 @@ func open_events_sheet() -> void:
 	_bottom_sheet.open(tab)
 
 
+## design/gdd/thief-system.md -- opens ThiefInteractionSheet for the
+## currently-pending thief visit. No scene file for this sheet (like
+## farmhouse_upgrade_sheet.gd, it builds its UI procedurally in _ready()
+## when no children are present -- see thief_interaction_sheet.gd's own
+## "for testing without a scene file" comment), unlike EventsTab above.
+## Public so board_interactor.gd's ThiefVisitor tap handler can reach it,
+## same reasoning as open_events_sheet().
+func open_thief_interaction_sheet() -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
+	var steal_amount: int = economy.state.thief_pending_steal_amount
+	if steal_amount <= 0:
+		return  # No visit actually pending -- stale tap, nothing to show.
+	_play_ui_audio(&"ui_button_tap")
+	var sheet := ThiefInteractionSheet.new()
+	sheet.open_for_thief(steal_amount, economy)
+	sheet.thief_choice_made.connect(_on_thief_choice_made)
+	_bottom_sheet.open(sheet)
+
+
+## Applies the player's choice, closes the sheet, and lets
+## village_board.gd's persist_and_rebuild_if_dirty() (triggered by
+## resolve_thief_decision()'s _mark_dirty()) despawn the board NPC
+## immediately -- same flow give_chanda()/decline_chanda() use via
+## events_tab.gd's button handlers.
+func _on_thief_choice_made(_choice: String, _success: bool, coins_lost: int) -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
+	economy.resolve_thief_decision(coins_lost)
+	_village_board.persist_and_rebuild_if_dirty()
+	_bottom_sheet.close()
+
+
 ## EPIC-M7: the only reachable path to Open Field's worker-assignment row
 ## -- see _build_bottom_left_panel()'s own comment on why Open Field has
 ## no zone-tap route to _maybe_open_zone_sheet().

@@ -166,6 +166,7 @@ event.mandi_sold,🏛️ Mandi bought %d %s at %d%% market rate for ₹%d,मं
 farmhouse.title,🏠 Farmhouse,🏠 फार्महाउस
 farmhouse.current_level,%s %s · Level %d,%s %s · स्तर %d
 farmhouse.passive_income,⏰ Passive Income: ₹%d/hour,⏰ निष्क्रिय आय: ₹%d/घंटा
+farmhouse.collect_passive_income,💰 Collect ₹%d,💰 ₹%d एकत्र करें
 farmhouse.upgrade_cost,Upgrade to %s for ₹%d,₹%d में %s में अपग्रेड करें
 farmhouse.unlocks_title,Unlocks:,अनलॉक:
 farmhouse.upgrade_action,Upgrade,अपग्रेड करें

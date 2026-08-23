@@ -31,72 +31,85 @@ func _ready() -> void:
 	# Build UI hierarchy if not already present (for testing)
 	if _steal_amount_label == null:
 		_build_ui()
+	_refresh_display()
 
 
 ## Open this sheet for a thief visit. `steal_amount` is the coins at risk,
-## `eco` is the GameEconomy reference for accessing current state.
+## `eco` is the GameEconomy reference for accessing current state. Matches
+## this project's configure()-then-_ready() idiom (see EventsTab.configure()):
+## works whether called before this node enters the tree (the normal case --
+## hud.gd configures it, then BottomSheet.open() adds it as a child,
+## triggering _ready()) or after (_refresh_display() is safe to call from
+## both places since it re-checks _steal_amount_label itself).
 func open_for_thief(steal_amount: int, eco: GameEconomy) -> void:
 	_steal_amount = steal_amount
 	_eco = eco
+	_refresh_display()
+
+
+func _refresh_display() -> void:
 	if _steal_amount_label != null:
 		_steal_amount_label.text = tr(&"thief.at_risk") % _steal_amount
 
 
 ## Builds the UI hierarchy programmatically (for testing without a scene file).
+## BUGFIX (found on-device 2026-08-23, once this sheet was actually wired up
+## and reachable for the first time -- see production/session-state/active.md):
+## the original version used raw Button.new()/Label.new() with unscaled pixel
+## spacers, unlike every other sheet in this codebase (farmhouse_tab.gd,
+## seed_picker.gd, events_tab.gd, ...), which all go through UiTheme's
+## make_chunky_button()/make_title_label()/scale_px() -- this project's UI
+## runs at a 2.6x UI_SCALE (ui_theme.gd's UI_SCALE), and raw unscaled/
+## untextured controls rendered so small and undersized relative to
+## everything else that the three choice buttons were effectively invisible
+## on a real device, even though they existed in the scene tree and worked
+## if you knew blindly where to tap. Rebuilt to match the established
+## pattern exactly.
 func _build_ui() -> void:
-	# Root VBoxContainer
+	# Root VBoxContainer -- matches farmhouse_tab.gd's Scroll/Body shell
+	# convention closely enough for a sheet this simple (no ScrollContainer
+	# needed -- content is short and fixed-height, unlike farmhouse_tab's
+	# variable-length unlocks list).
 	var container := VBoxContainer.new()
 	container.anchor_left = 0.05
 	container.anchor_right = 0.95
 	container.anchor_top = 0.05
 	container.anchor_bottom = 0.95
 	container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	container.add_theme_constant_override("separation", UiTheme.scale_px(14))
 	add_child(container)
 
-	# Title label
-	var title := Label.new()
-	title.text = tr(&"thief.title")
-	title.add_theme_font_size_override("font_size", 28)
+	# Title label -- A11Y (village-board-and-management-sheets-audit-2026-08-21.md
+	# §1): sits directly on BottomSheet's cream background, not inside a
+	# colored panel, so it must use SOIL_BROWN_DARK, not make_title_label()'s
+	# Color.WHITE default (same rule farmhouse_tab.gd's _build_header() follows).
+	var title := UiTheme.make_title_label(tr(&"thief.title"), 22, UiTheme.SOIL_BROWN_DARK)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	container.add_child(title)
 
-	# Spacer
-	var spacer1 := Control.new()
-	spacer1.custom_minimum_size = Vector2(0, 16)
-	container.add_child(spacer1)
+	# Steal amount label -- inside a panel card, so the default WHITE is fine.
+	var amount_card := UiTheme.make_panel(UiTheme.WOOD_BROWN_LIGHT)
+	_steal_amount_label = UiTheme.make_title_label(tr(&"thief.at_risk") % 0, 18)
+	_steal_amount_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	amount_card.add_child(_steal_amount_label)
+	container.add_child(amount_card)
 
-	# Steal amount label
-	_steal_amount_label = Label.new()
-	_steal_amount_label.text = tr(&"thief.at_risk") % 0
-	_steal_amount_label.add_theme_font_size_override("font_size", 20)
-	container.add_child(_steal_amount_label)
-
-	# Spacer
-	var spacer2 := Control.new()
-	spacer2.custom_minimum_size = Vector2(0, 24)
-	container.add_child(spacer2)
-
-	# Buttons container (HBoxContainer for 3 columns)
-	var buttons_container := HBoxContainer.new()
-	buttons_container.separation = 8
-	container.add_child(buttons_container)
-
-	# Button 1: Let Them Go (neutral)
-	_let_go_button = Button.new()
-	_let_go_button.text = tr(&"thief.let_go")
+	# Buttons -- one per row (not an HBoxContainer of 3 squeezed columns):
+	# this project's UI_SCALE makes make_chunky_button()'s text/padding wide
+	# enough that 3-across would either clip or force a much smaller,
+	# inconsistent button size versus every other sheet's single-column
+	# chunky buttons (farmhouse_tab.gd's Upgrade button, etc.).
+	_let_go_button = UiTheme.make_chunky_button(tr(&"thief.let_go"), UiTheme.WOOD_BROWN_LIGHT, Color.WHITE)
 	_let_go_button.pressed.connect(_on_let_go_pressed)
-	buttons_container.add_child(_let_go_button)
+	container.add_child(_let_go_button)
 
-	# Button 2: Pay Bribe (warning)
-	_bribe_button = Button.new()
-	_bribe_button.text = tr(&"thief.pay_bribe")
+	_bribe_button = UiTheme.make_chunky_button(tr(&"thief.pay_bribe"), UiTheme.SAFFRON_DARK, Color.WHITE)
 	_bribe_button.pressed.connect(_on_bribe_pressed)
-	buttons_container.add_child(_bribe_button)
+	container.add_child(_bribe_button)
 
-	# Button 3: Chase Them Off (action)
-	_chase_button = Button.new()
-	_chase_button.text = tr(&"thief.chase_off")
+	_chase_button = UiTheme.make_chunky_button(tr(&"thief.chase_off"), UiTheme.FIELD_GREEN, Color.WHITE)
 	_chase_button.pressed.connect(_on_chase_pressed)
-	buttons_container.add_child(_chase_button)
+	container.add_child(_chase_button)
 
 
 func _on_let_go_pressed() -> void:

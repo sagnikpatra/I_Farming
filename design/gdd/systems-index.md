@@ -54,7 +54,7 @@ the 5 features that turned out to be inert/unwired stub files.
 | Festival Visiting NPCs (Chanda) | [`festival-visiting-npcs.md`](festival-visiting-npcs.md) | ✅ | A recurring low-stakes neighbor visit collecting a small community donation for a rotating real Indian festival; giving grants a modest time-limited sell-price blessing. Includes an on-board 3D visitor NPC, not just a sheet card. |
 | Worker Economy | [`worker-economy.md`](worker-economy.md) | ✅ | Assigns an existing ambient villager to a structure zone, where it automates that zone's plot labor (harvest + replant) for a wage, lazily resolved offline like crop growth. |
 | Seasonal Crop Rotation | [`seasonal-crop-rotation.md`](seasonal-crop-rotation.md) | 🚧 | Ties crop plantability to 4 real-world-calendar seasons; gates `plant_seed()`. Core detection/lookup logic is real and tested; seed-picker UI greying-out is not yet implemented (plant attempt is rejected with a toast instead). |
-| Thief NPC Visitor | [`thief-system.md`](thief-system.md) | 🚧 | Periodic, cooldown-gated, wealth-scaled chance of a thief visit; security investment reduces probability. Probability/steal-amount math, board-tile placement, and the player-choice UI are each independently correct and tested, but not wired together yet — no coin loss actually happens today. |
+| Thief NPC Visitor | [`thief-system.md`](thief-system.md) | 🚧 | Periodic, cooldown-gated, wealth-scaled chance of a thief visit; security investment reduces probability. Fully wired and on-device verified: a real board NPC spawns, taps open a working choice sheet, and a resolved choice deducts real coins. Still missing: no way to actually purchase/raise `thief_security_level` in-game. |
 
 ## Village Board & Presentation
 

@@ -830,6 +830,14 @@ func resolve_growth_completions(now: int) -> void:
 	# independent of individual plot state -- not part of the per-plot loop above.
 	resolve_thief_visit(now)
 
+	# Farmhouse passive income (design/gdd/farmhouse-progression.md): same
+	# lazy, read-time resolution pattern as everything else in this
+	# function -- accrues into pending_passive_income, which
+	# collect_pending_passive_income() (farmhouse_tab.gd's Collect button)
+	# sweeps into state.coins. Previously defined but never called from
+	# anywhere -- see production/session-state/active.md's 2026-08-23 entry.
+	resolve_passive_income(now)
+
 
 # --- EPIC-M7: Worker assignment & automation --------------------------------
 #
@@ -1059,14 +1067,27 @@ func calculate_thief_steal_amount(session_id: int, hour_seed: int) -> int:
 	return roundi(amount)
 
 
-## Thief NPC Visitor system: checks if a thief visit should trigger, and emits
-## thief_appeared event if so. Called once per resolve_growth_completions() tick.
-## Uses session_id (hash of save slot) and elapsed hours since last thief visit
-## to determine if a thief should appear (deterministic per session).
-##
-## Emits: GameEvent("thief_appeared", {steal_amount, security_level}) if thief visit triggers.
-## Stores: updates thief_last_visit_epoch_ms in state for cooldown tracking.
+## Whether a thief visit is currently pending a player decision (let go /
+## bribe / chase). Drives ThiefVisitor's board spawn/despawn in
+## village_board.gd's _sync_thief_visitor_if_needed(), the same
+## boolean-edge pattern chanda_visit_awaiting_decision() established.
+func thief_visit_awaiting_decision() -> bool:
+	return state.thief_pending_steal_amount > 0
+
+
+## Thief NPC Visitor system: checks if a thief visit should trigger, and
+## if so marks it pending (state.thief_pending_steal_amount) for the player
+## to resolve via ThiefInteractionSheet/resolve_thief_decision(). Called
+## once per resolve_growth_completions() tick.
+## Uses session_id (hash of save slot) and elapsed hours since last thief
+## visit to determine if a thief should appear (deterministic per session).
 func resolve_thief_visit(now: int) -> void:
+	# A visit is already pending a decision -- don't roll another on top of
+	# it (nothing to gain from two simultaneous pending steals, and it would
+	# silently overwrite the amount the player is currently looking at).
+	if thief_visit_awaiting_decision():
+		return
+
 	# Thief visits are gated by a 12-hour cooldown (THIEF_VISIT_INTERVAL_HOURS)
 	if state.thief_last_visit_epoch_ms != -1:
 		var ms_since_last_visit: int = now - state.thief_last_visit_epoch_ms
@@ -1087,17 +1108,30 @@ func resolve_thief_visit(now: int) -> void:
 	if not was_thief_visiting(session_id, elapsed_hours, state.coins, state.thief_security_level):
 		return
 
-	# Thief is visiting! Calculate the steal amount
+	# Thief is visiting! Calculate the steal amount and mark it pending --
+	# the board NPC (spawned by village_board.gd off this flag) and
+	# ThiefInteractionSheet are the real resolution path; the toast below
+	# is a secondary ambient notice, not the only way to find out.
 	var steal_amount := calculate_thief_steal_amount(session_id, elapsed_hours)
-
-	# Emit thief_appeared event for UI layer to handle. GameEvent only carries a
-	# message + is_rejection flag (no payload dict, see game_event.gd) -- the
-	# steal_amount/security_level the UI needs to open ThiefInteractionSheet
-	# still need a real delivery path from here; not wired up yet (see review notes).
-	_push_event(tr(&"thief.appeared") % steal_amount)
-
-	# Update state for cooldown tracking
+	state.thief_pending_steal_amount = steal_amount
 	state.thief_last_visit_epoch_ms = now
+	_push_event(tr(&"thief.appeared") % steal_amount)
+	_mark_dirty()
+
+
+## Applies the player's resolved choice from ThiefInteractionSheet.
+## `coins_lost` is pre-computed by the sheet itself (let-go/bribe/chase
+## formulas -- see design/gdd/thief-system.md's Formulas section); this
+## function's job is only to apply that result to state, not recompute it,
+## so the loss formulas stay defined in exactly one place. No-ops if no
+## visit is currently pending (e.g. a stale/double-fired UI signal).
+func resolve_thief_decision(coins_lost: int) -> void:
+	if not thief_visit_awaiting_decision():
+		return
+	var actual_loss: int = mini(coins_lost, state.coins)
+	state.coins -= actual_loss
+	state.total_theft_losses += actual_loss
+	state.thief_pending_steal_amount = 0
 	_mark_dirty()
 
 

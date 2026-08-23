@@ -180,8 +180,13 @@ var _worker_stations_by_plot_kind: Dictionary = {}
 ## built 2026-08-22). Null whenever no Chanda Visit is currently awaiting
 ## a decision -- see _sync_chanda_visitor_if_needed().
 var _chanda_visitor_node: ChandaVisitor = null
+## design/gdd/thief-system.md. Null whenever no thief visit is currently
+## awaiting a decision -- see _sync_thief_visitor_if_needed(). Mirrors
+## _chanda_visitor_node's exact pattern.
+var _thief_visitor_node: ThiefVisitor = null
 const WORKER_STATION_SCENE: PackedScene = preload("res://scenes/village_board/worker_station.tscn")
 const CHANDA_VISITOR_SCENE: PackedScene = preload("res://scenes/village_board/chanda_visitor.tscn")
+const THIEF_VISITOR_SCENE: PackedScene = preload("res://scenes/village_board/thief_visitor.tscn")
 const CONSTRUCTION_EFFECT_SCENE: PackedScene = preload("res://scenes/village_board/construction_effect.tscn")
 
 ## Audio pass: edge-detected Monsoon/Festival active state, so
@@ -252,6 +257,9 @@ func _ready() -> void:
 	# if a Chanda Visit is already awaiting decision at load time (e.g.
 	# resuming a save mid-visit), not just from the next 3s tick.
 	_sync_chanda_visitor_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
+	# design/gdd/thief-system.md -- same reasoning: a thief visit could
+	# already be pending at load time (resumed mid-visit save).
+	_sync_thief_visitor_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
 
 
 ## Wipes and rebuilds the static layer (ground, boundary, zones+plinths+plots)
@@ -1856,6 +1864,7 @@ func _on_growth_tick_timeout() -> void:
 	_sync_adaptive_ambience_if_needed(now)
 	_apply_time_of_day_if_needed(now)
 	_sync_chanda_visitor_if_needed(now)
+	_sync_thief_visitor_if_needed(now)
 
 	# Audio pass batch-resolve hazard fix: snapshot every plot's
 	# state.kind immediately before calling both resolve methods, diff
@@ -2062,6 +2071,61 @@ func _despawn_chanda_visitor() -> void:
 	_apply_night_lamps_to_current_state()
 
 
+## design/gdd/thief-system.md -- spawns/despawns a stationary ThiefVisitor
+## keyed on GameEconomy.thief_visit_awaiting_decision(), the exact same
+## boolean-edge pattern _sync_chanda_visitor_if_needed() established just
+## above. Player resolves the visit by tapping the NPC (board_interactor.gd
+## -> hud.gd's ThiefInteractionSheet -> GameEconomy.resolve_thief_decision()),
+## which clears the pending flag; the next tick's call here then despawns
+## it -- same "resolution clears state, next sync call notices" flow Chanda
+## uses (give_chanda()/decline_chanda() don't despawn inline either).
+func _sync_thief_visitor_if_needed(now: int) -> void:
+	var awaiting := _economy.thief_visit_awaiting_decision()
+	var currently_spawned := _thief_visitor_node != null
+	if awaiting == currently_spawned:
+		return
+	if awaiting:
+		_spawn_thief_visitor()
+	else:
+		_despawn_thief_visitor()
+
+
+func _spawn_thief_visitor() -> void:
+	var zone: ZoneFixture = _zones_by_id.get(VillageSnapshotMapper.ZONE_ID_FARMHOUSE)
+	if zone == null:
+		return
+	# ThiefVisitorPlacement.find_thief_tile() (a pure, GUT-tested function --
+	# see test_thief_system.gd) predates this wiring and takes a flat
+	# Array[bool] + separate cols/rows, not the WalkableGrid object every
+	# other placement caller here uses -- converting rather than changing
+	# its already-tested signature.
+	var walkable_grid := VillageSnapshotMapper.build_walkable_grid(_economy.state, GRID_COLS, GRID_ROWS)
+	var flat_grid: Array[bool] = []
+	for row in range(GRID_ROWS):
+		for col in range(GRID_COLS):
+			flat_grid.append(walkable_grid.is_walkable(Vector2i(col, row)))
+	var farmhouse_tile := Vector2i(zone.tile_col, zone.tile_row)
+	var tile := ThiefVisitorPlacement.find_thief_tile(flat_grid, GRID_COLS, GRID_ROWS, farmhouse_tile)
+	if tile == Vector2i(-1, -1):
+		# Board boxed in on every side -- skip this occurrence rather than
+		# crash or misplace the visitor. The toast notice from
+		# resolve_thief_visit() still tells the player a visit happened;
+		# nothing is silently lost, just the on-board NPC presentation.
+		return
+	var character_key: String = Villager.CHARACTER_SCENES.keys().pick_random()
+	var thief_id: String = str(_economy.state.thief_last_visit_epoch_ms)
+	_thief_visitor_node = THIEF_VISITOR_SCENE.instantiate()
+	_actor_layer.add_child(_thief_visitor_node)
+	_thief_visitor_node.setup(thief_id, character_key, tile, GRID_COLS, GRID_ROWS, TILE_SIZE)
+
+
+func _despawn_thief_visitor() -> void:
+	if _thief_visitor_node == null:
+		return
+	_thief_visitor_node.queue_free()
+	_thief_visitor_node = null
+
+
 ## design/gdd/richer-ambient-villagers.md's Night population thinning.
 ## Single source of truth for "what scale applies right now" -- reads
 ## _last_time_of_day_phase (already kept correct by
@@ -2109,6 +2173,10 @@ func persist_and_rebuild_if_dirty(preserve_camera: bool = true) -> void:
 	# Give/Decline rather than waiting up to 3s for the next growth tick,
 	# same responsiveness rationale as _sync_villagers_if_needed() above.
 	_sync_chanda_visitor_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
+	# design/gdd/thief-system.md -- same immediate-despawn responsiveness
+	# once the player resolves the interaction sheet (resolve_thief_decision()
+	# marks state dirty, which is what routes here).
+	_sync_thief_visitor_if_needed(int(Time.get_unix_time_from_system() * 1000.0))
 
 
 ## EPIC-M6: resyncs the villager population only when the board's walkable

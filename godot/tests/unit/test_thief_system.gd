@@ -351,3 +351,65 @@ func test_large_wealth_overflow_protection() -> void:
 	var result := eco.was_thief_visiting(session_id, 12, huge_wealth, 0)
 	# Should compute without overflow
 	assert_true(result is bool)
+
+
+# --- Integration: the real resolve_thief_visit()/resolve_thief_decision() ----
+# (added once these were actually wired to the board NPC + interaction sheet
+# -- see production/session-state/active.md. The flow tests above simulate
+# the formulas inline rather than calling these; kept as-is since they still
+# correctly document the formulas, these are additive.)
+
+func test_thief_visit_awaiting_decision_false_when_nothing_pending() -> void:
+	assert_false(eco.thief_visit_awaiting_decision())
+
+
+func test_thief_visit_awaiting_decision_true_once_a_visit_is_pending() -> void:
+	eco.state.thief_pending_steal_amount = 750
+	assert_true(eco.thief_visit_awaiting_decision())
+
+
+func test_resolve_thief_decision_deducts_coins_and_tracks_losses() -> void:
+	eco.state.coins = 50_000
+	eco.state.thief_pending_steal_amount = 1000
+	eco.resolve_thief_decision(500)  # e.g. a successful bribe
+	assert_eq(eco.state.coins, 49_500)
+	assert_eq(eco.state.total_theft_losses, 500)
+	assert_eq(eco.state.thief_pending_steal_amount, 0)
+
+
+func test_resolve_thief_decision_clamps_loss_to_available_coins() -> void:
+	## A failed chase's penalty (steal_amount + 50) could exceed a low coin
+	## balance -- must not go negative.
+	eco.state.coins = 100
+	eco.state.thief_pending_steal_amount = 1000
+	eco.resolve_thief_decision(1050)  # chase failure on a 1000 steal
+	assert_eq(eco.state.coins, 0)
+	assert_eq(eco.state.total_theft_losses, 100)
+
+
+func test_resolve_thief_decision_noops_when_nothing_pending() -> void:
+	eco.state.coins = 50_000
+	eco.resolve_thief_decision(500)
+	assert_eq(eco.state.coins, 50_000)
+	assert_eq(eco.state.total_theft_losses, 0)
+
+
+func test_resolve_thief_visit_does_not_reroll_over_a_pending_visit() -> void:
+	## A second call while one visit is already awaiting a decision must not
+	## overwrite the pending amount the player is currently looking at.
+	eco.state.thief_pending_steal_amount = 999
+	eco.state.thief_last_visit_epoch_ms = 5_000_000
+	eco.resolve_thief_visit(6_000_000)
+	assert_eq(eco.state.thief_pending_steal_amount, 999)
+	assert_eq(eco.state.thief_last_visit_epoch_ms, 5_000_000)
+
+
+func test_resolve_thief_visit_respects_cooldown_after_a_resolved_visit() -> void:
+	## Right after a visit is resolved (pending cleared), a new one must not
+	## trigger again before THIEF_VISIT_INTERVAL_HOURS has passed.
+	eco.state.thief_pending_steal_amount = 0
+	eco.state.thief_last_visit_epoch_ms = 5_000_000
+	eco.state.coins = 100_000
+	eco.resolve_thief_visit(5_000_000 + 3_600_000)  # 1 hour later, well under 12h
+	assert_eq(eco.state.thief_pending_steal_amount, 0)
+	assert_eq(eco.state.thief_last_visit_epoch_ms, 5_000_000)

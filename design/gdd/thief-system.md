@@ -198,16 +198,15 @@ sheet — fixed and re-verified with a screenshot).
       meta fix on the NPC's pick area — see session-state) — confirmed
       on-device with a screenshot showing all three properly-styled
       buttons.
-- [ ] **Security level is still not purchasable.** `state.thief_security_level`
-      is read by the probability formula but nothing ever sets it above
-      0 — there's no `buy_thief_security()`-equivalent function, despite
-      `THIEF_SECURITY_FENCING_COST`/`THIEF_SECURITY_GUARD_POSTS_COST`
-      existing as constants. The one remaining real gap.
-- [x] On-device APK: verified (see above).
+- [x] **Security level is now purchasable.** `GameEconomy.buy_thief_security()`
+      (one tier at a time, can_afford-gated), exposed via a card in
+      `farmhouse_tab.gd`. Not yet re-verified with an on-device screenshot
+      of this specific card (the spawn/tap/choice/coin-loss loop was the
+      one screenshot-confirmed live; this purchase path is covered by 4
+      unit tests instead — see `test_thief_system.gd`).
+- [x] On-device APK: verified (see above; security purchase itself
+      covered by unit tests, not a live screenshot).
 
-Net effect now: a thief visit spawns a real, tappable NPC, costs real
-coins based on the player's choice, and tracks cumulative losses — the
-full loop works. The only missing piece is a way to actually reduce
-`thief_security_level` in the first place; right now every player is
-permanently at level 0 (the highest-probability case) with no in-game way
-to change that.
+Net effect now: the full loop works end to end, including the ability to
+actually invest in reducing future risk. No remaining documented gaps in
+this system.

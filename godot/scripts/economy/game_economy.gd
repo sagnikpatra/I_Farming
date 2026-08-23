@@ -1135,6 +1135,29 @@ func resolve_thief_decision(coins_lost: int) -> void:
 	_mark_dirty()
 
 
+## Purchases the next Thief Security tier: level 0 -> 1 (Fencing,
+## THIEF_SECURITY_FENCING_COST) or level 1 -> 2 (Guard Posts,
+## THIEF_SECURITY_GUARD_POSTS_COST) -- see was_thief_visiting()'s
+## security_multiplier for the probability reduction each tier grants.
+## No-ops (silently) past THIEF_SECURITY_MAX_LEVEL, matching this file's
+## existing guard-clause style (buy_farmhouse_upgrade()/upgrade_farmhouse()
+## do the same at their own max level). This is a distinct system from the
+## pre-existing buy_security()/state.has_security (Sandalwood theft
+## protection, Agroforestry-gated) -- unrelated despite the similar name;
+## not renamed to avoid an unrelated breaking change to that older system.
+func buy_thief_security() -> void:
+	if state.thief_security_level >= GameData.THIEF_SECURITY_MAX_LEVEL:
+		return
+	var cost: int = GameData.thief_security_upgrade_cost(state.thief_security_level)
+	if state.coins < cost:
+		_push_event(tr(&"event.thief_security_need_coins") % cost, true)
+		return
+	state.coins -= cost
+	state.thief_security_level += 1
+	_push_event(tr(&"event.thief_security_upgraded") % state.thief_security_level)
+	_mark_dirty()
+
+
 # --- Land & Tier 2: Polyhouse ----------------------------------------------------
 
 func buy_land_expansion() -> void:

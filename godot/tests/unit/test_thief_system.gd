@@ -413,3 +413,37 @@ func test_resolve_thief_visit_respects_cooldown_after_a_resolved_visit() -> void
 	eco.resolve_thief_visit(5_000_000 + 3_600_000)  # 1 hour later, well under 12h
 	assert_eq(eco.state.thief_pending_steal_amount, 0)
 	assert_eq(eco.state.thief_last_visit_epoch_ms, 5_000_000)
+
+
+# --- Thief Security purchase (previously the one documented gap) -------------
+
+func test_buy_thief_security_level_0_to_1_costs_fencing_price() -> void:
+	eco.state.coins = 20_000
+	eco.state.thief_security_level = 0
+	eco.buy_thief_security()
+	assert_eq(eco.state.thief_security_level, 1)
+	assert_eq(eco.state.coins, 20_000 - GameData.THIEF_SECURITY_FENCING_COST)
+
+
+func test_buy_thief_security_level_1_to_2_costs_guard_posts_price() -> void:
+	eco.state.coins = 40_000
+	eco.state.thief_security_level = 1
+	eco.buy_thief_security()
+	assert_eq(eco.state.thief_security_level, 2)
+	assert_eq(eco.state.coins, 40_000 - GameData.THIEF_SECURITY_GUARD_POSTS_COST)
+
+
+func test_buy_thief_security_noops_past_max_level() -> void:
+	eco.state.coins = 100_000
+	eco.state.thief_security_level = GameData.THIEF_SECURITY_MAX_LEVEL
+	eco.buy_thief_security()
+	assert_eq(eco.state.thief_security_level, GameData.THIEF_SECURITY_MAX_LEVEL)
+	assert_eq(eco.state.coins, 100_000)
+
+
+func test_buy_thief_security_noops_when_unaffordable() -> void:
+	eco.state.coins = 100
+	eco.state.thief_security_level = 0
+	eco.buy_thief_security()
+	assert_eq(eco.state.thief_security_level, 0)
+	assert_eq(eco.state.coins, 100)

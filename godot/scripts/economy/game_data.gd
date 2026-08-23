@@ -192,6 +192,30 @@ const THIEF_PROBABILITY_MULTIPLIER_PER_WEALTH: float = 0.00001
 const THIEF_SECURITY_FENCING_COST: int = 15_000
 ## Cost to unlock Guard Posts (reduces theft to 20% of base probability).
 const THIEF_SECURITY_GUARD_POSTS_COST: int = 30_000
+## Level 2 (Guard Posts) is the highest tier -- matches
+## GameEconomy.was_thief_visiting()'s security_multiplier match, which only
+## has cases for 0/1/2.
+const THIEF_SECURITY_MAX_LEVEL: int = 2
+
+
+## Coin cost to upgrade thief security from `current_level` to
+## `current_level + 1`. Returns 0 if already at THIEF_SECURITY_MAX_LEVEL
+## (caller's responsibility to check that first, same as
+## farmhouse_max_level()'s convention).
+static func thief_security_upgrade_cost(current_level: int) -> int:
+	match current_level:
+		0:
+			return THIEF_SECURITY_FENCING_COST
+		1:
+			return THIEF_SECURITY_GUARD_POSTS_COST
+		_:
+			return 0
+
+
+## Tier names are player-facing UI text, not data -- handled via tr()
+## with keys thief.security_level_0/1/2 at the call site (ui_theme.gd's
+## thief_interaction_sheet.gd/farmhouse_tab.gd convention), not returned
+## as a raw string here.
 
 ## Minimum coins stolen in a thief visit.
 const THIEF_STEAL_AMOUNT_MIN: int = 500

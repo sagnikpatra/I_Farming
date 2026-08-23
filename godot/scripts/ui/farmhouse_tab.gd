@@ -72,6 +72,14 @@ func _populate() -> void:
 	# instead of wiring up the second, unreachable one.
 	if data["passive_income_per_hour"] > 0:
 		_body.add_child(_build_passive_income_card(data))
+	# design/gdd/thief-system.md's Thief Security -- previously purchasable
+	# nowhere in the game despite THIEF_SECURITY_FENCING_COST/
+	# THIEF_SECURITY_GUARD_POSTS_COST existing as constants (the one
+	# documented remaining gap after the thief system's board/sheet/coin-
+	# loss wiring). Folded into this sheet for the same reason passive
+	# income is here -- Farmhouse is this project's general "home
+	# investment" hub.
+	_body.add_child(_build_thief_security_card(data))
 	if data["is_max_level"]:
 		_body.add_child(_build_max_level_message())
 	else:
@@ -114,6 +122,9 @@ static func build_view_data(economy: GameEconomy) -> Dictionary:
 		"storage_progress": storage_progress,
 		"passive_income_per_hour": current.passive_income_per_hour,
 		"pending_passive_income": economy.state.pending_passive_income,
+		"thief_security_level": economy.state.thief_security_level,
+		"thief_security_is_max": economy.state.thief_security_level >= GameData.THIEF_SECURITY_MAX_LEVEL,
+		"thief_security_upgrade_cost": GameData.thief_security_upgrade_cost(economy.state.thief_security_level),
 	}
 
 
@@ -126,6 +137,14 @@ func _on_upgrade_pressed() -> void:
 	if _economy.dirty:
 		_play_audio(&"progression_farmhouse_upgrade")
 		_village_board.play_construction_effect(VillageSnapshotMapper.ZONE_ID_FARMHOUSE)
+	_village_board.persist_and_rebuild_if_dirty()
+	_populate()
+
+
+func _on_upgrade_thief_security_pressed() -> void:
+	_economy.buy_thief_security()
+	if _economy.dirty:
+		_play_audio(&"ui_button_tap")
 	_village_board.persist_and_rebuild_if_dirty()
 	_populate()
 
@@ -264,6 +283,33 @@ func _build_passive_income_card(data: Dictionary) -> PanelContainer:
 		var collect_button := _make_chunky_button(tr(&"farmhouse.collect_passive_income") % pending, RIPE_GOLD, SOIL_BROWN_DARK)
 		collect_button.pressed.connect(_on_collect_passive_income_pressed)
 		box.add_child(collect_button)
+
+	card.add_child(box)
+	return card
+
+
+## design/gdd/thief-system.md's Thief Security. Shows the current tier's
+## description and, unless already at max, an upgrade button -- same
+## can_afford-gated pattern as the main Upgrade button in _populate().
+func _build_thief_security_card(data: Dictionary) -> PanelContainer:
+	var card := _make_panel(WOOD_BROWN_LIGHT, 12)
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", UiTheme.scale_px(14))
+
+	box.add_child(_make_title_label(tr(&"thief.security_title"), 16))
+	var level: int = data["thief_security_level"]
+	box.add_child(_make_title_label(tr(&"thief.security_level_%d" % level), 14))
+
+	if data["thief_security_is_max"]:
+		box.add_child(_make_title_label(tr(&"thief.security_max_level"), 14))
+	else:
+		var cost: int = data["thief_security_upgrade_cost"]
+		var can_afford: bool = _economy.state.coins >= cost
+		var upgrade_button := _make_chunky_button(tr(&"thief.security_upgrade_button") % cost, UiTheme.FIELD_GREEN, Color.WHITE, can_afford)
+		if can_afford:
+			upgrade_button.pressed.connect(_on_upgrade_thief_security_pressed)
+		box.add_child(upgrade_button)
 
 	card.add_child(box)
 	return card

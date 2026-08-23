@@ -179,3 +179,11 @@ thief.at_risk,₹%d at risk,₹%d खतरे में
 thief.let_go,Let Them Go,जाने दें
 thief.pay_bribe,Pay Bribe,रिश्वत दें
 thief.chase_off,Chase Them Off,भगा दें
+event.thief_security_need_coins,Need ₹%d for security.,सुरक्षा के लिए ₹%d चाहिए।
+event.thief_security_upgraded,🛡️ Security upgraded to level %d!,🛡️ सुरक्षा स्तर %d तक अपग्रेड हुई!
+thief.security_title,🛡️ Thief Security,🛡️ चोर सुरक्षा
+thief.security_level_0,No security -- thieves visit at full chance.,कोई सुरक्षा नहीं -- चोर पूरी संभावना से आते हैं।
+thief.security_level_1,Fencing -- thief chance halved.,बाड़ -- चोर की संभावना आधी।
+thief.security_level_2,Guard Posts -- thief chance cut to a fifth.,सुरक्षा चौकियाँ -- चोर की संभावना पांचवें हिस्से तक घटी।
+thief.security_upgrade_button,🛡️ Upgrade for ₹%d,🛡️ ₹%d में अपग्रेड करें
+thief.security_max_level,🛡️ Maximum security reached,🛡️ अधिकतम सुरक्षा प्राप्त

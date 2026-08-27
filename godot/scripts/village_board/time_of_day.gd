@@ -68,20 +68,31 @@ static func phase_for_hour(hour: int) -> Phase:
 static func preset_for_phase(phase: Phase) -> Dictionary:
 	match phase:
 		Phase.DAWN:
+			# Warmed 2026-08-27 (design/art/ui-visual-direction-2026-08.md
+			# §3's "still open" golden-hour item) -- richer amber sky/sun,
+			# +0.08 energy on both ambient and sun for a more premium glow.
+			# DAY/NIGHT untouched (DAY is pinned to village_board.tscn's
+			# baseline via test_day_preset_matches_the_scenes_existing_
+			# defaults_exactly(); NIGHT is the already-verified-stable dark
+			# end of the range) -- Dawn/Dusk are the actual "golden hour"
+			# phases this ask is about, so tuned in isolation from those two.
 			return {
-				"sky_color": Color(0.85, 0.65, 0.60),
-				"ambient_color": Color(1.0, 0.78, 0.70),
-				"ambient_energy": 0.35,
-				"sun_color": Color(1.0, 0.75, 0.55),
-				"sun_energy": 0.40,
+				"sky_color": Color(0.90, 0.60, 0.46),
+				"ambient_color": Color(1.0, 0.70, 0.52),
+				"ambient_energy": 0.42,
+				"sun_color": Color(1.0, 0.64, 0.36),
+				"sun_energy": 0.48,
 			}
 		Phase.DUSK:
+			# Same 2026-08-27 warming pass as Dawn above -- deeper
+			# amber-gold sunset tone, +0.10/+0.03 energy for a stronger,
+			# more "premium" glow at the day's other golden-hour phase.
 			return {
-				"sky_color": Color(0.75, 0.42, 0.35),
-				"ambient_color": Color(1.0, 0.55, 0.38),
-				"ambient_energy": 0.35,
-				"sun_color": Color(1.0, 0.48, 0.28),
-				"sun_energy": 0.40,
+				"sky_color": Color(0.80, 0.38, 0.28),
+				"ambient_color": Color(1.0, 0.48, 0.28),
+				"ambient_energy": 0.38,
+				"sun_color": Color(1.0, 0.40, 0.16),
+				"sun_energy": 0.50,
 			}
 		Phase.NIGHT:
 			return {

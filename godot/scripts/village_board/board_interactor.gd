@@ -385,8 +385,14 @@ func _on_long_press_timeout(request_id: int) -> void:
 		return  # Long-press over empty ground (or a non-draggable plot): nothing to drag.
 	if _long_press_pick["kind"] == "decoration":
 		_begin_decoration_drag(_long_press_pick["decoration_id"])
-	else:
-		_begin_zone_drag(_long_press_pick["id"])
+	# Zones (structure buildings -- Farmhouse, Polyhouse, Mandi, etc.) are no
+	# longer repositionable by design (user directive, 2026-08-27): only
+	# decorations move now. _long_press_pick can only ever be "decoration"
+	# or "zone" here -- the pick mask above is scoped to exactly those two
+	# layers -- so the old unconditional `else: _begin_zone_drag(...)`
+	# branch is simply gone; a long-press over a zone now does nothing
+	# beyond the ordinary tap-release selection that already happens
+	# independently on release (see the general dispatch above).
 
 
 # ---------------------------------------------------------------------------
@@ -706,33 +712,34 @@ func is_move_mode_active() -> bool:
 	return _move_mode_active
 
 
-## Step 1 (no _move_target yet): a tap on a zone or decoration arms it as
-## the move target -- zones get the usual _select() highlight (matches
-## long-press-drag's own _begin_zone_drag(), which also calls _select());
-## decorations get no highlight, matching _open_decoration_info_card()'s
+## Step 1 (no _move_target yet): a tap on a decoration arms it as the move
+## target -- no highlight, matching _open_decoration_info_card()'s
 ## established "no highlight for decorations" precedent (see this file's
-## header comment there). A tap on anything else (empty ground, a plot) is
-## a no-op -- stays in the pick step rather than silently exiting move mode,
-## so a mis-tap doesn't force the player to re-open the HUD toggle.
+## header comment there). A tap on anything else (empty ground, a plot, a
+## zone) is a no-op -- stays in the pick step rather than silently exiting
+## move mode, so a mis-tap doesn't force the player to re-open the HUD
+## toggle. **Zones are deliberately excluded from the pick mask below**
+## (user directive, 2026-08-27: only decorations move now, buildings stay
+## fixed) -- previously this picked PICK_LAYER_ZONES | PICK_LAYER_DECORATIONS
+## and had a zone branch here (_select("zone", ...) + _commit_zone_move_mode()
+## at commit time); both removed. _commit_zone_move_mode() and
+## _begin_zone_drag()/_commit_zone_drag() (the long-press-drag equivalent,
+## see _on_long_press_timeout() above) are now unreachable dead code, left
+## in place rather than torn out in the same pass that disabled their only
+## call sites -- a deliberate, separate future cleanup, not an oversight.
 ##
-## Step 2 (_move_target already set): ANY tap commits the move to that
-## ground position, reusing the exact same commit paths long-press-drag
-## already uses (try_commit_zone_move()'s bounds/overlap validation for
-## zones; commit_decoration_move()'s always-succeeds behavior for
-## decorations -- see _commit_zone_drag()/_commit_decoration_drag() above).
-## Move mode turns itself off after one full pick-then-place cycle,
-## matching _armed_decoration_type's one-shot design -- the player re-taps
-## the HUD button to move something else.
+## Step 2 (_move_target already set): a tap commits the decoration move to
+## that ground position, reusing commit_decoration_move()'s existing
+## always-succeeds behavior (see _commit_decoration_drag() above). Move mode
+## turns itself off after one full pick-then-place cycle, matching
+## _armed_decoration_type's one-shot design -- the player re-taps the HUD
+## button to move something else.
 func _handle_move_mode_tap() -> void:
 	if _move_target.is_empty():
-		var pick := _pick(
-			_touch_last_screen_pos, VillageBoard.PICK_LAYER_ZONES | VillageBoard.PICK_LAYER_DECORATIONS
-		)
+		var pick := _pick(_touch_last_screen_pos, VillageBoard.PICK_LAYER_DECORATIONS)
 		if pick.is_empty():
 			return
 		_move_target = pick
-		if pick["kind"] == "zone":
-			_select("zone", pick["id"])
 		return
 
 	var hit = _ground_hit(_touch_last_screen_pos)
@@ -743,11 +750,8 @@ func _handle_move_mode_tap() -> void:
 		_deselect()
 		return
 
-	if target["kind"] == "zone":
-		_commit_zone_move_mode(target["id"], hit)
-	else:
-		_village_board.commit_decoration_move(target["decoration_id"], hit)
-		_play_audio(&"ui_drag_drop_success")  # Always succeeds -- see _commit_decoration_drag()'s own comment.
+	_village_board.commit_decoration_move(target["decoration_id"], hit)
+	_play_audio(&"ui_drag_drop_success")  # Always succeeds -- see _commit_decoration_drag()'s own comment.
 	_deselect()
 
 

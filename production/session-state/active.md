@@ -338,11 +338,44 @@ screen gets off." Root cause found and fixed.
    Processing Pipeline, Villager Hiring, Government Subsidy Quests,
    Real-Time Weather Events, E-NAM Market Forecasting) -- still
    uncommitted in the working tree.
-5. `thief_security_level` still isn't purchasable anywhere (constants
-   exist -- `THIEF_SECURITY_FENCING_COST`/`THIEF_SECURITY_GUARD_POSTS_COST`
-   -- but no `buy_thief_security()`-equivalent function) -- one remaining
-   documented gap in `thief-system.md`'s Acceptance Criteria.
+5. ~~`thief_security_level` still isn't purchasable anywhere~~ -- stale;
+   this was actually closed in the "evening" update above
+   (`GameEconomy.buy_thief_security()` + `FarmhouseTab._build_thief_security_card()`,
+   4 passing unit tests) and `thief-system.md`'s Acceptance Criteria
+   already reflects it. This list just wasn't updated to match. Re-verified
+   2026-08-27 via a real GUT run (728 tests/682 passing/46 failing, same
+   pre-existing 46; all 4 `test_buy_thief_security_*` tests pass).
 6. Consider whether the thief visit-probability formula needs a cap --
    it exceeds 100%/hour above ~1M coins (this session's real test save
    included), which may or may not be the intended curve; flagged as a
    Tuning Knob in `thief-system.md`, not changed without a design call.
+
+## Update 2026-08-27: stale-state cleanup + a real anomaly surfaced
+
+Picked this session up via "Next steps" above. Two findings before any
+new implementation work:
+
+- **`app/` and `core/` had reappeared as untracked directories** despite
+  `cea3507` removing the pre-migration codebase and the docs stating it's
+  gone for good. Inspected both: no source (no `.kt`, no `build.gradle`,
+  no `src/`) -- purely regenerated Gradle/AGP build-output trees
+  (`app/build/intermediates/...`, `core/build/kotlin/...`), plus a stray
+  uncommitted `.idea/gradle.xml` edit (`gradleJvm=jbr-25`), consistent
+  with the IDE re-syncing a Gradle project that no longer has a
+  `build.gradle` to point at. Not this session's or any prior session's
+  work -- flagged to the user rather than silently deleted. User confirmed
+  deletion; the `.idea/gradle.xml` stray edit was reverted
+  (`git checkout -- .idea/gradle.xml`), but removing `app/`/`core/`
+  themselves was blocked by this session's own Bash permission policy
+  (`rm -rf`/`git clean -fdx` both denied) -- **still present on disk,
+  needs manual `git clean -fdx -- app core`** if not already done.
+- **Item 5 above (`thief_security_level` purchase) was already done**,
+  not a real gap -- see the correction inline above. Re-ran the full GUT
+  suite to confirm rather than trusting the stale note: 728 tests/682
+  passing/46 failing, same pre-existing 46-failure baseline as the last
+  documented run, all 4 `test_buy_thief_security_*` tests passing.
+
+**Still open, unchanged:** item 4 (finish-or-discard call on the 5 stub
+systems -- now confirmed actually committed as inert code, per the
+tracked-files check this session ran) and item 6 (visit-probability cap,
+a design call). Neither was touched this session.

@@ -2,8 +2,8 @@
 
 ---
 **Status**: Reverse-Documented
-**Source**: `app/src/main/java/com/zonkrik/ifarming/game/GameModels.kt`, `GameData.kt`, `GameViewModel.kt`; original economic design in `v2.md` (Tier 1-4 sections)
-**Date**: 2026-08-18
+**Source**: `app/src/main/java/com/zonkrik/ifarming/game/GameModels.kt`, `GameData.kt`, `GameViewModel.kt`; original economic design in `v2.md` (Tier 1-4 sections). **Stale as of the Godot migration** (per `docs/architecture/adr-0001-godot-engine-migration.md`) — that Kotlin package no longer exists in this repo; the real current source is `godot/scripts/economy/crop_type.gd` and `game_data.gd`. Kept as-is rather than rewritten wholesale, since the mechanics it describes still match the Godot port exactly; only the crop count below was actually out of date.
+**Date**: 2026-08-18 (crop catalogue updated 2026-08-27 — see §8)
 **Verified By**: pending review
 **Implementation Status**: Fully implemented
 ---
@@ -34,8 +34,15 @@ plot kind, Sandalwood's theft mechanic, Farmhouse growth/sell multipliers,
 Mandi's dynamic pricing, Monsoon/Festival LiveOps windows — this doc treats
 those as external modifiers it plugs into its own formulas.
 
-**Current Implementation**: Fully implemented — 9 crops across 5 plot kinds,
-lazy (read-time) growth resolution, deterministic weather/damage rolls.
+**Current Implementation**: Fully implemented — 22 crops across 5 plot kinds
+(the original 9 plus 13 added 2026-08-23, `feat: crop varieties + 50-item
+farm equipment catalogue`), lazy (read-time) growth resolution, deterministic
+weather/damage rolls. A parallel **Crop Variety** system (regional
+specialty variants — e.g. Basmati Wheat, Kashmiri Saffron) layers
+multiplicative grow-time/seed-cost/price/weather-risk modifiers on top of
+the base catalogue below; not itself documented as a dedicated GDD yet
+(`CropVarietyType`/`CropVarietyDef`/`GameData.varieties_for_crop()` in the
+same source files).
 
 **Design Intent** (from `v2.md`, confirmed matching code):
 - **Player fantasy**: progression from a poor farmer's rudimentary open-field
@@ -75,6 +82,31 @@ lazy (read-time) growth resolution, deterministic weather/damage rolls.
 whenever the UV Film has lapsed — see §2.2 and `land-and-structures.md`.
 † Sandalwood has no weather roll; it risks theft instead — see
 `land-and-structures.md`.
+
+**Added 2026-08-23** (13 crops, same catalogue, same rules as above — no new
+mechanics, just more `CropType.Kind` entries):
+
+| Crop | Plot Kind | Seed Cost | Grow Time | Base Sell | Weather Risk |
+|---|---|---|---|---|---|
+| Sugarcane (Ganna) 🌾 | Open Field | ₹50 | 8 hr | ₹400 | 20% |
+| Mustard (Sarson) 🟨 | Open Field | ₹20 | 4 hr | ₹180 | 10% |
+| Lentil (Daal) 🟤 | Open Field | ₹30 | 6 hr | ₹250 | 14% |
+| Chickpea (Chana) 🟫 | Open Field | ₹25 | 5 hr | ₹200 | 12% |
+| Maize (Corn) 🌽 | Open Field | ₹40 | 7 hr | ₹280 | 18% |
+| Cucumber (Kheera) 🥒 | Polyhouse | ₹80 | 35 min | ₹450 | 0%* |
+| Spinach (Palak) 🥬 | Polyhouse | ₹60 | 30 min | ₹350 | 0%* |
+| Brinjal (Baingan) 🍆 | Polyhouse | ₹120 | 50 min | ₹550 | 0%* |
+| Neem Tree 🌳 | Agroforestry | ₹2,000 | 10 days | ₹150,000 | 0% |
+| Coconut Palm 🥥 | Agroforestry | ₹3,000 | 12 days | ₹200,000 | 0% |
+| Turmeric (Haldi) 🟡 | Aquaculture‡ | ₹150 | 8 hr | ₹800 | 0% |
+| Ginger (Adrak) 🟠 | Aquaculture‡ | ₹180 | 9 hr | ₹900 | 0% |
+| Cardamom (Elaichi) ⚪ | Vertical Farm | ₹500 | 2 hr | ₹2,500 | 0% |
+
+‡ Turmeric and Ginger are gated behind the Aquaculture plot kind in code
+(`GameData.gd`'s `required_plot_kind`), despite neither being an aquatic
+crop in reality — carried over as-is from the 2026-08-23 implementation
+rather than silently reassigned; flagged in §7 as a real design question,
+not treated as a bug to fix unilaterally.
 
 **Plot Lifecycle** (`PlotState` sealed class):
 ```
@@ -282,7 +314,8 @@ tuned, not placeholder.
 ## 6. Acceptance Criteria
 
 **What Exists**:
-- ✅ 9-crop catalogue across 5 plot kinds, each with distinct economics
+- ✅ 22-crop catalogue across 5 plot kinds, each with distinct economics
+  (9 original + 13 added 2026-08-23)
 - ✅ Full plant → grow → harvest → sell lifecycle
 - ✅ Weather/pest risk model for open-field and unprotected-Polyhouse crops
 - ✅ Damaged-yield partial-value sale path (never zero-value)
@@ -314,6 +347,14 @@ tuned, not placeholder.
    - Option A: Treat as an intentional scope cut for this build — coins-only
    - Option B: Flag as a real gap for a future economy pass
 
+3. **Turmeric/Ginger plot-kind placement** (added 2026-08-27, re: the
+   2026-08-23 crop expansion): both are gated behind Aquaculture rather than
+   Open Field or a new "spice" category, despite not being aquatic crops.
+   - Option A: Leave as-is — Aquaculture is this game's existing catch-all
+     "specialty tier" and reassigning now would be a live-economy balance
+     change, not a doc fix
+   - Option B: Move to Open Field or a future dedicated spice tier
+
 ### Flagged Follow-Up Work
 - [x] Draft `land-and-structures.md`, `farmhouse-progression.md`,
       `mandi-trading.md`, `liveops-events.md` — all 4 exist
@@ -333,6 +374,7 @@ tuned, not placeholder.
 | Date | Author | Changes |
 |------|--------|---------|
 | 2026-08-18 | Claude (reverse-doc) | Initial reverse-documentation from `game/` package + `v2.md` |
+| 2026-08-27 | Claude | Corrected stale "9 crops" claim — the catalogue actually grew to 22 crops on 2026-08-23 (commit `49825db`, never reflected here). Added the 13-crop table, the Crop Variety system pointer, and the Turmeric/Ginger plot-kind question. |
 
 ---
 

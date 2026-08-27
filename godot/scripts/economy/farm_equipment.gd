@@ -271,6 +271,64 @@ static func equipment_description(kind: int) -> String:
 		_: return "Farm equipment"
 
 
+## design/gdd/farm-equipment.md's Detailed Rules #4: "each expansion unlocks
+## new technology" -- equipment is gated by land-expansion progress, not
+## just coins. Ordered cheapest-to-unlock first (BASIC) so a plain int
+## comparison against GameEconomy.land_expansions_bought() works without a
+## lookup, same convention as PlotKind/CropType ordinal ordering elsewhere.
+enum Tier { BASIC, COMMON, STANDARD, MID_RANGE, PREMIUM, LUXURY }
+
+## Land expansions purchased (GameEconomy.land_expansions_bought(), i.e. Open
+## Field plot count beyond GameData.STARTING_PLOTS) required before a tier's
+## items become purchasable at all -- independent of, and checked before,
+## the coins check. GameData.STARTING_PLOTS=3/MAX_PLOTS=16 means 13 total
+## expansions are ever possible, so this curve (0/0/2/5/8/11) leaves every
+## tier reachable well before the cap, front-loaded since Luxury is meant as
+## a late-game aspirational tier, not a final-expansion-only unlock.
+const TIER_UNLOCK_EXPANSIONS: Dictionary = {
+	Tier.BASIC: 0,
+	Tier.COMMON: 0,
+	Tier.STANDARD: 2,
+	Tier.MID_RANGE: 5,
+	Tier.PREMIUM: 8,
+	Tier.LUXURY: 11,
+}
+
+
+## Derives tier from the enum's own declaration-order groupings (see the
+## `# Luxury Equipment` / `# Premium Equipment` / etc. comments above) rather
+## than a second parallel per-item table -- the ranges are contiguous by
+## construction, so this stays correct as long as new items are appended
+## within their tier's existing block, not inserted elsewhere.
+static func equipment_tier(kind: int) -> int:
+	if kind <= Kind.SOIL_TESTING_KIT:
+		return Tier.LUXURY
+	if kind <= Kind.GRAIN_WINNOWER:
+		return Tier.PREMIUM
+	if kind <= Kind.ROPE_AND_PULLEY:
+		return Tier.MID_RANGE
+	if kind <= Kind.SPADE:
+		return Tier.STANDARD
+	if kind <= Kind.BASKET_WOVEN:
+		return Tier.COMMON
+	return Tier.BASIC
+
+
+static func tier_unlock_expansions(tier: int) -> int:
+	return TIER_UNLOCK_EXPANSIONS.get(tier, 0)
+
+
+static func tier_display_name(tier: int) -> String:
+	match tier:
+		Tier.LUXURY: return "Luxury"
+		Tier.PREMIUM: return "Premium"
+		Tier.MID_RANGE: return "Mid-Range"
+		Tier.STANDARD: return "Standard"
+		Tier.COMMON: return "Common"
+		Tier.BASIC: return "Basic"
+		_: return "Unknown"
+
+
 static func all_equipment() -> Array[int]:
 	return [
 		Kind.SOLAR_PANEL_SYSTEM,

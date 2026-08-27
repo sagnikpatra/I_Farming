@@ -87,6 +87,7 @@ const EventsTabScene := preload("res://scenes/ui/events_tab.tscn")
 const DecorationPickerScene := preload("res://scenes/ui/decoration_picker.tscn")
 const OpenFieldTabScene := preload("res://scenes/ui/open_field_tab.tscn")
 const AccessibilitySheetScene := preload("res://scenes/ui/accessibility_sheet.tscn")
+const EquipmentShopScene := preload("res://scenes/ui/equipment_shop.tscn")
 
 const HUD_MARGIN: int = 16
 ## Fixed status-bar clearance approximation -- real safe-area-aware insets
@@ -135,6 +136,7 @@ var _inventory_row: HBoxContainer
 var _liveops_banner: Button
 var _sell_all_button: Button
 var _shop_button: Button
+var _equipment_shop_button: Button
 var _open_field_workers_button: Button
 var _accessibility_button: Button
 var _zoom_in_button: Button
@@ -519,6 +521,22 @@ func _on_shop_pressed() -> void:
 	_bottom_sheet.open(picker)
 
 
+## design/gdd/farm-equipment.md -- opens the Farm Equipment shop. Same shape
+## as _on_shop_pressed() above, minus a BoardInteractor dependency (this
+## shop has no board-placement step to arm, unlike decorations -- see the
+## GDD's Acceptance Criteria).
+func _on_equipment_shop_pressed() -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
+	_play_ui_audio(&"ui_button_tap")
+	var shop: EquipmentShop = EquipmentShopScene.instantiate()
+	shop.configure(economy, _village_board)
+	_bottom_sheet.open(shop)
+
+
 # ---------------------------------------------------------------------------
 # Audio pass -- see audio_manager.gd's class doc.
 # ---------------------------------------------------------------------------
@@ -742,6 +760,21 @@ func _build_bottom_right_shop() -> void:
 	var shop_label := _make_title_label(tr(&"hud.shop"), 14)
 	shop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bottom_right_shop.add_child(shop_label)
+
+	# design/gdd/farm-equipment.md -- no sourced icon exists for "equipment/
+	# tools" in this project's icon set (ICON_GEAR is already claimed by the
+	# accessibility button), so this follows the same emoji-button fallback
+	# the zoom buttons above already use rather than inventing a mismatched
+	# icon. 64px to match the Shop button it sits beside, not the smaller
+	# 44px zoom/move-mode buttons -- it's a primary sheet-opening action,
+	# same tier as Shop, not a minor toggle.
+	_equipment_shop_button = UiTheme.make_circular_emoji_button("🧰", WOOD_BROWN_LIGHT, 64)
+	_equipment_shop_button.pressed.connect(_on_equipment_shop_pressed)
+	_bottom_right_shop.add_child(_equipment_shop_button)
+
+	var equipment_shop_label := _make_title_label(tr(&"hud.equipment_shop"), 14)
+	equipment_shop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bottom_right_shop.add_child(equipment_shop_label)
 
 
 ## Quick Nav Bar (EPIC-M5 parity pass) -- port of GdxQuickNavBar.kt, a row of

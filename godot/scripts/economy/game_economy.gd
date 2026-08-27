@@ -1160,11 +1160,26 @@ func buy_thief_security() -> void:
 
 # --- Land & Tier 2: Polyhouse ----------------------------------------------------
 
-func buy_land_expansion() -> void:
+func _open_field_count() -> int:
 	var open_field_count: int = 0
 	for plot: Plot in state.plots:
 		if plot.kind == PlotKind.Kind.OPEN_FIELD:
 			open_field_count += 1
+	return open_field_count
+
+
+## design/gdd/farm-equipment.md's Detailed Rules #4: how many land
+## expansions the player has actually purchased so far (0 at a fresh save's
+## GameData.STARTING_PLOTS, up to GameData.MAX_PLOTS - STARTING_PLOTS = 13
+## at the cap). Public so FarmEquipment's tier-gate check (buy_equipment()
+## below) and the equipment shop UI (to grey out locked tiers) can both read
+## it without duplicating _open_field_count()'s plot-scan.
+func land_expansions_bought() -> int:
+	return maxi(_open_field_count() - GameData.STARTING_PLOTS, 0)
+
+
+func buy_land_expansion() -> void:
+	var open_field_count := _open_field_count()
 	if open_field_count >= GameData.MAX_PLOTS:
 		_push_event(tr(&"event.land_max_size"), true)
 		return
@@ -1543,4 +1558,32 @@ func flip_decoration(id: int) -> void:
 	for decoration: Decoration in state.decorations:
 		if decoration.id == id:
 			decoration.flipped_x = not decoration.flipped_x
+	_mark_dirty()
+
+
+# --- Farm Equipment: purchasable collection ---------------------------------------
+
+## design/gdd/farm-equipment.md. Buys `kind` into state.owned_equipment --
+## ownership only, at most once per kind (a collection, not a stack); no
+## board placement and no gameplay bonus yet, see that GDD's Acceptance
+## Criteria. Gated two ways, checked in order: FarmEquipment.Tier unlock
+## (land_expansions_bought() must meet the tier's threshold) before coins,
+## since "you haven't earned access to this tier yet" is a different failure
+## than "you can't afford this specific item" and deserves its own message.
+## No-ops (silently, past the initial checks) if `kind` is already owned --
+## same guard-clause style as buy_thief_security() at max level.
+func buy_equipment(kind: int) -> void:
+	if state.owned_equipment.has(kind):
+		return
+	var tier := FarmEquipment.equipment_tier(kind)
+	var required_expansions := FarmEquipment.tier_unlock_expansions(tier)
+	if land_expansions_bought() < required_expansions:
+		_push_event(tr(&"event.equipment_tier_locked") % [FarmEquipment.tier_display_name(tier), required_expansions], true)
+		return
+	var cost := FarmEquipment.equipment_cost(kind)
+	if state.coins < cost:
+		_push_event(tr(&"event.need_coins_for_named_item") % [cost, FarmEquipment.equipment_emoji(kind)], true)
+		return
+	state.coins -= cost
+	state.owned_equipment.append(kind)
 	_mark_dirty()

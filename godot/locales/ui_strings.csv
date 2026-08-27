@@ -187,3 +187,15 @@ thief.security_level_1,Fencing -- thief chance halved.,बाड़ -- चोर
 thief.security_level_2,Guard Posts -- thief chance cut to a fifth.,सुरक्षा चौकियाँ -- चोर की संभावना पांचवें हिस्से तक घटी।
 thief.security_upgrade_button,🛡️ Upgrade for ₹%d,🛡️ ₹%d में अपग्रेड करें
 thief.security_max_level,🛡️ Maximum security reached,🛡️ अधिकतम सुरक्षा प्राप्त
+hud.equipment_shop,Equipment,उपकरण
+equipment_shop.title,🧰 Farm Equipment,🧰 खेती के उपकरण
+equipment_shop.buy_button,Buy for ₹%d,₹%d में खरीदें
+equipment_shop.owned,Owned,आपके पास है
+equipment_shop.locked_row,🔒 Needs %d more expansion(s),🔒 %d और विस्तार चाहिए
+equipment_shop.tier_basic,Basic,बुनियादी
+equipment_shop.tier_common,Common,सामान्य
+equipment_shop.tier_standard,Standard,मानक
+equipment_shop.tier_mid_range,Mid-Range,मध्यम श्रेणी
+equipment_shop.tier_premium,Premium,प्रीमियम
+equipment_shop.tier_luxury,Luxury,लक्ज़री
+event.equipment_tier_locked,🔒 %s tier needs %d more land expansion(s).,🔒 %s स्तर के लिए %d और भूमि विस्तार चाहिए।

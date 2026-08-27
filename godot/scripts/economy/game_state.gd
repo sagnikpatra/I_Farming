@@ -137,6 +137,13 @@ extends Resource
 ## cleared by resolve_thief_decision() once the player responds.
 @export var thief_pending_steal_amount: int = 0
 
+## design/gdd/farm-equipment.md: FarmEquipment.Kind ordinals the player has
+## purchased, each at most once (a collection, not a stack -- buying an
+## already-owned kind is a no-op, see GameEconomy.buy_equipment()). Ownership
+## only for now -- no board placement and no gameplay bonus yet, see that
+## GDD's Acceptance Criteria for why.
+@export var owned_equipment: Array[int] = []
+
 ## Farmhouse Progression (design/gdd/farmhouse-progression.md) -- passive income system.
 ## Coins earned from the farmhouse's passive income but not yet collected by the player.
 @export var pending_passive_income: int = 0

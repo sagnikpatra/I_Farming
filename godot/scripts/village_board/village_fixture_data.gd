@@ -147,18 +147,36 @@ const AMBIENT_CLUTTER_MODELS: Array[String] = [
 ## fit, flagged here the same way the audio pass flagged its bird-species
 ## approximations (production/audio EPIC-M8 notes).
 ##
-## Paddy/Dutch Rose/Sandalwood/Makhana/Pond Fish/Saffron are deliberately
-## NOT mapped: corn stalks (crops_cornStageA-D.obj, also sourced but unused)
-## don't read as rice paddy, and sandalwood/saffron/rose need species-specific
-## geometry nothing in the curated kits provides. Those crops stay on the
+## Paddy/Dutch Rose/Sandalwood/Saffron are still deliberately NOT mapped:
+## corn stalks (crops_cornStageA-D.obj, also sourced but unused) don't read
+## as rice paddy, and sandalwood/saffron/rose need species-specific geometry
+## nothing CC0-licensed and style-consistent with this project's existing
+## Kenney kits was found for (2026-08-27 sourcing pass -- real search
+## across Kenney's own catalogue plus Poly Pizza/Quaternius; the one rose
+## candidate found, poly.pizza's "Rose bush" by jeremy, is CC-BY/attribution-
+## required, not CC0, so excluded per this project's explicit CC0-only
+## convention -- see assets_3d/README.md). Those 4 crops stay on the
 ## existing flat dirt-mesh + lifecycle-tint rendering via
 ## crop_stage_model_path() returning "" for them -- see that function's own
 ## doc comment and village_board.gd's _build_plot(), which falls back to
 ## CROP_PLOT whenever this returns "".
+##
+## Makhana and Pond Fish WERE newly sourced and mapped in that same pass --
+## genuine, honest fits rather than force-fits: a water lily for Makhana
+## (Fox Nut is a lotus-family aquatic crop; Kenney's nature-kit lily_large/
+## lily_small are literally water-lily pads) and a plain fish model for Pond
+## Fish (Kenney's food-kit fish.obj -- a new 5th kit, see assets_3d/
+## README.md; used here purely as a static prop, not for its "food" framing).
+## Both CC0, both single-stage (no distinct Growing vs. Ready geometry exists
+## for either, so is_ready is ignored for these two -- the existing lifecycle
+## color-tint still communicates ready-vs-growing on top of the model, same
+## as every other crop).
 const CROP_WHEAT_STAGE_GROWING := "res://assets_3d/nature-kit/OBJ format/crops_wheatStageA.obj"
 const CROP_WHEAT_STAGE_READY := "res://assets_3d/nature-kit/OBJ format/crops_wheatStageB.obj"
 const CROP_LEAFY_STAGE_GROWING := "res://assets_3d/nature-kit/OBJ format/crops_leafsStageA.obj"
 const CROP_LEAFY_STAGE_READY := "res://assets_3d/nature-kit/OBJ format/crops_leafsStageB.obj"
+const CROP_MAKHANA_MODEL := "res://assets_3d/nature-kit/OBJ format/lily_large.obj"
+const CROP_POND_FISH_MODEL := "res://assets_3d/food-kit/OBJ format/fish.obj"
 
 
 ## Real staged crop-growth model for `crop` at its current stage, or "" if
@@ -180,5 +198,9 @@ static func crop_stage_model_path(crop: CropType.Kind, is_ready: bool) -> String
 			return CROP_WHEAT_STAGE_READY if is_ready else CROP_WHEAT_STAGE_GROWING
 		CropType.Kind.TOMATO, CropType.Kind.CAPSICUM:
 			return CROP_LEAFY_STAGE_READY if is_ready else CROP_LEAFY_STAGE_GROWING
+		CropType.Kind.MAKHANA:
+			return CROP_MAKHANA_MODEL
+		CropType.Kind.POND_FISH:
+			return CROP_POND_FISH_MODEL
 		_:
 			return ""

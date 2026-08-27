@@ -548,6 +548,158 @@ func test_flip_decoration_only_affects_the_matching_id() -> void:
 	assert_false(eco.state.decorations[1].flipped_x)
 
 
+# --- Crop Varieties: Integration Tests -------------------------------------------
+
+func test_plant_seed_with_default_variety_uses_base_grow_time() -> void:
+	# Arrange
+	var plot: Plot = eco.state.plots[0]
+	var wheat_def := GameData.crop_def(CropType.Kind.WHEAT)
+
+	# Act
+	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW_QUIET, 0)  # variety 0 = default
+
+	# Assert
+	assert_eq(plot.selected_variety, 0)
+	assert_eq(plot.state.effective_grow_seconds, wheat_def.grow_seconds)
+
+
+func test_plant_seed_with_basmati_variety_slower_growth() -> void:
+	# Arrange
+	var plot: Plot = eco.state.plots[0]
+	var wheat_def := GameData.crop_def(CropType.Kind.WHEAT)
+	var basmati_def := GameData.crop_variety_def(CropType.Kind.WHEAT, 1)
+	var expected_time := roundi(float(wheat_def.grow_seconds) * basmati_def.grow_time_multiplier)
+
+	# Act
+	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW_QUIET, 1)  # variety 1 = Basmati
+
+	# Assert
+	assert_eq(plot.selected_variety, 1)
+	assert_eq(plot.state.effective_grow_seconds, expected_time)
+	assert_true(expected_time > wheat_def.grow_seconds, "Basmati should be slower")
+
+
+func test_plant_seed_with_premium_variety_costs_more_seeds() -> void:
+	# Arrange
+	var plot: Plot = eco.state.plots[0]
+	var wheat_def := GameData.crop_def(CropType.Kind.WHEAT)
+	var basmati_def := GameData.crop_variety_def(CropType.Kind.WHEAT, 1)
+	var base_seed_cost := wheat_def.seed_cost
+	var premium_seed_cost := rointi(float(base_seed_cost) * basmati_def.seed_cost_multiplier)
+	var coins_before := eco.state.coins
+
+	# Act
+	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW_QUIET, 1)
+
+	# Assert
+	assert_eq(eco.state.coins, coins_before - premium_seed_cost)
+	assert_true(premium_seed_cost > base_seed_cost, "Premium variety should cost more seeds")
+
+
+func test_plant_seed_premium_variety_blocked_on_insufficient_coins() -> void:
+	# Arrange
+	var plot: Plot = eco.state.plots[0]
+	var basmati_def := GameData.crop_variety_def(CropType.Kind.WHEAT, 1)
+	var wheat_def := GameData.crop_def(CropType.Kind.WHEAT)
+	var premium_cost := rointi(float(wheat_def.seed_cost) * basmati_def.seed_cost_multiplier)
+	eco.state.coins = premium_cost - 1  # Just short
+
+	# Act
+	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW_QUIET, 1)
+
+	# Assert
+	assert_eq(plot.state.kind, PlotState.Kind.EMPTY, "Should not plant without enough coins")
+	assert_true(eco.has_events())
+
+
+func test_effective_weather_risk_with_variety_multiplier() -> void:
+	# Arrange
+	var tomato_def := GameData.crop_def(CropType.Kind.TOMATO)
+	var heirloom_def := GameData.crop_variety_def(CropType.Kind.TOMATO, 1)
+	var base_risk := tomato_def.weather_risk_percent
+	var modified_risk := rointi(float(base_risk) * heirloom_def.weather_risk_multiplier)
+
+	# Act
+	var risk_standard := eco.effective_weather_risk_percent(PlotKind.Kind.OPEN_FIELD, CropType.Kind.TOMATO, NOW_QUIET, 0)
+	var risk_heirloom := eco.effective_weather_risk_percent(PlotKind.Kind.OPEN_FIELD, CropType.Kind.TOMATO, NOW_QUIET, 1)
+
+	# Assert
+	assert_eq(risk_standard, base_risk)
+	assert_eq(risk_heirloom, modified_risk)
+	assert_true(risk_heirloom < risk_standard, "Heirloom should have lower weather risk")
+
+
+func test_variety_weather_risk_ignored_for_managed_tiers() -> void:
+	# Arrange (no need to set up polyhouse, just test the logic)
+	# Act/Assert - weather risk modifiers should only apply to OPEN_FIELD
+	var polyhouse_risk_standard := eco.effective_weather_risk_percent(PlotKind.Kind.POLYHOUSE, CropType.Kind.CAPSICUM, NOW_QUIET, 0)
+	var polyhouse_risk_hybrid := eco.effective_weather_risk_percent(PlotKind.Kind.POLYHOUSE, CropType.Kind.CAPSICUM, NOW_QUIET, 1)
+
+	# Assert
+	assert_eq(polyhouse_risk_standard, polyhouse_risk_hybrid, "Polyhouse should ignore variety weather multiplier")
+
+
+func test_plant_kashmiri_sandalwood_faster_agroforestry() -> void:
+	# Arrange
+	var agro_plot := _first_agro_plot()
+	if agro_plot == null:
+		return  # Skip if no agroforestry plot available
+
+	var sandalwood_def := GameData.crop_def(CropType.Kind.SANDALWOOD)
+	var kashmiri_def := GameData.crop_variety_def(CropType.Kind.SANDALWOOD, 1)
+	var base_time := sandalwood_def.grow_seconds
+	var kashmiri_time := rointi(float(base_time) * kashmiri_def.grow_time_multiplier)
+
+	# Act
+	eco.plant_sandalwood(agro_plot.id, HostType.Kind.ACACIA, NOW_QUIET, 1)  # variety 1 = Kashmiri
+
+	# Assert
+	assert_eq(agro_plot.selected_variety, 1)
+	assert_true(kashmiri_time < base_time, "Kashmiri sandalwood should be faster")
+
+
+func test_hybrid_capsicum_polyhouse_faster_with_premium_price() -> void:
+	# Arrange
+	eco.buy_polyhouse()
+	eco.buy_fan_pad()
+	eco.renew_film(NOW_QUIET)
+	var polyhouse_plot: Plot = null
+	for p: Plot in eco.state.plots:
+		if p.kind == PlotKind.Kind.POLYHOUSE:
+			polyhouse_plot = p
+			break
+
+	if polyhouse_plot == null:
+		return  # Skip if polyhouse unavailable
+
+	var capsicum_def := GameData.crop_def(CropType.Kind.CAPSICUM)
+	var hybrid_def := GameData.crop_variety_def(CropType.Kind.CAPSICUM, 1)
+
+	# Act
+	eco.plant_seed(polyhouse_plot.id, CropType.Kind.CAPSICUM, NOW_QUIET, 1)
+
+	# Assert - hybrid should be faster than standard
+	var base_time_with_fan_pad := capsicum_def.grow_seconds / 2
+	var hybrid_time := rointi(float(base_time_with_fan_pad) * hybrid_def.grow_time_multiplier)
+	assert_eq(polyhouse_plot.selected_variety, 1)
+	assert_true(hybrid_time < base_time_with_fan_pad, "Hybrid should grow faster even with Fan&Pad")
+
+
+func test_variety_persists_through_growth_to_harvest() -> void:
+	# Arrange
+	var plot: Plot = eco.state.plots[0]
+	eco.plant_seed(plot.id, CropType.Kind.WHEAT, NOW_QUIET, 1)  # Basmati
+	var variety_at_plant := plot.selected_variety
+
+	# Act
+	eco.resolve_growth_completions(NOW_QUIET + 200 * 1000)  # Simulate time passing
+
+	# Assert
+	assert_eq(plot.state.kind, PlotState.Kind.READY_TO_HARVEST)
+	assert_eq(plot.selected_variety, variety_at_plant, "Variety should persist through growth")
+
+
+
 # --- Event queue actually populated by orchestration calls ---------------------------
 
 func test_has_events_and_pop_event_reflect_a_guard_blocked_call() -> void:

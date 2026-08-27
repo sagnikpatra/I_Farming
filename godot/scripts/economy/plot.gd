@@ -15,6 +15,10 @@ extends Resource
 ## A host plant occupies this tile permanently instead of going through the
 ## normal grow cycle. HostType.Kind ordinal, or HostType.NONE (-1) if unset.
 @export var host_type: int = HostType.NONE
+## Selected crop variety (CropVarietyType.Kind ordinal). Only meaningful when
+## state.crop is set (Growing/ReadyToHarvest). Defaults to 0 (first variety)
+## for backwards compatibility with old saves.
+@export var selected_variety: int = 0
 
 
 func _init(
@@ -24,6 +28,7 @@ func _init(
 	p_agro_row: int = -1,
 	p_agro_col: int = -1,
 	p_host_type: int = HostType.NONE,
+	p_selected_variety: int = 0,
 ) -> void:
 	id = p_id
 	kind = p_kind
@@ -31,3 +36,4 @@ func _init(
 	agro_row = p_agro_row
 	agro_col = p_agro_col
 	host_type = p_host_type
+	selected_variety = p_selected_variety

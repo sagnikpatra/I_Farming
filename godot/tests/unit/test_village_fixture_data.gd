@@ -44,18 +44,45 @@ func test_capsicum_growing_and_ready_use_the_leafy_stand_in_model() -> void:
 	)
 
 
-## Paddy/Dutch Rose/Sandalwood/Makhana/Pond Fish/Saffron deliberately have no
-## sourced model that reasonably fits their real shape (see
-## village_fixture_data.gd's own doc comment) -- every one of them must
-## return "" so village_board.gd's _build_plot() falls back to the existing
-## dirt-mesh+tint rendering instead of forcing a bad-fit model onto them.
+## Makhana and Pond Fish were newly sourced 2026-08-27 (real CC0 fits: a
+## water lily and a fish model -- see village_fixture_data.gd's own doc
+## comment on the constants block for the full sourcing account, including
+## why Paddy/Dutch Rose/Sandalwood/Saffron below still aren't mapped). Both
+## are single-stage models -- no distinct Growing vs. Ready geometry exists
+## for either, so the same path returns regardless of is_ready.
+func test_makhana_returns_the_lily_model_at_both_stages() -> void:
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.MAKHANA, false),
+		VillageFixtureData.CROP_MAKHANA_MODEL
+	)
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.MAKHANA, true),
+		VillageFixtureData.CROP_MAKHANA_MODEL
+	)
+
+
+func test_pond_fish_returns_the_fish_model_at_both_stages() -> void:
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.POND_FISH, false),
+		VillageFixtureData.CROP_POND_FISH_MODEL
+	)
+	assert_eq(
+		VillageFixtureData.crop_stage_model_path(CropType.Kind.POND_FISH, true),
+		VillageFixtureData.CROP_POND_FISH_MODEL
+	)
+
+
+## Paddy/Dutch Rose/Sandalwood/Saffron still deliberately have no sourced
+## model that reasonably fits their real shape under this project's CC0-only
+## constraint (see village_fixture_data.gd's own doc comment) -- every one
+## of them must return "" so village_board.gd's _build_plot() falls back to
+## the existing dirt-mesh+tint rendering instead of forcing a bad-fit model
+## onto them.
 func test_crops_with_no_reasonable_model_fit_return_empty_string() -> void:
 	var unmapped_crops: Array[int] = [
 		CropType.Kind.PADDY,
 		CropType.Kind.DUTCH_ROSE,
 		CropType.Kind.SANDALWOOD,
-		CropType.Kind.MAKHANA,
-		CropType.Kind.POND_FISH,
 		CropType.Kind.SAFFRON,
 	]
 	for crop in unmapped_crops:

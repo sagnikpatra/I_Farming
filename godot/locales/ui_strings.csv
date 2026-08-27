@@ -163,3 +163,39 @@ event.mandi_need_coins,Need ₹%d to register at the Local Mandi.,स्था�
 event.mandi_registered,🏛️ Registered at the Local Mandi -- e-NAM auctions are now open to you.,🏛️ स्थानीय मंडी में पंजीकरण हो गया -- ई-नाम नीलामी अब आपके लिए खुली है।
 event.mandi_terminal_need_coins,Need ₹%d for a digital auction terminal.,डिजिटल नीलामी टर्मिनल के लिए ₹%d चाहिए।
 event.mandi_sold,🏛️ Mandi bought %d %s at %d%% market rate for ₹%d,मंडी ने %d %s को %d%% बाज़ार दर पर ₹%d में खरीदा
+farmhouse.title,🏠 Farmhouse,🏠 फार्महाउस
+farmhouse.current_level,%s %s · Level %d,%s %s · स्तर %d
+farmhouse.passive_income,⏰ Passive Income: ₹%d/hour,⏰ निष्क्रिय आय: ₹%d/घंटा
+farmhouse.collect_passive_income,💰 Collect ₹%d,💰 ₹%d एकत्र करें
+farmhouse.upgrade_cost,Upgrade to %s for ₹%d,₹%d में %s में अपग्रेड करें
+farmhouse.unlocks_title,Unlocks:,अनलॉक:
+farmhouse.upgrade_action,Upgrade,अपग्रेड करें
+farmhouse.max_level_reached,🎉 Max Level Reached,🎉 अधिकतम स्तर पर पहुंचा
+event.passive_income_collected,💰 Collected ₹%d passive income.,💰 ₹%d निष्क्रिय आय एकत्र की।
+event.plant_off_season,%s can't be planted during %s.,%s को %s के दौरान नहीं लगाया जा सकता।
+thief.appeared,🕵️ A thief is eyeing your farm! ₹%d at risk.,🕵️ एक चोर आपके खेत पर नज़र रख रहा है! ₹%d खतरे में है।
+thief.title,🕵️ Thief Spotted!,🕵️ चोर दिखा!
+thief.at_risk,₹%d at risk,₹%d खतरे में
+thief.let_go,Let Them Go,जाने दें
+thief.pay_bribe,Pay Bribe,रिश्वत दें
+thief.chase_off,Chase Them Off,भगा दें
+event.thief_security_need_coins,Need ₹%d for security.,सुरक्षा के लिए ₹%d चाहिए।
+event.thief_security_upgraded,🛡️ Security upgraded to level %d!,🛡️ सुरक्षा स्तर %d तक अपग्रेड हुई!
+thief.security_title,🛡️ Thief Security,🛡️ चोर सुरक्षा
+thief.security_level_0,No security -- thieves visit at full chance.,कोई सुरक्षा नहीं -- चोर पूरी संभावना से आते हैं।
+thief.security_level_1,Fencing -- thief chance halved.,बाड़ -- चोर की संभावना आधी।
+thief.security_level_2,Guard Posts -- thief chance cut to a fifth.,सुरक्षा चौकियाँ -- चोर की संभावना पांचवें हिस्से तक घटी।
+thief.security_upgrade_button,🛡️ Upgrade for ₹%d,🛡️ ₹%d में अपग्रेड करें
+thief.security_max_level,🛡️ Maximum security reached,🛡️ अधिकतम सुरक्षा प्राप्त
+hud.equipment_shop,Equipment,उपकरण
+equipment_shop.title,🧰 Farm Equipment,🧰 खेती के उपकरण
+equipment_shop.buy_button,Buy for ₹%d,₹%d में खरीदें
+equipment_shop.owned,Owned,आपके पास है
+equipment_shop.locked_row,🔒 Needs %d more expansion(s),🔒 %d और विस्तार चाहिए
+equipment_shop.tier_basic,Basic,बुनियादी
+equipment_shop.tier_common,Common,सामान्य
+equipment_shop.tier_standard,Standard,मानक
+equipment_shop.tier_mid_range,Mid-Range,मध्यम श्रेणी
+equipment_shop.tier_premium,Premium,प्रीमियम
+equipment_shop.tier_luxury,Luxury,लक्ज़री
+event.equipment_tier_locked,🔒 %s tier needs %d more land expansion(s).,🔒 %s स्तर के लिए %d और भूमि विस्तार चाहिए।

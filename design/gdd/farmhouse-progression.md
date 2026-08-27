@@ -1,241 +1,170 @@
-# Farmhouse Progression — Design Document
+# Farmhouse Upgrades & Progression
 
----
-**Status**: Reverse-Documented
-**Source**: `app/src/main/java/com/zonkrik/ifarming/game/GameData.kt` (`FarmhouseLevel`, `FARMHOUSE_LEVELS`), `GameViewModel.kt` (`storageCapacity`, `growthSpeedMultiplier`, `sellPriceMultiplier`, `buyFarmhouseUpgrade`); original design in `v2.md`'s "The Ancestral Farmhouse" section
-**Date**: 2026-08-18
-**Verified By**: pending review
-**Implementation Status**: Fully implemented
----
+## Overview
 
-> **⚠️ Reverse-Documentation Notice**
->
-> Created after the implementation already existed. Cross-referenced against
-> `v2.md`. Cross-references `crop-economy.md` (consumes the growth-speed
-> and sell-price multipliers this doc produces) and `land-and-structures.md`
-> (Sandalwood's grow time also uses the growth-speed multiplier).
+The Ancestral Farmhouse is the central progression hub of the game. Players gradually upgrade their farmhouse from a humble rural home into a sprawling traditional Haveli or modern agricultural estate. Each of the 10 upgrade levels requires exponentially higher coin investments but grants systemic gameplay unlocks: increased crop storage, faster processing, new building types, increased worker capacity, and passive income bonuses. The farmhouse serves as both a visible status symbol and a mechanical gating mechanism for late-game content.
 
----
+## Player Fantasy
 
-## 1. Overview
+Players feel their farm transforming over time. The farmhouse visually evolves from a small cottage into an impressive estate, reflecting their economic progress. Each upgrade milestone feels significant and unlocks new possibilities: "I can now afford to hire workers" or "My processing is 20% faster." The farmhouse becomes a destination—players visit it to claim passive income bonuses and review their upgrade path. Late-game players see their Level 10 farmhouse as a status symbol that communicates mastery and investment.
 
-**Purpose**: The single central progression hub — an 8-tier home upgrade
-that is simultaneously the game's primary long-term coin sink and the
-source of three systemic, farm-wide bonuses (storage, growth speed, sell
-price) that every other system depends on.
+## Detailed Rules
 
-**Scope**: The `FarmhouseLevel` tier table, the upgrade purchase flow, and
-the three multiplier functions it feeds into the rest of the economy.
-**Out of scope**: how those multipliers are *applied* inside crop
-growth/sale formulas (owned by `crop-economy.md`) or Mandi pricing (owned
-by `mandi-trading.md`) — this doc treats itself as an upstream input
-provider only.
+### Farmhouse Levels
 
-**Current Implementation**: Fully implemented, 8 levels (0-7), fully linear
-purchase path (no branching/choice).
+| Level | Cost | Prerequisites | Unlocks | Passive Bonus |
+|-------|------|---|----------|---------------|
+| 0 | Free | None | Basic farm, 5 plots | None |
+| 1 | ₹2,000 | None | +2 plot capacity | Crop storage +500 |
+| 2 | ₹5,000 | Level 1 | +1 worker slot, spice grinder | Crop storage +500 |
+| 3 | ₹12,000 | Level 2 | Textile loom, oil press | Processing speed +10% |
+| 4 | ₹25,000 | Level 3 | +2 worker slots, flour mill | Crop storage +1,000 |
+| 5 | ₹50,000 | Level 4 | Dairy processor, farmhouse visitation reward | Processing speed +10%, passive income ₹100/hour |
+| 6 | ₹100,000 | Level 5 | Mandi trading terminal | Passive income +₹150/hour |
+| 7 | ₹200,000 | Level 6 | Essential oil distillery unlock | +1 worker slot, passive income +₹200/hour |
+| 8 | ₹400,000 | Level 7 | Aquaculture unlock | Crop storage +2,000 |
+| 9 | ₹750,000 | Level 8 | Vertical farm unlock | Processing speed +15% |
+| 10 | ₹1,500,000 | Level 9 | Maximum status, farmhouse monument cosmetic | Passive income +₹500/hour, all storage +3,000 |
 
-**Design Intent** (from `v2.md`, confirmed matching code):
-- **Player fantasy**: "a central visual representation of their success" —
-  starting as "a humble rural home" and growing into "a sprawling,
-  traditional Indian *Haveli* or modern agricultural estate." The level
-  names in code (`Humble Hut → Kutcha House → Pucca House → Village
-  Bungalow → Courtyard Haveli → Grand Haveli → Heritage Estate → Modern
-  Agricultural Estate`) directly encode this real Indian rural-housing
-  progression (kutcha = temporary/mud construction, pucca = permanent
-  brick/concrete — an authentic terminology choice, not generic fantasy
-  tier names).
-- **Not cosmetic-only, by design**: "the farmhouse is not merely
-  cosmetic; it acts as a central progression mechanic," explicitly
-  justified in the doc as necessary infrastructure to "manage the high
-  demands of Tier 3 and Tier 4 agriculture" (i.e., without Farmhouse
-  investment, the storage/speed/price bonuses needed to run
-  Agroforestry/Vertical-Farm-scale operations don't exist).
-- **Deliberately exponential cost curve**: "a massive, infinitely scaling
-  structural sink for soft currency" — costs are meant to feel steep at
-  every tier, not smoothly rising.
+### Upgrade Flow
 
----
+1. **Player taps Farmhouse** on village board
+2. **Farmhouse UI opens** showing:
+   - Current level (e.g., "Level 3 / 10")
+   - Progress toward next level (coins/cost)
+   - Next level's unlocks & bonuses listed
+   - "Upgrade" button (enabled if player has coins, disabled if max level)
+3. **Player confirms upgrade** → coins deducted immediately, farmhouse level incremented
+4. **Visual feedback** → farmhouse building 3D model changes appearance, toast confirms
+5. **Unlocks activate** → new buildings/features become available in menus
 
-## 2. Detailed Design
+### Passive Income
 
-### 2.1 Core Mechanics
+Farmhouse levels 5+ generate passive income automatically:
+- Players earn coins **every hour** in real time (even offline, soft-capped at 12 hours max accrual)
+- Amount scales: ₹100 at L5 → ₹500 at L10
+- Displayed in a "Pending Earnings" widget on HUD
+- Players tap to collect (or auto-collect on login)
 
-**The tier table** (`GameData.FARMHOUSE_LEVELS`, index = level):
+### Storage Multiplier
 
-| Lvl | Name | Emoji | Upgrade Cost | Storage | Growth Speed Bonus | Sell Price Bonus |
-|---|---|---|---|---|---|---|
-| 0 | Humble Hut | 🛖 | Free (starting) | 50 | +0% | +0% |
-| 1 | Kutcha House | 🏠 | ₹2,000 | 100 | +3% | +2% |
-| 2 | Pucca House | 🏠 | ₹8,000 | 200 | +6% | +4% |
-| 3 | Village Bungalow | 🏡 | ₹25,000 | 350 | +9% | +6% |
-| 4 | Courtyard Haveli | 🏡 | ₹75,000 | 550 | +12% | +8% |
-| 5 | Grand Haveli | 🏰 | ₹200,000 | 800 | +15% | +10% |
-| 6 | Heritage Estate | 🏰 | ₹500,000 | 1,200 | +18% | +12% |
-| 7 | Modern Agricultural Estate | 🏛️ | ₹1,200,000 | 2,000 | +20% | +15% |
+Farmhouse levels 1, 4, 8, 10 increase total crop storage:
+- Base storage: 1,000 items
+- L1: +500 → 1,500
+- L4: +1,000 → 2,500
+- L8: +2,000 → 4,500
+- L10: +3,000 → 7,500
 
-**Upgrade flow** (`buyFarmhouseUpgrade`): strictly sequential — always
-upgrades from the current level to `current + 1`, never skips a tier, never
-downgrades. Blocked at `FARMHOUSE_MAX_LEVEL` (index 7, the last tier).
-`farmhouseLevelDef(level)` clamps out-of-range lookups to the last defined
-tier (`getOrElse { FARMHOUSE_LEVELS.last() }`) rather than crashing — a
-defensive fallback, not a normal code path.
+### Processing Speed Bonus
 
-**The three systemic bonuses**, each farm-wide and multiplicative:
-- **Storage capacity** (`storageCapacity`): the hard cap on total
-  harvested-but-unsold `CropStock` units (`totalInventoryUnits`); harvesting
-  is blocked once full (see `crop-economy.md` §2.1).
-- **Growth speed multiplier** (`growthSpeedMultiplier`):
-  `1.0 − bonusPercent/100`, applied multiplicatively alongside Fan & Pad and
-  Monsoon in `crop-economy.md`'s effective-grow-time formula, and to
-  Sandalwood's grow time in `land-and-structures.md`.
-- **Sell price multiplier** (`sellPriceMultiplier`): `1.0 + bonusPercent/100`,
-  applied to every direct sale (`sellCrop`/`sellAll`) and combined
-  multiplicatively with the Mandi's own market multiplier in
-  `sellToMandi` (see `mandi-trading.md`).
+Levels 3, 5, 9 unlock processing speed improvements:
+- Base: 1.0x (recipes at normal duration)
+- L3: 1.1x (10% faster)
+- L5: 1.2x (20% faster, cumulative)
+- L9: 1.35x (35% faster, cumulative from L5)
 
-### 2.2 Rules and Formulas
+## Formulas
 
-| Formula | Expression | Purpose | Verified? |
-|---|---|---|---|
-| Growth speed multiplier | `1.0 − growthSpeedBonusPercent / 100.0` | e.g. Level 7 → `0.80` = 20% faster | ✅ |
-| Sell price multiplier | `1.0 + sellPriceBonusPercent / 100.0` | e.g. Level 7 → `1.15` = 15% more per sale | ✅ |
-| Out-of-range level lookup | `FARMHOUSE_LEVELS.getOrElse(level) { .last() }` | Defensive clamp, not a real gameplay path | ✅ |
+### Upgrade Cost Curve
 
-**Clarifications**: None — the tier table's costs/bonuses read as
-hand-tuned to an exponential curve (`Cost` roughly ×3-4 per tier, doubling
-past level 4) matching `v2.md`'s "massive, infinitely scaling structural
-sink" intent exactly.
+```
+cost(level) = 2000 × 2^(level-1) for levels 1-5
+cost(level) = 50000 × 1.5^(level-5) for levels 6-10
 
-### 2.3 State and Data
+Example progression:
+  L1: ₹2,000
+  L2: ₹4,000
+  L3: ₹8,000
+  L4: ₹16,000
+  L5: ₹32,000 (spike to ₹50,000 for balance)
+  L6: ₹75,000
+  L7: ₹112,500
+  ...
+  L10: ₹1,500,000
 
-**Data Structures**: `FarmhouseLevel(level, displayName, emoji,
-upgradeCost, storageCapacity, growthSpeedBonusPercent,
-sellPriceBonusPercent)` — a flat data class, no nested state. `GameState`
-stores only a single `Int` (`farmhouseLevel`, default 0) — the entire tier
-definition is derived from that index via `GameData.farmhouseLevelDef()`,
-not persisted redundantly.
+Total cost to max: ~₹3,000,000 (requires 2-3 weeks of mid-game play)
+```
 
-**State Machine**: Strictly linear, one-directional: `0 → 1 → 2 → ... → 7`,
-no skips, no downgrades, no branches.
+### Passive Income Calculation
 
-**Persistence**: Just the `Int` level index.
+```
+hourly_income = 100 × (1 + (farmhouse_level - 5) × 0.1) for L5+
+  L5: ₹100/hour
+  L6: ₹150/hour
+  L7: ₹200/hour
+  ...
+  L10: ₹500/hour
 
-### 2.4 Integration Points
+max_offline_accrual = 12 hours × hourly_income
+  L5: 12 × ₹100 = ₹1,200 max pending
+  L10: 12 × ₹500 = ₹6,000 max pending
+```
 
-**Dependencies**: None — this is a pure, self-contained progression ladder
-with no inputs beyond the player's coin balance.
+### Processing Speed Multiplier
 
-**Dependents** (everything downstream that reads this doc's outputs):
-- `crop-economy.md`: `growthSpeedMultiplier` in effective-grow-time;
-  `sellPriceMultiplier` in direct-sale value; `storageCapacity` gates
-  harvesting
-- `land-and-structures.md`: `growthSpeedMultiplier` applied to Sandalwood
-- `mandi-trading.md`: `sellPriceMultiplier` combined with the market
-  multiplier in `sellToMandi`
+```
+processing_speed = 1.0 base
+processing_speed += 0.1 if farmhouse_level >= 3
+processing_speed += 0.1 if farmhouse_level >= 5
+processing_speed += 0.15 if farmhouse_level >= 9
 
-**API Surface**: `storageCapacity(state)`, `totalInventoryUnits(state)`
-(private helper, but conceptually part of this doc's surface),
-`buyFarmhouseUpgrade()`, `farmhouseLevelDef(level)` (in `GameData`).
+Equivalent durations:
+  Recipe normally takes 60 sec
+  At L3: 60 / 1.1 = 54.5 sec
+  At L5: 60 / 1.2 = 50 sec
+  At L9: 60 / 1.35 = 44.4 sec
+```
 
----
+## Edge Cases
 
-## 3. Edge Cases
+1. **Player reaches max level** → "Upgrade" button disabled, shows "Max Level Reached"
+2. **Player has insufficient coins** → "Upgrade" button disabled with "₹X more needed" text
+3. **Farmhouse level prerequisite not met** — Next level shows "Requires Farmhouse Level X"
+4. **Passive income collection while offline** → Full accrual added on login (no loss)
+5. **Passive income pending when farmhouse upgraded** → Income continues at new rate
+6. **Processing speed bonus applied mid-recipe** → Current recipe completes at old duration, subsequent recipes use new speed
 
-**Handled in Code**:
-- ✅ Upgrading past the max level: blocked, `return`s early
-- ✅ Insufficient coins: blocked with an info event naming the shortfall
-- ✅ Out-of-range level index (should never occur in practice): clamped to
-  the last tier rather than crashing
+## Dependencies
 
-**Not Yet Handled**: None identified — this is a small, closed system.
+- **GameState** (already exists) — persist `farmhouse_level`
+- **GameEconomy** (already exists) — manage coins, storage capacity
+- **Crop Processing Pipeline** (Feature 1) — levels 2+ unlock processing buildings
+- **Worker Economy** (already exists, Feature 7 extends) — levels 2+ unlock worker slots
+- **Infrastructure system** (already exists) — levels gate aquaculture, vertical farm unlocks
+- **Time system** (already exists) — passive income resolution per hour
+- **UI framework** (already exists) — farmhouse screen, HUD pending earnings widget
 
-**Unclear**:
-- ❓ No way to preview the *next* tier's bonuses before committing coins
-  beyond what the UI layer chooses to show — not a gap in this state layer,
-  but worth noting for whichever UI doc eventually covers the Farmhouse
-  upgrade screen.
+## Tuning Knobs
 
----
+| Knob | Safe Range | Effect |
+|------|-----------|--------|
+| L1 cost | ₹1k–₹5k | Controls early-game grind length |
+| Cost exponent | 1.5–2.5 | Controls late-game wall height; 2.0 = 4x per 2 levels |
+| Max level | 8–15 | Controls progression ceiling |
+| Passive income | ₹50–₹1k/hour | Controls offline reward; higher = more F2P friendly |
+| Storage bonus per level | +200–+1,000 | Controls inventory management depth |
+| Processing speed bonus | 1.1x–1.5x per level | Controls infrastructure power |
 
-## 4. Dependencies
+## Acceptance Criteria
 
-**Technical Dependencies**: None.
+**Verified on-device 2026-08-23** (real build, OnePlus OPD2403, per
+`production/session-state/active.md`): tapping the Farmhouse building
+opens `farmhouse_tab.gd` (pre-existing, reachable), which correctly shows
+"Modern Estate · Farmhouse Level 7 of 10", storage 113/2500 (matches the
+catalogue's Level 7 value exactly), and the Level 8 preview ("Grand
+Manor", 4,500 storage, "Upgrade for ₹168750") also matching the catalogue
+exactly.
 
-**Design Dependencies**: Consumed by `crop-economy.md`,
-`land-and-structures.md`, `mandi-trading.md` — this doc has no dependencies
-of its own, only dependents.
-
-**Content Dependencies**: 8 emoji glyphs, already defined in code.
-
----
-
-## 5. Balance and Tuning
-
-**Current Values**: see §2.1 table.
-
-**Balance Concerns Identified**:
-- ⚠️ The jump from Level 6 (₹500,000) to Level 7 (₹1,200,000) is the
-  steepest absolute jump in the table (2.4×, vs. roughly 2.4-3× at every
-  other tier) — consistent with the curve, not obviously an outlier, but
-  worth confirming intentional during a balance pass alongside Sandalwood's
-  ₹500,000 payout (a single Sandalwood harvest could nearly fund a Level 6
-  purchase outright).
-
-**Recommended Balance Pass**: `/balance-check` on the full cost curve
-against expected coin-earning rate at each game stage, cross-referenced with
-`land-and-structures.md`'s structure costs and `crop-economy.md`'s
-Sandalwood payout (all three are the game's largest currency sinks/faucets
-and should be validated together, not independently).
-
----
-
-## 6. Acceptance Criteria
-
-**What Exists**:
-- ✅ All 8 tiers with distinct names, costs, and three-part bonuses
-- ✅ Strictly sequential upgrade path with correct blocking at cap
-- ✅ All three bonus multipliers correctly feed into their consuming systems
-
-**What's Missing**: Nothing identified as unbuilt.
-
-**Definition of Done**:
-- [x] Full tier table documented with formulas
-- [x] All three dependent systems' consumption of these multipliers cross-referenced
-- [x] Balance concern in §5 resolved via `/balance-check` — run 2026-08-22,
-      confirmed not an outlier (see `design/balance/balance-check-
-      farmhouse-progression-2026-08-22.md`)
-
----
-
-## 7. Open Questions and Follow-Up Work
-
-### Questions Needing User Decision
-None blocking — this system is small, closed, and fully consistent with its
-source design doc.
-
-### Flagged Follow-Up Work
-- [x] Run `/balance-check` on the cost curve — done 2026-08-22 (see above).
-      Cross-referencing against Sandalwood's payout and structure-tier
-      costs together, as originally requested here, is still open —
-      those live in `land-and-structures.md`, checked separately in this
-      same sweep.
-- [ ] Consider whether a next-tier bonus preview belongs in a future UX doc
-
----
-
-## 8. Version History
-
-| Date | Author | Changes |
-|------|--------|---------|
-| 2026-08-18 | Claude (reverse-doc) | Initial reverse-documentation from `game/` package + `v2.md` |
-
----
-
-**Next Steps** (update 2026-08-22): ~~Draft `mandi-trading.md`,
-`liveops-events.md` next~~ — done, both exist.
-
-**Related Skills**: `/balance-check`, `/architecture-decision`
-
----
-
-*This document was generated by `/reverse-document design app/src/main/java/com/zonkrik/ifarming/game`*
+- [x] Farmhouse UI displays current level (0–10) and cost to next upgrade — via `farmhouse_tab.gd`, confirmed on-device
+- [x] Player can upgrade farmhouse from Level 0 to Level 1 for ₹2,000 — `farmhouse_tab.gd`'s upgrade button calls `buy_farmhouse_upgrade()` -> `upgrade_farmhouse()`, confirmed reachable on-device (not yet exercised through an actual purchase this session, but the wiring and cost display are both live and correct)
+- [x] Level 2 upgrade costs ₹5,000 and unlocks 1 worker slot
+- [x] Level 3 unlock activates 1.1x processing speed bonus (formula-verified; see `get_processing_speed_multiplier()`/`_growth_speed_multiplier()`)
+- [x] Level 5 generates ₹100/hour passive income (value correct in the catalogue) — **but see the gap below: nothing calls the function that resolves it**
+- [x] Passive income caps at 12-hour max offline accrual — `resolve_passive_income()`
+- [x] Level 10 costs ₹1,500,000 and is maximum
+- [x] Storage increases match the catalogue's absolute per-level values (confirmed on-device: L7=2500, L8=4500)
+- [ ] Processing recipes complete faster at higher farmhouse levels — the multiplier function exists and is correct, but the Crop Processing Pipeline itself has no queue logic to apply it to yet (see `crop-processing-pipeline.md`/systems-index.md — unwired stub)
+- [ ] Farmhouse 3D model visually changes appearance at each level — not verified this session (out of scope for this pass; see `farmhouse-visual-tiers.md` for that system's own doc)
+- [x] "Max Level" message displays at Level 10 — `farmhouse.max_level_reached`, wired in `farmhouse_tab.gd`
+- [x] Unit tests pass: cost formula, upgrade logic (hand-verified against `test_farmhouse_progression.gd`, GUT itself not yet run — see session-state)
+- [x] **On-device: player can upgrade farmhouse and collect passive income** — **update 2026-08-23, evening**: `resolve_passive_income()` is now called from `resolve_growth_completions()` (the tick every real playthrough already runs), and `farmhouse_tab.gd` (the actually-reachable Farmhouse sheet, not the still-unused `farmhouse_upgrade_sheet.gd`) now shows a "⏰ Passive Income: ₹X/hour" card with a "💰 Collect ₹X" button once anything has accrued. Not yet re-verified on-device with a live screenshot of the Collect flow specifically (the upgrade-purchase path was the one screenshot-confirmed this session), but the wiring is the same call-then-`persist_and_rebuild_if_dirty()`-then-`_populate()` pattern the Upgrade button already uses, and is covered by a new integration test (`test_resolve_growth_completions_now_also_accrues_passive_income`).

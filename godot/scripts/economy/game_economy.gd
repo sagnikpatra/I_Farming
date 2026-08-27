@@ -31,6 +31,9 @@
 class_name GameEconomy
 extends RefCounted
 
+# Preload CropVarietyDef so GDScript can resolve type hints
+const _CropVarietyDef = preload("res://scripts/economy/crop_variety_def.gd")
+
 var state: GameState
 ## FIFO queue of not-yet-consumed notifications. See game_event.gd (bugfix b).
 var pending_events: Array[GameEvent] = []
@@ -105,10 +108,14 @@ func is_film_active(now: int) -> bool:
 ## Not underscore-prefixed (see was_sandalwood_stolen()'s doc comment for the
 ## same rationale) so tests/unit/test_crop_economy.gd can cover TR-crop-002's
 ## per-plot-kind weather-risk table directly.
-func effective_weather_risk_percent(plot_kind: PlotKind.Kind, crop: int, now: int) -> int:
+## Optional `variety` parameter (defaults to 0) applies variety weather-risk
+## multiplier to open-field crops only. Managed tiers ignore it.
+func effective_weather_risk_percent(plot_kind: PlotKind.Kind, crop: int, now: int, variety: int = 0) -> int:
 	match plot_kind:
 		PlotKind.Kind.OPEN_FIELD:
-			return GameData.crop_def(crop).weather_risk_percent
+			var base_risk := GameData.crop_def(crop).weather_risk_percent
+			var variety_def := GameData.crop_variety_def(crop, variety)
+			return roundi(float(base_risk) * variety_def.weather_risk_multiplier)
 		PlotKind.Kind.POLYHOUSE:
 			return 0 if is_film_active(now) else GameData.POLYHOUSE_UNPROTECTED_RISK_PERCENT
 		# Sandalwood's risk is theft, handled separately in
@@ -517,22 +524,100 @@ func _sell_price_multiplier(now: int) -> float:
 	return farmhouse * _chanda_blessing_multiplier(now)
 
 
-func buy_farmhouse_upgrade() -> void:
+## Returns the current farmhouse level definition.
+func get_farmhouse_level_def() -> FarmhouseLevelDef:
+	return GameData.farmhouse_level_def(state.farmhouse_level)
+
+
+## Returns the processing speed multiplier for the current farmhouse level.
+## Used by crop processing systems to scale processing duration.
+func get_processing_speed_multiplier() -> float:
+	var bonus_percent: float = GameData.farmhouse_level_def(state.farmhouse_level).growth_speed_bonus_percent
+	return 1.0 - bonus_percent / 100.0
+
+
+## Returns total storage capacity at the current farmhouse level.
+## Each level's storage_capacity is already the absolute total for that tier
+## (see the _ensure_farmhouse_levels() catalogue comments), not a per-level
+## delta -- summing across levels would overstate capacity. Same value as
+## the pre-existing storage_capacity(); kept as a separate name for
+## discoverability from the new farmhouse-progression call sites.
+func get_total_storage_capacity() -> int:
+	return storage_capacity()
+
+
+## Attempts to upgrade the farmhouse to the next level.
+## Returns true if upgrade succeeded, false otherwise.
+func upgrade_farmhouse(now: int) -> bool:
 	if state.farmhouse_level >= GameData.farmhouse_max_level():
-		return
+		return false
 	var next_level := GameData.farmhouse_level_def(state.farmhouse_level + 1)
 	if state.coins < next_level.upgrade_cost:
 		_push_event(tr(&"event.farmhouse_need_coins") % [next_level.upgrade_cost, next_level.display_name], true)
-		return
+		return false
 	state.coins -= next_level.upgrade_cost
 	state.farmhouse_level += 1
 	_push_event(tr(&"event.farmhouse_upgraded") % [next_level.emoji, next_level.display_name])
 	_mark_dirty()
+	return true
+
+
+## Resolves passive income accrual based on time elapsed since last resolution.
+## Caps offline accrual at 12 hours maximum. Returns the coins added.
+func resolve_passive_income(now: int) -> int:
+	var passive_income_rate: int = GameData.farmhouse_level_def(state.farmhouse_level).passive_income_per_hour
+	if passive_income_rate <= 0:
+		return 0
+
+	# Initialize on first call
+	if state.passive_income_last_resolution_epoch_ms == -1:
+		state.passive_income_last_resolution_epoch_ms = now
+		return 0
+
+	var elapsed_ms: int = now - state.passive_income_last_resolution_epoch_ms
+	if elapsed_ms < 0:
+		return 0
+
+	var elapsed_hours: float = float(elapsed_ms) / 3_600_000.0
+	# Soft cap at 12 hours for offline play to prevent extreme catches-up
+	elapsed_hours = minf(elapsed_hours, 12.0)
+
+	var coins_earned: int = roundi(passive_income_rate * elapsed_hours)
+	state.pending_passive_income += coins_earned
+	state.passive_income_last_resolution_epoch_ms = now
+	_mark_dirty()
+	return coins_earned
+
+
+## Collects all pending passive income into the coin pool.
+## Returns the amount collected.
+func collect_pending_passive_income() -> int:
+	var amount: int = state.pending_passive_income
+	if amount > 0:
+		state.coins += amount
+		state.pending_passive_income = 0
+		_push_event(tr(&"event.passive_income_collected") % amount)
+		_mark_dirty()
+	return amount
+
+
+func buy_farmhouse_upgrade() -> void:
+	upgrade_farmhouse(Time.get_unix_time_from_system() as int * 1000)
+
+
+# --- Seasonal Crop Availability ------------------------------------------------
+
+## Checks if a crop can be planted right now based on the current season.
+## Year-round crops are always plantable.
+## Seasonal crops can only be planted during their designated seasons.
+func can_plant_crop(crop_kind: int, now: int) -> bool:
+	var current_season: int = SeasonType.current_season(now)
+	return GameData.is_crop_available_this_season(crop_kind, current_season)
 
 
 # --- Crop lifecycle: plant / harvest / sell --------------------------------------
 
-func plant_seed(plot_id: int, crop: int, now: int) -> void:
+func plant_seed(plot_id: int, crop: int, now: int, variety: int = 0) -> void:
 	# Sandalwood has its own entry point (adjacency + host-dependent duration).
 	if crop == CropType.Kind.SANDALWOOD:
 		return
@@ -544,10 +629,23 @@ func plant_seed(plot_id: int, crop: int, now: int) -> void:
 	var crop_def := GameData.crop_def(crop)
 	if crop_def.required_plot_kind != plot.kind:
 		return
+
+	# Check if crop is available this season
+	if not can_plant_crop(crop, now):
+		var current_season: int = SeasonType.current_season(now)
+		var season_name: String = SeasonType.season_name(current_season)
+		_push_event(tr(&"event.plant_off_season") % [crop_def.display_name, season_name], true)
+		return
+
 	if crop == CropType.Kind.SAFFRON and not is_electricity_active(now):
 		_push_event(tr(&"event.plant_needs_electricity"), true)
 		return
-	if state.coins < crop_def.seed_cost:
+
+	# Apply variety modifiers to seed cost
+	var variety_def := GameData.crop_variety_def(crop, variety)
+	var adjusted_seed_cost := roundi(float(crop_def.seed_cost) * variety_def.seed_cost_multiplier)
+
+	if state.coins < adjusted_seed_cost:
 		_push_event(tr(&"event.plant_not_enough_coins") % crop_def.display_name, true)
 		return
 
@@ -560,10 +658,14 @@ func plant_seed(plot_id: int, crop: int, now: int) -> void:
 	var monsoon_multiplier: float = 1.0
 	if crop_def.required_plot_kind == PlotKind.Kind.OPEN_FIELD and is_monsoon_active(now):
 		monsoon_multiplier = GameData.MONSOON_SPEED_MULTIPLIER
-	var effective_seconds: int = maxi(roundi(after_fan_pad * _growth_speed_multiplier() * monsoon_multiplier), 1)
 
-	state.coins -= crop_def.seed_cost
+	# Apply variety grow-time modifier
+	var variety_grow_multiplier: float = variety_def.grow_time_multiplier
+	var effective_seconds: int = maxi(roundi(after_fan_pad * variety_grow_multiplier * _growth_speed_multiplier() * monsoon_multiplier), 1)
+
+	state.coins -= adjusted_seed_cost
 	plot.state = PlotState.new_growing(crop, now, effective_seconds)
+	plot.selected_variety = variety  # Store the selected variety for later reference (harvest, display)
 	_bump_daily_task_progress(DailyTaskKind.Kind.PLANT, 1, now)
 	_mark_dirty()
 
@@ -722,6 +824,19 @@ func resolve_growth_completions(now: int) -> void:
 	# autosave) if a plot actually transitioned this call -- see class doc.
 	if any_mutation:
 		_mark_dirty()
+
+	# Thief NPC Visitor system: check for a thief visit every THIEF_VISIT_INTERVAL_HOURS
+	# (design/gdd/thief-system.md). Runs once per resolve_growth_completions() call,
+	# independent of individual plot state -- not part of the per-plot loop above.
+	resolve_thief_visit(now)
+
+	# Farmhouse passive income (design/gdd/farmhouse-progression.md): same
+	# lazy, read-time resolution pattern as everything else in this
+	# function -- accrues into pending_passive_income, which
+	# collect_pending_passive_income() (farmhouse_tab.gd's Collect button)
+	# sweeps into state.coins. Previously defined but never called from
+	# anywhere -- see production/session-state/active.md's 2026-08-23 entry.
+	resolve_passive_income(now)
 
 
 # --- EPIC-M7: Worker assignment & automation --------------------------------
@@ -911,13 +1026,160 @@ func was_sandalwood_stolen(plot_id: int, elapsed_hours: int, secured: bool) -> b
 	return false
 
 
+## Deterministic thief visit check: same session always resolves the same way.
+## Theft probability scales with player wealth and is reduced by security level.
+## Each hour constructs its own seeded RNG for reproducibility across save/load.
+func was_thief_visiting(session_id: int, elapsed_hours: int, player_wealth: int, security_level: int) -> bool:
+	# Base probability increases with wealth (wealthy farms attract thieves)
+	var wealth_bonus: float = float(player_wealth) * GameData.THIEF_PROBABILITY_MULTIPLIER_PER_WEALTH
+	var base_probability: float = GameData.THIEF_PROBABILITY_BASE + wealth_bonus
+
+	# Security reduces probability: level 1 = 50%, level 2 = 20%
+	var security_multiplier: float = 1.0
+	match security_level:
+		1:
+			security_multiplier = 0.5
+		2:
+			security_multiplier = 0.2
+
+	var hourly_probability: float = base_probability * security_multiplier
+
+	for hour in range(1, elapsed_hours + 1):
+		var seed: int = session_id * 1_000_007 + hour * 11_113
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed
+		if rng.randf() < hourly_probability:
+			return true
+	return false
+
+
+## Calculate steal amount for a thief visit (seeded, deterministic).
+func calculate_thief_steal_amount(session_id: int, hour_seed: int) -> int:
+	var seed: int = session_id * 1_000_009 + hour_seed * 13_121
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	# Bugfix: was calling the global randf_range() (Godot's shared, OS-entropy-
+	# seeded RNG) instead of rng.randf_range() -- the locally seeded `rng` above
+	# was created and seeded but never actually used, so this was never
+	# deterministic despite the seeding. Caught by
+	# test_steal_amount_deterministic_per_session_and_hour actually running.
+	var amount: float = rng.randf_range(float(GameData.THIEF_STEAL_AMOUNT_MIN), float(GameData.THIEF_STEAL_AMOUNT_MAX))
+	return roundi(amount)
+
+
+## Whether a thief visit is currently pending a player decision (let go /
+## bribe / chase). Drives ThiefVisitor's board spawn/despawn in
+## village_board.gd's _sync_thief_visitor_if_needed(), the same
+## boolean-edge pattern chanda_visit_awaiting_decision() established.
+func thief_visit_awaiting_decision() -> bool:
+	return state.thief_pending_steal_amount > 0
+
+
+## Thief NPC Visitor system: checks if a thief visit should trigger, and
+## if so marks it pending (state.thief_pending_steal_amount) for the player
+## to resolve via ThiefInteractionSheet/resolve_thief_decision(). Called
+## once per resolve_growth_completions() tick.
+## Uses session_id (hash of save slot) and elapsed hours since last thief
+## visit to determine if a thief should appear (deterministic per session).
+func resolve_thief_visit(now: int) -> void:
+	# A visit is already pending a decision -- don't roll another on top of
+	# it (nothing to gain from two simultaneous pending steals, and it would
+	# silently overwrite the amount the player is currently looking at).
+	if thief_visit_awaiting_decision():
+		return
+
+	# Thief visits are gated by a 12-hour cooldown (THIEF_VISIT_INTERVAL_HOURS)
+	if state.thief_last_visit_epoch_ms != -1:
+		var ms_since_last_visit: int = now - state.thief_last_visit_epoch_ms
+		if ms_since_last_visit < GameData.THIEF_VISIT_INTERVAL_HOURS * 3_600_000:
+			return  # Still within cooldown window
+
+	# Use a simple session_id derived from state for deterministic rolls
+	# (same save slot always produces same thief outcome)
+	var session_id: int = state.farmhouse_level * 1_000_013 + state.total_harvests * 7_919
+
+	# Elapsed hours since the last thief visit (or since start if never visited)
+	var last_check_ms: int = state.thief_last_visit_epoch_ms if state.thief_last_visit_epoch_ms != -1 else 0
+	var elapsed_hours: int = int((now - last_check_ms) / 3_600_000)
+	if elapsed_hours == 0:
+		elapsed_hours = 1  # At minimum, check the current hour
+
+	# Check if thief visits during this window
+	if not was_thief_visiting(session_id, elapsed_hours, state.coins, state.thief_security_level):
+		return
+
+	# Thief is visiting! Calculate the steal amount and mark it pending --
+	# the board NPC (spawned by village_board.gd off this flag) and
+	# ThiefInteractionSheet are the real resolution path; the toast below
+	# is a secondary ambient notice, not the only way to find out.
+	var steal_amount := calculate_thief_steal_amount(session_id, elapsed_hours)
+	state.thief_pending_steal_amount = steal_amount
+	state.thief_last_visit_epoch_ms = now
+	_push_event(tr(&"thief.appeared") % steal_amount)
+	_mark_dirty()
+
+
+## Applies the player's resolved choice from ThiefInteractionSheet.
+## `coins_lost` is pre-computed by the sheet itself (let-go/bribe/chase
+## formulas -- see design/gdd/thief-system.md's Formulas section); this
+## function's job is only to apply that result to state, not recompute it,
+## so the loss formulas stay defined in exactly one place. No-ops if no
+## visit is currently pending (e.g. a stale/double-fired UI signal).
+func resolve_thief_decision(coins_lost: int) -> void:
+	if not thief_visit_awaiting_decision():
+		return
+	var actual_loss: int = mini(coins_lost, state.coins)
+	state.coins -= actual_loss
+	state.total_theft_losses += actual_loss
+	state.thief_pending_steal_amount = 0
+	_mark_dirty()
+
+
+## Purchases the next Thief Security tier: level 0 -> 1 (Fencing,
+## THIEF_SECURITY_FENCING_COST) or level 1 -> 2 (Guard Posts,
+## THIEF_SECURITY_GUARD_POSTS_COST) -- see was_thief_visiting()'s
+## security_multiplier for the probability reduction each tier grants.
+## No-ops (silently) past THIEF_SECURITY_MAX_LEVEL, matching this file's
+## existing guard-clause style (buy_farmhouse_upgrade()/upgrade_farmhouse()
+## do the same at their own max level). This is a distinct system from the
+## pre-existing buy_security()/state.has_security (Sandalwood theft
+## protection, Agroforestry-gated) -- unrelated despite the similar name;
+## not renamed to avoid an unrelated breaking change to that older system.
+func buy_thief_security() -> void:
+	if state.thief_security_level >= GameData.THIEF_SECURITY_MAX_LEVEL:
+		return
+	var cost: int = GameData.thief_security_upgrade_cost(state.thief_security_level)
+	if state.coins < cost:
+		_push_event(tr(&"event.thief_security_need_coins") % cost, true)
+		return
+	state.coins -= cost
+	state.thief_security_level += 1
+	_push_event(tr(&"event.thief_security_upgraded") % state.thief_security_level)
+	_mark_dirty()
+
+
 # --- Land & Tier 2: Polyhouse ----------------------------------------------------
 
-func buy_land_expansion() -> void:
+func _open_field_count() -> int:
 	var open_field_count: int = 0
 	for plot: Plot in state.plots:
 		if plot.kind == PlotKind.Kind.OPEN_FIELD:
 			open_field_count += 1
+	return open_field_count
+
+
+## design/gdd/farm-equipment.md's Detailed Rules #4: how many land
+## expansions the player has actually purchased so far (0 at a fresh save's
+## GameData.STARTING_PLOTS, up to GameData.MAX_PLOTS - STARTING_PLOTS = 13
+## at the cap). Public so FarmEquipment's tier-gate check (buy_equipment()
+## below) and the equipment shop UI (to grey out locked tiers) can both read
+## it without duplicating _open_field_count()'s plot-scan.
+func land_expansions_bought() -> int:
+	return maxi(_open_field_count() - GameData.STARTING_PLOTS, 0)
+
+
+func buy_land_expansion() -> void:
+	var open_field_count := _open_field_count()
 	if open_field_count >= GameData.MAX_PLOTS:
 		_push_event(tr(&"event.land_max_size"), true)
 		return
@@ -1065,7 +1327,7 @@ func remove_host(plot_id: int) -> void:
 	_mark_dirty()
 
 
-func plant_sandalwood(plot_id: int, now: int) -> void:
+func plant_sandalwood(plot_id: int, now: int, variety: int = 0) -> void:
 	var plot := _find_plot(plot_id)
 	if plot == null:
 		return
@@ -1083,14 +1345,18 @@ func plant_sandalwood(plot_id: int, now: int) -> void:
 		_push_event(tr(&"event.sandalwood_needs_host"), true)
 		return
 	var crop_def := GameData.crop_def(CropType.Kind.SANDALWOOD)
-	if state.coins < crop_def.seed_cost:
+	var variety_def := GameData.crop_variety_def(CropType.Kind.SANDALWOOD, variety)
+	var adjusted_seed_cost := roundi(float(crop_def.seed_cost) * variety_def.seed_cost_multiplier)
+	if state.coins < adjusted_seed_cost:
 		_push_event(tr(&"event.sandalwood_need_coins"), true)
 		return
 	var base_seconds: int = GameData.SANDALWOOD_GROW_SECONDS_ACACIA if has_acacia_host else GameData.SANDALWOOD_GROW_SECONDS_BASE
-	var effective_seconds: int = maxi(roundi(base_seconds * _growth_speed_multiplier()), 1)
+	var variety_grow_multiplier: float = variety_def.grow_time_multiplier
+	var effective_seconds: int = maxi(roundi(float(base_seconds) * variety_grow_multiplier * _growth_speed_multiplier()), 1)
 
-	state.coins -= crop_def.seed_cost
+	state.coins -= adjusted_seed_cost
 	plot.state = PlotState.new_growing(CropType.Kind.SANDALWOOD, now, effective_seconds)
+	plot.selected_variety = variety
 	_mark_dirty()
 
 
@@ -1292,4 +1558,32 @@ func flip_decoration(id: int) -> void:
 	for decoration: Decoration in state.decorations:
 		if decoration.id == id:
 			decoration.flipped_x = not decoration.flipped_x
+	_mark_dirty()
+
+
+# --- Farm Equipment: purchasable collection ---------------------------------------
+
+## design/gdd/farm-equipment.md. Buys `kind` into state.owned_equipment --
+## ownership only, at most once per kind (a collection, not a stack); no
+## board placement and no gameplay bonus yet, see that GDD's Acceptance
+## Criteria. Gated two ways, checked in order: FarmEquipment.Tier unlock
+## (land_expansions_bought() must meet the tier's threshold) before coins,
+## since "you haven't earned access to this tier yet" is a different failure
+## than "you can't afford this specific item" and deserves its own message.
+## No-ops (silently, past the initial checks) if `kind` is already owned --
+## same guard-clause style as buy_thief_security() at max level.
+func buy_equipment(kind: int) -> void:
+	if state.owned_equipment.has(kind):
+		return
+	var tier := FarmEquipment.equipment_tier(kind)
+	var required_expansions := FarmEquipment.tier_unlock_expansions(tier)
+	if land_expansions_bought() < required_expansions:
+		_push_event(tr(&"event.equipment_tier_locked") % [FarmEquipment.tier_display_name(tier), required_expansions], true)
+		return
+	var cost := FarmEquipment.equipment_cost(kind)
+	if state.coins < cost:
+		_push_event(tr(&"event.need_coins_for_named_item") % [cost, FarmEquipment.equipment_emoji(kind)], true)
+		return
+	state.coins -= cost
+	state.owned_equipment.append(kind)
 	_mark_dirty()

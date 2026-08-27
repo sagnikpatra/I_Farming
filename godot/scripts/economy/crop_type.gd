@@ -20,4 +20,21 @@ enum Kind {
 	MAKHANA,
 	POND_FISH,
 	SAFFRON,
+	# Additional Indian crops (Tier 1: Open Field)
+	SUGARCANE,
+	MUSTARD,
+	LENTIL,
+	CHICKPEA,
+	MAIZE,
+	# Tier 2: Polyhouse
+	CUCUMBER,
+	SPINACH,
+	BRINJAL,
+	# Tier 3: Agroforestry
+	NEEM,
+	COCONUT,
+	# Tier 4: Aquaculture / Specialty
+	TURMERIC,
+	GINGER,
+	CARDAMOM,
 }

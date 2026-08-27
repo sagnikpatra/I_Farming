@@ -1,31 +1,43 @@
-# 3D asset kits (Part 3 prep)
+# 3D asset kits
 
-Free, open-source (CC0 / public domain) 3D model kits acquired for the eventual
-"real 3D models" migration scoped separately in the village-view plan (see the
-plan history — Part 3 was deliberately deferred; this directory is prep work
-for whenever that's picked up, not yet wired into rendering).
+> **Note (2026-08-27): this doc predates the Godot migration** (it still
+> describes a "Part 3 prep, not yet wired into rendering" LibGDX plan that no
+> longer applies — the models below are long since wired into the real
+> Godot 3D board, see `godot/scripts/village_board/village_fixture_data.gd`).
+> Left as historical context rather than rewritten wholesale; only the kit
+> table and the two sections below it were updated with real, current
+> information (the new Food Kit, and a correction: `graveyard-kit/` is
+> listed below but does not actually exist in this checkout — confirmed via
+> `design/art/ui-visual-direction-2026-08.md`'s own on-disk audit — despite
+> being counted in the original "627 sourced models" figure).
 
-All four kits are by **Kenney** (<https://kenney.nl>), released under
+Free, open-source (CC0 / public domain) 3D model kits.
+
+All kits are by **Kenney** (<https://kenney.nl>), released under
 **CC0 1.0** (<https://creativecommons.org/publicdomain/zero/1.0/>) — free to
 use in personal, educational and commercial projects, no attribution required
 (crediting Kenney is appreciated but optional). Each kit's original
-`License.txt` is kept alongside its models as the license record.
+`License.txt` is kept alongside its models as the license record. **This
+project only sources genuinely CC0-licensed models** — a CC-BY (attribution-
+required) rose bush candidate was found and deliberately excluded during the
+2026-08-27 sourcing pass for exactly this reason; see `village_fixture_data.gd`.
 
 Only the **OBJ format** subset of each kit is kept here (`.obj` + `.mtl`,
-plus a shared `Textures/colormap.png` atlas for the three textured kits) —
-LibGDX's built-in `ObjLoader` reads this directly with zero extra
+plus a shared `Textures/colormap.png` atlas for the kits that use one) —
+Godot's built-in OBJ importer reads this directly with zero extra
 dependencies, and dropping the other bundled formats (FBX/DAE/GLB/STL) that
-Kenney ships alongside keeps this directory to ~13MB instead of ~40MB+ for no
-loss of usable content.
+Kenney ships alongside keeps this directory small for no loss of usable
+content.
 
 ## Kits
 
 | Folder | Kenney page | Models | Materials | Good for |
 |---|---|---|---|---|
-| `nature-kit/` | [nature-kit](https://kenney.nl/assets/nature-kit) | 329 | flat vertex colors, no texture | decorations: flowers, mushrooms, bushes, rocks, fences, bamboo crop stages, statues, bridges |
-| `graveyard-kit/` | [graveyard-kit](https://kenney.nl/assets/graveyard-kit) | 91 | `colormap.png` atlas | lanterns/lightposts, statues, altars |
+| `nature-kit/` | [nature-kit](https://kenney.nl/assets/nature-kit) | 329 | flat vertex colors, no texture | decorations: flowers, mushrooms, bushes, rocks, fences, bamboo crop stages, statues, bridges, water lilies (Makhana crop model, added 2026-08-27) |
+| `graveyard-kit/` | [graveyard-kit](https://kenney.nl/assets/graveyard-kit) | 91 (documented, **not actually present on disk in this checkout** — see note above) | `colormap.png` atlas | lanterns/lightposts, statues, altars |
 | `city-kit-suburban/` | [city-kit-suburban](https://kenney.nl/assets/city-kit-suburban) | 40 | `colormap.png` atlas | `building-type-a`..`u` house shells (structure stand-ins), planters, fences, trees |
 | `fantasy-town-kit/` | [fantasy-town-kit](https://kenney.nl/assets/fantasy-town-kit) | 167 | `colormap.png` atlas | fountains, lanterns, hedges, stalls, windmill/watermill, market stalls (structure stand-ins) |
+| `food-kit/` | [food-kit](https://kenney.nl/assets/food-kit) | 1 curated (`fish.obj`, of 200 total in the full kit) | `colormap.png` atlas | Pond Fish crop model (added 2026-08-27) -- used purely as a static prop/silhouette, not for its "food" framing; only this one model was curated in, not the full 200-item kit |
 
 ## Suggested mapping to Kisan Khet's game entities
 

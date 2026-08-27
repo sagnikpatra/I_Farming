@@ -87,6 +87,7 @@ const EventsTabScene := preload("res://scenes/ui/events_tab.tscn")
 const DecorationPickerScene := preload("res://scenes/ui/decoration_picker.tscn")
 const OpenFieldTabScene := preload("res://scenes/ui/open_field_tab.tscn")
 const AccessibilitySheetScene := preload("res://scenes/ui/accessibility_sheet.tscn")
+const EquipmentShopScene := preload("res://scenes/ui/equipment_shop.tscn")
 
 const HUD_MARGIN: int = 16
 ## Fixed status-bar clearance approximation -- real safe-area-aware insets
@@ -135,6 +136,7 @@ var _inventory_row: HBoxContainer
 var _liveops_banner: Button
 var _sell_all_button: Button
 var _shop_button: Button
+var _equipment_shop_button: Button
 var _open_field_workers_button: Button
 var _accessibility_button: Button
 var _zoom_in_button: Button
@@ -403,6 +405,45 @@ func open_events_sheet() -> void:
 	_bottom_sheet.open(tab)
 
 
+## design/gdd/thief-system.md -- opens ThiefInteractionSheet for the
+## currently-pending thief visit. No scene file for this sheet (like
+## farmhouse_upgrade_sheet.gd, it builds its UI procedurally in _ready()
+## when no children are present -- see thief_interaction_sheet.gd's own
+## "for testing without a scene file" comment), unlike EventsTab above.
+## Public so board_interactor.gd's ThiefVisitor tap handler can reach it,
+## same reasoning as open_events_sheet().
+func open_thief_interaction_sheet() -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
+	var steal_amount: int = economy.state.thief_pending_steal_amount
+	if steal_amount <= 0:
+		return  # No visit actually pending -- stale tap, nothing to show.
+	_play_ui_audio(&"ui_button_tap")
+	var sheet := ThiefInteractionSheet.new()
+	sheet.open_for_thief(steal_amount, economy)
+	sheet.thief_choice_made.connect(_on_thief_choice_made)
+	_bottom_sheet.open(sheet)
+
+
+## Applies the player's choice, closes the sheet, and lets
+## village_board.gd's persist_and_rebuild_if_dirty() (triggered by
+## resolve_thief_decision()'s _mark_dirty()) despawn the board NPC
+## immediately -- same flow give_chanda()/decline_chanda() use via
+## events_tab.gd's button handlers.
+func _on_thief_choice_made(_choice: String, _success: bool, coins_lost: int) -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
+	economy.resolve_thief_decision(coins_lost)
+	_village_board.persist_and_rebuild_if_dirty()
+	_bottom_sheet.close()
+
+
 ## EPIC-M7: the only reachable path to Open Field's worker-assignment row
 ## -- see _build_bottom_left_panel()'s own comment on why Open Field has
 ## no zone-tap route to _maybe_open_zone_sheet().
@@ -478,6 +519,22 @@ func _on_shop_pressed() -> void:
 	var picker: DecorationPicker = DecorationPickerScene.instantiate()
 	picker.configure(economy, _village_board.get_board_interactor(), _bottom_sheet)
 	_bottom_sheet.open(picker)
+
+
+## design/gdd/farm-equipment.md -- opens the Farm Equipment shop. Same shape
+## as _on_shop_pressed() above, minus a BoardInteractor dependency (this
+## shop has no board-placement step to arm, unlike decorations -- see the
+## GDD's Acceptance Criteria).
+func _on_equipment_shop_pressed() -> void:
+	if _village_board == null:
+		return
+	var economy := _village_board.get_economy()
+	if economy == null:
+		return
+	_play_ui_audio(&"ui_button_tap")
+	var shop: EquipmentShop = EquipmentShopScene.instantiate()
+	shop.configure(economy, _village_board)
+	_bottom_sheet.open(shop)
 
 
 # ---------------------------------------------------------------------------
@@ -703,6 +760,21 @@ func _build_bottom_right_shop() -> void:
 	var shop_label := _make_title_label(tr(&"hud.shop"), 14)
 	shop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bottom_right_shop.add_child(shop_label)
+
+	# design/gdd/farm-equipment.md -- no sourced icon exists for "equipment/
+	# tools" in this project's icon set (ICON_GEAR is already claimed by the
+	# accessibility button), so this follows the same emoji-button fallback
+	# the zoom buttons above already use rather than inventing a mismatched
+	# icon. 64px to match the Shop button it sits beside, not the smaller
+	# 44px zoom/move-mode buttons -- it's a primary sheet-opening action,
+	# same tier as Shop, not a minor toggle.
+	_equipment_shop_button = UiTheme.make_circular_emoji_button("🧰", WOOD_BROWN_LIGHT, 64)
+	_equipment_shop_button.pressed.connect(_on_equipment_shop_pressed)
+	_bottom_right_shop.add_child(_equipment_shop_button)
+
+	var equipment_shop_label := _make_title_label(tr(&"hud.equipment_shop"), 14)
+	equipment_shop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_bottom_right_shop.add_child(equipment_shop_label)
 
 
 ## Quick Nav Bar (EPIC-M5 parity pass) -- port of GdxQuickNavBar.kt, a row of

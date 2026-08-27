@@ -115,6 +115,41 @@ extends Resource
 ## design/gdd/worker-economy.md and game_economy.gd's assign_worker().
 @export var worker_assignments: Dictionary = {}
 
+## EPIC-M7+: Villager Hiring System. Array of hired villagers persisted on the
+## player's farm. Each VillagerHireRecord tracks when hired, current assignment,
+## and morale. design/gdd/worker-economy.md §6 (proposed).
+@export var hired_villagers: Array[VillagerHireRecord] = []
+## Current housing capacity for villagers (tied to farmhouse level via
+## GameData.villager_housing_capacity()). Updated on farmhouse upgrade.
+@export var villager_housing_capacity: int = 0
+
+## Thief NPC visitor system: epoch ms of the last thief visit, used for
+## cooldown tracking. -1 = never visited.
+@export var thief_last_visit_epoch_ms: int = -1
+## Cumulative total coins lost to thief visits (for progression/difficulty scaling).
+@export var total_theft_losses: int = 0
+## Security level against thief: 0 = none, 1 = fencing, 2 = guard posts.
+@export var thief_security_level: int = 0
+## Steal amount of the currently-pending thief visit awaiting a player
+## decision (let go / bribe / chase) -- 0 means no visit is currently
+## pending. Same "0 = nothing pending" convention as pending_passive_income
+## below. Set by GameEconomy.resolve_thief_visit() when a visit triggers;
+## cleared by resolve_thief_decision() once the player responds.
+@export var thief_pending_steal_amount: int = 0
+
+## design/gdd/farm-equipment.md: FarmEquipment.Kind ordinals the player has
+## purchased, each at most once (a collection, not a stack -- buying an
+## already-owned kind is a no-op, see GameEconomy.buy_equipment()). Ownership
+## only for now -- no board placement and no gameplay bonus yet, see that
+## GDD's Acceptance Criteria for why.
+@export var owned_equipment: Array[int] = []
+
+## Farmhouse Progression (design/gdd/farmhouse-progression.md) -- passive income system.
+## Coins earned from the farmhouse's passive income but not yet collected by the player.
+@export var pending_passive_income: int = 0
+## Epoch ms when passive income was last resolved/accrued. -1 = never resolved.
+@export var passive_income_last_resolution_epoch_ms: int = -1
+
 
 func _init() -> void:
 	for i in range(GameData.STARTING_PLOTS):
